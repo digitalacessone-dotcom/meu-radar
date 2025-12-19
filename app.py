@@ -5,7 +5,6 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 app = Flask(__name__)
 
 RAIO_KM = 25.0
-API_OPENSKY = "https://opensky-network.org/api/states/all"
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -14,7 +13,6 @@ def haversine(lat1, lon1, lat2, lon2):
     return 2 * R * atan2(sqrt(a), sqrt(1-a))
 
 def calculate_bearing(lat1, lon1, lat2, lon2):
-    """Calcula o ângulo para a bússola"""
     start_lat, start_lon = radians(lat1), radians(lon1)
     end_lat, end_lon = radians(lat2), radians(lon2)
     d_lon = end_lon - start_lon
@@ -30,10 +28,10 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Smart Flight Ticket 25KM</title>
+        <title>Visual Flight Ticket 25KM</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
-            body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow-x: hidden; }
+            body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
             
             #search-box { display: none; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--warning-gold); width: 90%; max-width: 550px; gap: 10px; }
             input { flex: 1; background: #000; border: 1px solid #333; padding: 12px; color: white; font-weight: bold; outline: none; }
@@ -53,20 +51,18 @@ def index():
             .col-right { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
             .label { color: #999; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
-            .value { font-size: 1.6em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; }
+            .value { font-size: 1.65em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; }
             
             #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.2em; color: var(--warning-gold); }
-            .signal-bar { font-size: 10px; color: #1A237E; font-weight: bold; margin-top: 5px; }
-
-            .barcode { height: 60px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
+            .barcode { height: 65px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
             
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 10px; border-top: 2.5px solid var(--warning-gold); border-bottom: 2.5px solid var(--warning-gold); margin-bottom: 20px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.9em; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; text-align: center; }
+            .status-msg { color: var(--warning-gold); font-size: 0.85em; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; min-height: 20px; padding: 0 10px; }
 
             @media (max-height: 500px) and (orientation: landscape) {
-                .card { transform: scale(0.72); margin-top: -50px; }
-                .white-area { min-height: 200px; padding: 15px 30px; }
+                .card { transform: scale(0.7); margin-top: -60px; }
+                .white-area { min-height: 180px; padding: 15px 30px; }
             }
         </style>
     </head>
@@ -84,14 +80,15 @@ def index():
             <div class="white-area">
                 <div class="col-left">
                     <div><div class="label">IDENTIFICATION / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div></div>
-                    <div><div class="label">ETA TO VISUAL CONTACT</div><div id="eta" class="value">-- MIN</div></div>
+                    <div><div class="label">ESTIMATED VISUAL (ETA)</div><div id="eta" class="value">-- MIN</div></div>
                     <div><div class="label">PRESSURE ALTITUDE (FL)</div><div id="alt" class="value">00000 FT</div></div>
                 </div>
                 <div class="col-right">
                     <div class="label">RANGE & BEARING</div>
                     <div class="value"><span id="dist">0.0 KM</span> <span id="compass">↑</span></div>
                     <div class="barcode"></div>
-                    <div id="signal" class="signal-bar">SIGNAL: [ ▯▯▯▯▯ ]</div>
+                    <div class="label" style="font-size: 8px;">SIGNAL INTENSITY</div>
+                    <div id="signal" style="color:var(--air-blue); font-weight:bold;">[ ▯▯▯▯▯ ]</div>
                 </div>
             </div>
             <div class="footer">
@@ -105,6 +102,7 @@ def index():
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
             let latAlvo = null, lonAlvo = null;
             let targetLock = false;
+            let flightData = null;
 
             function splitFlap(text) {
                 const el = document.getElementById('status');
@@ -134,12 +132,24 @@ def index():
             function iniciarRadar() {
                 executarBusca();
                 setInterval(executarBusca, 10000);
+                
+                // Ciclo de frases do rodapé
                 setInterval(() => {
                     if(!targetLock) {
-                        const cycle = ["SCANNING LIVE AIRSPACE", "RADAR ACTIVE"];
+                        const cycle = ["SCANNING LIVE AIRSPACE", "RADAR ACTIVE", "INITIALIZING RADAR"];
                         splitFlap(cycle[Math.floor(Math.random() * cycle.length)]);
+                    } else if(flightData) {
+                        // Se houver alvo, alterna as informações ricas
+                        const infoCycle = [
+                            "TARGET LOCKED",
+                            `FLIGHT: ${flightData.callsign}`,
+                            `SPEED: ${flightData.speed} KM/H`,
+                            `FROM: ${flightData.origin} TO: ${flightData.dest}`
+                        ];
+                        const chosen = infoCycle[Math.floor(Math.random() * infoCycle.length)];
+                        splitFlap(chosen);
                     }
-                }, 5000);
+                }, 4000);
             }
 
             function executarBusca() {
@@ -147,28 +157,27 @@ def index():
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
                 .then(res => res.json()).then(data => {
                     if(data.found) {
+                        flightData = data;
                         document.getElementById('callsign').innerText = data.callsign;
                         document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
                         document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         
-                        // Cálculo de Sinal
                         let bars = Math.ceil((25 - data.dist) / 5);
-                        document.getElementById('signal').innerText = "SIGNAL: [" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
+                        document.getElementById('signal').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                         
-                        // Cálculo ETA (Simplificado: distância / velocidade)
-                        let eta = data.velocity > 0 ? Math.round((data.dist / (data.velocity * 3.6)) * 60) : "--";
+                        let eta = data.speed > 0 ? Math.round((data.dist / data.speed) * 60) : "--";
                         document.getElementById('eta').innerText = eta + " MIN";
 
-                        if (!targetLock) { alertBeepFiveTimes(); splitFlap("TARGET LOCKED"); }
+                        if (!targetLock) { alertBeepFiveTimes(); }
                         targetLock = true;
                     } else {
-                        targetLock = false;
+                        targetLock = false; flightData = null;
                         document.getElementById('callsign').innerText = "SEARCHING";
                         document.getElementById('eta').innerText = "-- MIN";
-                        document.getElementById('signal').innerText = "SIGNAL: [ ▯▯▯▯▯ ]";
-                        document.getElementById('compass').style.transform = `rotate(0deg)`;
                     }
+                }).catch(() => {
+                    splitFlap("SIGNAL LOST - RE-ESTABLISHING UPLINK");
                 });
             }
 
@@ -192,17 +201,27 @@ def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
     try:
-        r = requests.get(API_OPENSKY, timeout=4).json()
-        for s in r.get('states', []):
-            if s[6] and s[5]:
-                d = haversine(lat_u, lon_u, s[6], s[5])
-                if d <= RAIO_KM:
-                    b = calculate_bearing(lat_u, lon_u, s[6], s[5])
-                    return jsonify({
-                        "found": True, "callsign": s[1].strip() or "ACFT", 
-                        "dist": round(d, 1), "alt": s[7] or 0, 
-                        "bearing": b, "velocity": s[9] or 0
-                    })
+        # Usando ADS-B.lol para obter rota e velocidade real
+        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
+        r = requests.get(url, timeout=5).json()
+        if r.get('ac'):
+            ac = r['ac'][0]
+            d = haversine(lat_u, lon_u, ac.get('lat'), ac.get('lon'))
+            b = calculate_bearing(lat_u, lon_u, ac.get('lat'), ac.get('lon'))
+            
+            # Dados extras para o rodapé
+            callsign = ac.get('flight', 'ACFT').strip()
+            speed = round(ac.get('gs', 0) * 1.852) # Nós para KM/H
+            
+            # Algumas rotas podem não estar disponíveis se o voo for privado
+            origin = ac.get('db_origin', 'UNKNOWN')
+            dest = ac.get('db_dest', 'UNKNOWN')
+
+            return jsonify({
+                "found": True, "callsign": callsign, 
+                "dist": round(d, 1), "alt": ac.get('alt_baro', 0) / 3.28, 
+                "bearing": b, "speed": speed, "origin": origin, "dest": dest
+            })
     except: pass
     return jsonify({"found": False})
 
