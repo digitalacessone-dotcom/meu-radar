@@ -1,10 +1,17 @@
 from flask import Flask, render_template_string, jsonify, request
 import requests
+import random
 from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-RAIO_KM = 50.0 
+# Configurações de busca
+RAIO_KM = 100.0  
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+]
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -24,17 +31,17 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 def index():
     return render_template_string('''
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="pt-br">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Visual Radar Pro + Weather</title>
+        <title>Visual Radar Pro</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
             
             #search-box { display: none; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--warning-gold); width: 90%; max-width: 550px; gap: 10px; z-index: 100; }
-            input { flex: 1; background: #000; border: 1px solid #333; padding: 12px; color: white; font-weight: bold; outline: none; }
+            input { flex: 1; background: #000; border: 1px solid #333; padding: 12px; color: white; outline: none; }
             button { background: var(--warning-gold); color: #000; border: none; padding: 12px 20px; font-weight: 900; cursor: pointer; }
 
             .card { background: var(--air-blue); width: 95%; max-width: 650px; border-radius: 25px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden; }
@@ -42,8 +49,6 @@ def index():
             .notch-left { left: -22px; } .notch-right { right: -22px; }
 
             .header { padding: 25px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 20px; font-weight: 900; letter-spacing: 5px; font-size: 1.2em; }
-            .header span { font-size: 2.2em; }
-
             .white-area { background: #fdfdfd; margin: 0 12px; position: relative; display: flex; padding: 30px; min-height: 260px; border-radius: 2px; }
             .white-area::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background-image: linear-gradient(to right, #ccc 40%, transparent 40%); background-size: 14px 100%; }
 
@@ -59,17 +64,12 @@ def index():
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 10px; border-top: 2.5px solid var(--warning-gold); border-bottom: 2.5px solid var(--warning-gold); margin-bottom: 20px; }
             .status-msg { color: var(--warning-gold); font-size: 0.85em; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; min-height: 20px; padding: 0 10px; }
-
-            @media (max-height: 500px) and (orientation: landscape) {
-                .card { transform: scale(0.7); margin-top: -60px; }
-                .white-area { min-height: 180px; padding: 15px 30px; }
-            }
         </style>
     </head>
     <body onclick="audioAlerta.play().catch(()=>{})">
         
         <div id="search-box">
-            <input type="text" id="endereco" placeholder="ENTER ZIP CODE OR CITY...">
+            <input type="text" id="endereco" placeholder="ENTER CITY...">
             <button onclick="buscarEndereco()">ACTIVATE</button>
         </div>
 
@@ -100,11 +100,8 @@ def index():
         <script>
             const audioAlerta = new Audio('https://www.soundjay.com/buttons/beep-07a.mp3');
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
-            let latAlvo = null, lonAlvo = null;
-            let targetLock = false;
-            let flightData = null;
-            let weatherData = { temp: "--", vis: "--", desc: "SCANNING" };
-            let currentMsgIndex = 0;
+            let latAlvo = null, lonAlvo = null, targetLock = false, flightData = null;
+            let weatherData = { temp: "--", vis: "--", desc: "STBY" };
 
             function splitFlap(text) {
                 const el = document.getElementById('status');
@@ -115,15 +112,6 @@ def index():
                 }, 30);
             }
 
-            function alertBeepFiveTimes() {
-                let count = 0;
-                const interval = setInterval(() => {
-                    audioAlerta.play().catch(() => {});
-                    count++;
-                    if (count >= 5) clearInterval(interval);
-                }, 1000);
-            }
-
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
@@ -132,67 +120,40 @@ def index():
             };
 
             function iniciarRadar() {
-                executarBusca();
                 setInterval(executarBusca, 10000);
-                
+                let cycle = 0;
                 setInterval(() => {
-                    if(!targetLock) {
-                        const searchMsgs = [
-                            "SCANNING LIVE AIRSPACE",
-                            "RADAR ACTIVE",
-                            `TEMP: ${weatherData.temp}°C | SKY: ${weatherData.desc}`,
-                            `VISIBILITY: ${weatherData.vis} KM`
-                        ];
-                        currentMsgIndex = (currentMsgIndex + 1) % searchMsgs.length;
-                        splitFlap(searchMsgs[currentMsgIndex]);
-                    } else if(flightData) {
-                        const infoCycle = [
-                            "TARGET LOCKED",
-                            `FLIGHT: ${flightData.callsign}`,
-                            `SPEED: ${flightData.speed} KM/H`,
-                            `FROM: ${flightData.origin}`,
-                            `TO: ${flightData.dest}`,
-                            `VISIBILITY: ${weatherData.vis} KM`
-                        ];
-                        currentMsgIndex = (currentMsgIndex + 1) % infoCycle.length;
-                        splitFlap(infoCycle[currentMsgIndex]);
-                    }
-                }, 4000);
+                    const msgs = targetLock ? ["TARGET LOCKED", `VISIBILITY: ${weatherData.vis}KM`] : ["SCANNING AIRSPACE", `TEMP: ${weatherData.temp}°C`, `SKY: ${weatherData.desc}`];
+                    splitFlap(msgs[cycle % msgs.length]);
+                    cycle++;
+                }, 4500);
             }
 
             function executarBusca() {
                 if(!latAlvo) return;
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
                 .then(res => res.json()).then(data => {
-                    if(data.weather) weatherData = data.weather;
+                    weatherData = data.weather;
                     if(data.found) {
                         flightData = data;
                         document.getElementById('callsign').innerText = data.callsign;
                         document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
                         document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        let bars = Math.ceil((50 - data.dist) / 10);
-                        document.getElementById('signal').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
-                        let eta = data.speed > 0 ? Math.round((data.dist / data.speed) * 60) : "--";
-                        document.getElementById('eta').innerText = eta + " MIN";
-                        if (!targetLock) { alertBeepFiveTimes(); }
+                        let bars = Math.ceil((100 - data.dist) / 20);
+                        document.getElementById('signal').innerText = "[" + "▮".repeat(Math.max(1, bars)) + "▯".repeat(Math.max(0, 5-bars)) + "]";
                         targetLock = true;
                     } else {
-                        targetLock = false; flightData = null;
-                        document.getElementById('callsign').innerText = "SEARCHING";
+                        targetLock = false; document.getElementById('callsign').innerText = "SEARCHING";
                     }
                 });
             }
 
             async function buscarEndereco() {
-                const query = document.getElementById('endereco').value;
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+                const q = document.getElementById('endereco').value;
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
                 const data = await res.json();
-                if(data.length > 0) {
-                    latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
-                    document.getElementById('search-box').style.display = "none";
-                    iniciarRadar();
-                }
+                if(data.length > 0) { latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon); document.getElementById('search-box').style.display = "none"; iniciarRadar(); }
             }
         </script>
     </body>
@@ -201,42 +162,28 @@ def index():
 
 @app.route('/api/data')
 def get_data():
-    lat_u = float(request.args.get('lat', 0))
-    lon_u = float(request.args.get('lon', 0))
+    lat_u, lon_u = float(request.args.get('lat', 0)), float(request.args.get('lon', 0))
+    headers = {'User-Agent': random.choice(USER_AGENTS)}
     
-    # 1. BUSCA CLIMA (Open-Meteo)
+    # Busca Clima
     weather = {"temp": "--", "vis": "--", "desc": "N/A"}
     try:
-        w_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat_u}&longitude={lon_u}&current=temperature_2m,visibility,weather_code"
-        wr = requests.get(w_url, timeout=2).json()
-        if 'current' in wr:
-            weather['temp'] = round(wr['current']['temperature_2m'])
-            weather['vis'] = round(wr['current']['visibility'] / 1000, 1) # Metros para KM
-            # Mapeamento simples de código de clima
-            code = wr['current']['weather_code']
-            weather['desc'] = "CLEAR" if code == 0 else "PARTLY CLOUDY" if code < 4 else "OVERCAST" if code < 50 else "RAINY"
+        wr = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat_u}&longitude={lon_u}&current=temperature_2m,visibility,weather_code", timeout=2).json()
+        weather = {"temp": round(wr['current']['temperature_2m']), "vis": round(wr['current']['visibility']/1000, 1), "desc": "CLEAR" if wr['current']['weather_code'] == 0 else "CLOUDY"}
     except: pass
 
-    # 2. BUSCA RADAR (ADS-B.LOL + REDUNDÂNCIA)
+    # Busca Radar
     try:
-        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        r = requests.get(url, timeout=3).json()
+        r = requests.get(f"https://api.adsb.one/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}", headers=headers, timeout=5).json()
         if r.get('ac'):
             ac = sorted(r['ac'], key=lambda x: haversine(lat_u, lon_u, x.get('lat',0), x.get('lon',0)))[0]
-            d = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
-            return jsonify({
-                "found": True, "callsign": ac.get('flight', 'UNKN').strip(), 
-                "dist": round(d, 1), "alt": ac.get('alt_baro', 0) / 3.28, 
-                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                "speed": round(ac.get('gs', 0) * 1.852), "origin": ac.get('db_origin', 'N/A'),
-                "dest": ac.get('db_dest', 'N/A'), "weather": weather
-            })
+            return jsonify({"found": True, "callsign": ac.get('flight', 'UNKN').strip(), "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), "alt": ac.get('alt_baro', 0) / 3.28, "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']), "speed": round(ac.get('gs', 0) * 1.852), "weather": weather})
     except: pass
-
     return jsonify({"found": False, "weather": weather})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
