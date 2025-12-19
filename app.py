@@ -1,11 +1,16 @@
 from flask import Flask, render_template_string, jsonify, request
 import requests
+import random
 from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# Configurações
-RAIO_KM = 100.0  # Aumentei o raio para facilitar testes iniciais
+RAIO_KM = 80.0
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+]
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -25,7 +30,7 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 def index():
     return render_template_string('''
     <!DOCTYPE html>
-    <html lang="pt-br">
+    <html lang="pt-pt">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -33,57 +38,150 @@ def index():
         <style>
             :root { --air-blue: #226488; --warning-gold: #FFD700; --bg-dark: #f0f4f7; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-            body { background-color: var(--bg-dark); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; overflow: hidden; }
-            .card { background: white; width: 95%; max-width: 850px; border-radius: 20px; display: flex; overflow: hidden; border: 1px solid #ddd; box-shadow: 0 20px 40px rgba(0,0,0,0.1); position: relative; }
-            .left-stub { width: 25%; background: var(--air-blue); color: white; padding: 20px; display: flex; flex-direction: column; border-right: 2px dashed rgba(255,255,255,0.3); }
-            .seat-num { font-size: 4em; font-weight: 900; margin-top: 10px; }
+
+            body { 
+                background-color: var(--bg-dark); margin: 0; padding: 0; 
+                display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden;
+            }
+
+            /* CAMPO SUPERIOR PARA ENDEREÇO OU CEP */
+            .manual-gps {
+                background: #fff; padding: 12px 20px; border-radius: 12px;
+                margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+                display: flex; gap: 12px; align-items: center; border: 1px solid #ddd;
+                width: 95%; max-width: 850px;
+            }
+            .manual-gps input {
+                border: 1px solid #ccc; padding: 8px 12px; border-radius: 6px; flex: 1; font-size: 0.9em;
+                outline: none; transition: 0.3s;
+            }
+            .manual-gps input:focus { border-color: var(--air-blue); }
+            .manual-gps button {
+                background: var(--air-blue); color: white; border: none; padding: 8px 18px;
+                border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85em;
+                white-space: nowrap;
+            }
+
+            .card { 
+                background: white; width: 95%; max-width: 850px;
+                border-radius: 20px; position: relative; 
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+                display: flex; overflow: hidden; border: 1px solid #ddd;
+            }
+
+            .left-stub {
+                width: 25%; background: var(--air-blue); color: white;
+                padding: 20px; display: flex; flex-direction: column;
+                border-right: 2px dashed rgba(255,255,255,0.3);
+            }
+            .left-stub .seat-num { font-size: 4em; font-weight: 900; margin-top: 20px; line-height: 1; }
+            .left-stub .seat-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; }
+
             .main-ticket { flex: 1; display: flex; flex-direction: column; }
-            .header-bar { background: var(--air-blue); height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; color: white; }
-            .header-bar h1 { font-size: 1.2em; letter-spacing: 5px; margin: 0; }
-            .content-area { padding: 25px 40px; display: flex; flex: 1; }
+            .header-bar { 
+                background: var(--air-blue); height: 80px; display: flex; 
+                align-items: center; justify-content: space-between; padding: 0 40px; color: white;
+            }
+            .header-bar h1 { font-size: 1.5em; letter-spacing: 5px; margin: 0; }
+            
+            .content-area { padding: 30px 50px; display: flex; flex: 1; background: white; }
             .col-data { flex: 2; border-right: 1px solid #eee; }
-            .col-side { flex: 1; padding-left: 25px; text-align: center; }
-            .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; }
-            .value { font-size: 1.4em; font-weight: 900; color: var(--air-blue); margin-bottom: 15px; min-height: 1.2em; }
-            .terminal-footer { background: #000; padding: 12px; border-top: 3px solid var(--warning-gold); min-height: 55px; display: flex; align-items: center; }
-            .letter-slot { display: inline-block; color: var(--warning-gold); font-family: 'Courier New', monospace; font-weight: 900; min-width: 0.65em; text-align: center; }
+            .col-side { flex: 1; padding-left: 30px; align-items: center; display: flex; flex-direction: column; justify-content: space-around; }
+
+            .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+            .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); min-height: 1.2em; display: flex; }
+
+            .terminal-footer { 
+                background: #000; padding: 12px 40px; 
+                border-top: 3px solid var(--warning-gold);
+                min-height: 55px; display: flex; align-items: center;
+            }
+
+            .letter-slot { 
+                display: inline-block; color: var(--warning-gold); 
+                font-family: 'Courier New', monospace; font-weight: 900;
+                min-width: 0.65em; text-align: center;
+            }
+            
             .flapping { animation: flap 0.07s infinite; }
             @keyframes flap { 50% { transform: scaleY(0.5); opacity: 0.5; } }
+
             #compass { font-size: 2.2em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
-            #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.5s; opacity: 0.2; }
-            .barcode { width: 150px; height: 50px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 15px; margin-inline: auto; }
-            #radar-link.active { pointer-events: auto; opacity: 1; }
+            #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.5s; opacity: 0.1; }
+            .barcode { width: 150px; height: 50px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 20px; }
+            #radar-link.active { pointer-events: auto; opacity: 1; transform: scale(1.05); }
         </style>
     </head>
     <body>
+
+        <div class="manual-gps">
+            <span style="font-size: 0.75em; font-weight: 900; color: var(--air-blue);">ORIGEM:</span>
+            <input type="text" id="address-input" placeholder="Digite Endereço, Cidade ou CEP...">
+            <button onclick="geocodeAddress()">ATUALIZAR RADAR</button>
+        </div>
+
         <div class="card">
             <div class="left-stub">
-                <div class="label" style="color: rgba(255,255,255,0.7)">Your Radar</div>
-                <div style="font-size: 0.8em;">Seat Number:</div>
-                <div class="seat-num">19 A</div>
-                <div style="margin-top: auto; font-size: 0.7em;">First Class / ATC</div>
+                <div class="label" style="color: rgba(255,255,255,0.7)">Radar Base</div>
+                <div class="seat-label">Mode:</div>
+                <div class="seat-num" id="point-id">--</div>
+                <div class="seat-label" style="margin-top: auto;">Secure Tunnel</div>
             </div>
+
             <div class="main-ticket">
-                <div class="header-bar"><span>✈</span><h1>BOARDING BOARD</h1><span>✈</span></div>
+                <div class="header-bar">
+                    <span>✈</span><h1>BOARDING BOARD</h1><span>✈</span>
+                </div>
+
                 <div class="content-area">
                     <div class="col-data">
-                        <div class="label">Ident / Callsign</div><div id="callsign" class="value"></div>
-                        <div class="label">Aircraft Distance</div><div id="dist_body" class="value"></div>
-                        <div class="label">Altitude (MSL)</div><div id="alt" class="value"></div>
+                        <div><div class="label">Ident / Callsign</div><div id="callsign" class="value"></div></div>
+                        <div style="margin-top:20px"><div class="label">Aircraft Distance</div><div id="dist_body" class="value"></div></div>
+                        <div style="margin-top:20px"><div class="label">Altitude (MSL)</div><div id="alt" class="value"></div></div>
                     </div>
+
                     <div class="col-side">
                         <div class="label">Type</div><div id="type_id" class="value">----</div>
                         <div class="label">Bearing</div><div id="compass">↑</div>
                         <a id="radar-link" href="#" target="_blank"><div class="barcode"></div></a>
                     </div>
                 </div>
-                <div class="terminal-footer"><div id="status-container"></div></div>
+
+                <div class="terminal-footer">
+                    <div id="status-container"></div>
+                </div>
             </div>
         </div>
 
         <script>
             let latAlvo = null, lonAlvo = null, currentTarget = null, step = 0;
             const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->";
+
+            // Função para converter Endereço/CEP em Coordenadas
+            async function geocodeAddress() {
+                const query = document.getElementById('address-input').value;
+                if(!query) return;
+                
+                updateWithEffect('status-container', '> GEO-SEARCHING: ' + query);
+                
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                    const data = await response.json();
+                    
+                    if(data.length > 0) {
+                        latAlvo = parseFloat(data[0].lat);
+                        lonAlvo = parseFloat(data[0].lon);
+                        document.getElementById('point-id').innerText = "FIX";
+                        updateWithEffect('status-container', '> TARGET POINT UPDATED');
+                        executarBusca();
+                    } else {
+                        updateWithEffect('status-container', '> ERROR: ADDRESS NOT FOUND');
+                    }
+                } catch(e) {
+                    updateWithEffect('status-container', '> GEO-SERVER ERROR');
+                }
+            }
 
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
@@ -101,32 +199,31 @@ def index():
                     const interval = setInterval(() => {
                         slot.innerText = chars[Math.floor(Math.random() * chars.length)];
                         slot.classList.add('flapping');
-                        if (++cycles >= 8 + i) {
+                        if (++cycles >= 10 + i) {
                             clearInterval(interval);
                             slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
                             slot.classList.remove('flapping');
                         }
-                    }, 40);
+                    }, 50);
                 });
             }
 
             window.onload = function() {
-                updateWithEffect('callsign', 'SEARCHING');
-                updateWithEffect('status-container', '> INITIALIZING RADAR...');
-                navigator.geolocation.getCurrentPosition(
-                    pos => {
-                        latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                        setInterval(executarBusca, 10000); executarBusca();
-                    },
-                    err => { updateWithEffect('status-container', '> ERROR: GPS DENIED'); }
-                );
+                updateWithEffect('status-container', '> WAITING FOR GPS OR ADDRESS...');
+                navigator.geolocation.getCurrentPosition(pos => {
+                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
+                    document.getElementById('point-id').innerText = "GPS";
+                    setInterval(executarBusca, 12000); executarBusca();
+                }, err => {
+                    updateWithEffect('status-container', '> GPS OFF. INPUT ADDRESS ABOVE.');
+                });
 
                 setInterval(() => {
                     if(!currentTarget) {
-                        const msgs = ["> SCANNING AIRSPACE", "> GPS SIGNAL OK", "> TEMP: 24C / SKY: CLEAR", "> WAITING TARGET"];
+                        const msgs = ["> ENCRYPTED SCAN...", "> NETWORK CLOAKED", "> WAITING TARGET"];
                         updateWithEffect('status-container', msgs[step % msgs.length]);
                     } else {
-                        const info = [`> TARGET: ${currentTarget.callsign}`, `> SPEED: ${currentTarget.speed} KTS`, `> TYPE: ${currentTarget.type}`, `> PATH: ${currentTarget.origin} > ${currentTarget.dest}`];
+                        const info = [`> TARGET: ${currentTarget.callsign}`, `> SPD: ${currentTarget.speed} KT`, `> POS LOCKED` ];
                         updateWithEffect('status-container', info[step % info.length]);
                     }
                     step++;
@@ -151,7 +248,7 @@ def index():
                         currentTarget = null;
                         radarLink.classList.remove('active');
                     }
-                }).catch(e => console.error("Busca falhou:", e));
+                });
             }
         </script>
     </body>
@@ -162,36 +259,28 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
+    headers = {'User-Agent': random.choice(USER_AGENTS), 'Accept': 'application/json', 'Referer': 'https://adsb.lol/'}
     try:
-        # Tenta endpoint estável (V2)
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        r = requests.get(url, headers=headers, timeout=8).json()
-        
+        r = requests.get(url, headers=headers, timeout=10).json()
         if r.get('ac'):
-            # Filtra apenas aeronaves que tenham localização válida
             valid_ac = [a for a in r['ac'] if 'lat' in a and 'lon' in a]
-            if not valid_ac: return jsonify({"found": False})
-            
-            ac = sorted(valid_ac, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-            
-            return jsonify({
-                "found": True, 
-                "callsign": ac.get('flight', ac.get('call', 'N/A')).strip(), 
-                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
-                "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
-                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                "origin": ac.get('t_from', '???'),
-                "dest": ac.get('t_to', '???'),
-                "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
-                "lat": ac['lat'], "lon": ac['lon']
-            })
-    except Exception as e:
-        print(f"Erro na API: {e}")
+            if valid_ac:
+                ac = sorted(valid_ac, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+                return jsonify({
+                    "found": True, 
+                    "callsign": ac.get('flight', ac.get('call', 'N/A')).strip(), 
+                    "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                    "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
+                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                    "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
+                    "lat": ac['lat'], "lon": ac['lon']
+                })
+    except: pass
     return jsonify({"found": False})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)
 
 
 
