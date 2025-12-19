@@ -23,56 +23,74 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>Radar Boarding Pass</title>
         <style>
-            :root { --air-blue: #1A237E; --warning-gold: #FFD700; }
-            body { background-color: #0a192f; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; }
+            :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
+            body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; }
             
-            .search-container { display: none; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid var(--warning-gold); width: 90%; max-width: 500px; }
-            input { flex: 1; background: #000; border: 1px solid var(--air-blue); padding: 12px; color: var(--warning-gold); font-weight: bold; width: 70%; }
+            /* Busca Estilizada */
+            .search-container { display: none; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid var(--warning-gold); width: 90%; max-width: 550px; display: flex; gap: 10px; }
+            input { flex: 1; background: #000; border: 1px solid #333; padding: 12px; color: white; font-weight: bold; outline: none; }
             button { background: var(--warning-gold); color: #000; border: none; padding: 12px 20px; font-weight: 900; cursor: pointer; }
 
-            .card { background: #fdfdfd; color: #1a1a1a; width: 95%; max-width: 600px; border-radius: 4px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.8); overflow: hidden; border-left: 15px solid var(--air-blue); }
+            /* O TICKET (Layout idêntico à imagem 2) */
+            .card { background: var(--air-blue); width: 95%; max-width: 650px; border-radius: 20px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden; }
             
-            /* Cabeçalho com Aviões Maiores */
-            .header { background: var(--air-blue); color: white; padding: 20px; text-align: center; font-weight: 900; letter-spacing: 2px; font-size: 1.2em; border-bottom: 2px dashed #ccc; display: flex; justify-content: center; align-items: center; gap: 25px; }
-            .header span { font-size: 1.8em; } /* Aumenta o tamanho do avião */
+            /* Furos Laterais (Meia-Lua) */
+            .notch { position: absolute; width: 40px; height: 40px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
+            .notch-left { left: -20px; }
+            .notch-right { right: -20px; }
 
-            .main-content { display: flex; padding: 25px; min-height: 200px; }
-            .data-section { flex: 2; border-right: 2px dashed #ddd; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-between; }
-            .side-section { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+            /* Cabeçalho */
+            .header { padding: 20px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 20px; font-weight: 900; letter-spacing: 4px; font-size: 1.2em; }
+            .header span { font-size: 1.8em; }
+
+            /* Área Branca Picotada */
+            .white-area { background: #fdfdfd; margin: 0 10px; position: relative; display: flex; padding: 30px; min-height: 230px; border-radius: 2px; }
+            .white-area::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background-image: linear-gradient(to right, #ccc 40%, transparent 40%); background-size: 12px 100%; }
+
+            .col-left { flex: 1.8; border-right: 2px dashed #e0e0e0; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-around; }
+            .col-right { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
             
-            .label { color: #777; font-size: 0.65em; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
-            .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); }
+            .label { color: #999; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+            .value { font-size: 1.6em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; letter-spacing: -0.5px; }
             
-            .barcode { height: 50px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin-top: 15px; }
-            
-            /* Rodapé Azul com Letras Amarelas Girando */
-            .footer { background: var(--air-blue); color: var(--warning-gold); padding: 15px; text-align: center; font-size: 0.9em; font-weight: bold; border-top: 2px solid rgba(255,215,0,0.3); min-height: 40px; letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
-            
-            @media (max-width: 480px) {
-                .main-content { flex-direction: column; }
-                .data-section { border-right: none; border-bottom: 2px dashed #ddd; padding-bottom: 20px; }
-                .side-section { padding-top: 20px; }
+            .barcode { height: 65px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
+            .scan-info { font-size: 9px; font-weight: 900; color: #333; letter-spacing: 1px; }
+
+            /* Rodapé com as Duas Linhas Amarelas */
+            .footer { padding: 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
+            .double-line { width: 100%; height: 8px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 15px; box-sizing: border-box; }
+            .status-msg { color: var(--warning-gold); font-size: 0.9em; font-weight: bold; letter-spacing: 2px; min-height: 20px; }
+
+            @media (max-width: 500px) {
+                .white-area { flex-direction: column; padding: 20px; }
+                .col-left { border-right: none; border-bottom: 2px dashed #eee; padding-bottom: 20px; }
+                .col-right { padding: 20px 0 0 0; }
             }
         </style>
     </head>
     <body onclick="ativarAlertas()">
+        
         <div id="busca" class="search-container">
-            <input type="text" id="endereco" placeholder="DIGITE LOCAL...">
+            <input type="text" id="endereco" placeholder="DIGITE CEP OU CIDADE...">
             <button onclick="buscarEndereco()">VIGIAR</button>
         </div>
 
         <div class="card">
+            <div class="notch notch-left"></div>
+            <div class="notch notch-right"></div>
+            
             <div class="header">
-                <span>✈</span> FLIGHT MANIFEST <span>✈</span>
+                <span>✈</span> FLIGHT MANIFEST / PASS <span>✈</span>
             </div>
-            <div class="main-content">
-                <div class="data-section">
+            
+            <div class="white-area">
+                <div class="col-left">
                     <div>
-                        <div class="label">IDENT / CALLSIGN</div>
+                        <div class="label">IDENTIFICATION / CALLSIGN</div>
                         <div id="callsign" class="value">---</div>
                     </div>
                     <div>
-                        <div class="label">SECTOR: ORIGIN / DEST</div>
+                        <div class="label">SECTOR: ORIGIN / DESTINATION</div>
                         <div id="route" class="value">--- / ---</div>
                     </div>
                     <div>
@@ -80,13 +98,19 @@ def index():
                         <div id="alt" class="value">00000 FT</div>
                     </div>
                 </div>
-                <div class="side-section">
-                    <div class="label">RANGE</div>
+                
+                <div class="col-right">
+                    <div class="label">RANGE TO TARGET</div>
                     <div id="dist" class="value">0.0 KM</div>
                     <div class="barcode"></div>
+                    <div class="scan-info">SECURITY SCAN: 25KM</div>
                 </div>
             </div>
-            <div id="status" class="footer">STB...</div>
+
+            <div class="footer">
+                <div class="double-line"></div>
+                <div id="status" class="status-msg">INITIALIZING...</div>
+            </div>
         </div>
 
         <script>
@@ -101,13 +125,12 @@ def index():
 
             function ativarAlertas() { audioAlerta.play().then(() => audioAlerta.pause()); }
 
-            // Efeito Split-Flap de letras girando
             function splitFlapEffect(finalText) {
                 const elem = document.getElementById('status');
                 let iterations = 0;
                 const interval = setInterval(() => {
                     elem.innerText = finalText.split('').map((char, index) => {
-                        if (iterations > index + 3) return char;
+                        if (iterations > index + 2) return char;
                         return chars[Math.floor(Math.random() * chars.length)];
                     }).join('');
                     if (iterations > finalText.length + 5) {
@@ -120,7 +143,7 @@ def index():
 
             function rotacionar() {
                 let lista = targetLock ? frasesTarget : frasesVigia;
-                let msg = lista[indiceFrase % lista.length] + " " + systemTime;
+                let msg = lista[indiceFrase % lista.length] + " [" + systemTime + "]";
                 splitFlapEffect(msg);
                 indiceFrase++;
                 setTimeout(rotacionar, 6000);
@@ -157,10 +180,7 @@ def index():
                         targetLock = true;
                     } else {
                         targetLock = false;
-                        document.getElementById('callsign').innerText = "SEARCHING";
-                        document.getElementById('route').innerText = "--- / ---";
-                        document.getElementById('alt').innerText = "--- FT";
-                        document.getElementById('dist').innerText = "--- KM";
+                        document.getElementById('callsign').innerText = "SCANNING";
                     }
                 });
             }
@@ -194,6 +214,7 @@ def get_data():
                     return jsonify({"found": True, "callsign": p.get('callsign'), "dep": f.get('departure', 'UNK'), "arr": f.get('arrival', 'UNK'), "dist": round(d, 1), "alt": p.get('altitude', 0)})
     except: pass
     return jsonify({"found": False})
+
 
 
 
