@@ -33,11 +33,22 @@ def index():
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+            /* CENTRALIZAÇÃO TOTAL E AJUSTE DE TELA */
             body { 
-                background-color: var(--bg-dark); margin: 0; padding: 0; 
-                display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
+                background-color: var(--bg-dark); 
+                margin: 0; padding: 0; 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                justify-content: center; 
+                width: 100vw;
+                height: 100vh; /* Força a altura da tela inteira */
+                height: -webkit-fill-available; /* Ajuste específico para Safari iOS */
+                font-family: 'Courier New', monospace; 
+                overflow: hidden;
             }
+
+            html { height: -webkit-fill-available; }
 
             .letter-slot {
                 display: inline-block;
@@ -51,15 +62,21 @@ def index():
 
             #search-box { 
                 display: none; width: 90%; max-width: 500px; background: rgba(255,255,255,0.1);
-                padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--warning-gold); gap: 8px; z-index: 100;
+                padding: 10px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--warning-gold); gap: 8px; z-index: 100;
             }
             #search-box input { flex: 1; background: #000; border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; }
             #search-box button { background: var(--warning-gold); color: #000; border: none; padding: 10px 15px; font-weight: 900; border-radius: 6px; }
 
+            /* O CARD AGORA TEM TRANSFORMAÇÃO PARA FICAR SEMPRE CENTRALIZADO */
             .card { 
-                background: var(--air-blue); width: 95%; max-width: 620px;
-                border-radius: 15px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
-                overflow: hidden; transform: scale(0.96);
+                background: var(--air-blue); 
+                width: 92%; 
+                max-width: 600px;
+                border-radius: 15px; 
+                position: relative; 
+                box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
+                overflow: hidden;
+                flex-shrink: 0; /* Impede que o card amasse */
             }
 
             .notch { position: absolute; width: 30px; height: 30px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
@@ -141,26 +158,25 @@ def index():
         <script>
             let latAlvo = null, lonAlvo = null;
             let currentTarget = null;
+            let lastHex = null;
             let statusIndex = 0;
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:- ";
             
-            // LÓGICA DO BIP MECÂNICO
             let audioCtx = null;
             function enableAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
-            function playTick() {
+            function playDetectionBip() {
                 if (!audioCtx) return;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.03);
-                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.03);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.03);
+                osc.stop(audioCtx.currentTime + 0.5);
             }
 
             function updateWithEffect(id, newValue) {
@@ -184,7 +200,6 @@ def index():
                     const interval = setInterval(() => {
                         slot.innerText = chars[Math.floor(Math.random() * chars.length)];
                         slot.classList.add('flapping');
-                        playTick(); // O som toca a cada mudança de caractere
                         cycles++;
                         if (cycles >= maxCycles) {
                             clearInterval(interval);
@@ -223,19 +238,27 @@ def index():
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
                 .then(res => res.json()).then(data => {
                     if(data.found) {
+                        if (data.hex !== lastHex) {
+                            playDetectionBip();
+                            lastHex = data.hex;
+                        }
                         currentTarget = data;
                         updateWithEffect('callsign', data.callsign);
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
+                        let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
+                        document.getElementById('signal-bars').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                     } else {
                         if(currentTarget) {
                             updateWithEffect('callsign', "SEARCHING");
                             updateWithEffect('dist_body', "-- KM");
                             updateWithEffect('alt', "00000 FT");
+                            lastHex = null;
                         }
                         currentTarget = null;
+                        document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                     }
                 });
             }
@@ -269,6 +292,7 @@ def get_data():
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
                 return jsonify({
                     "found": True, 
+                    "hex": ac.get('hex'),
                     "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
                     "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
                     "alt_ft": int(ac.get('alt_baro', 0)), 
@@ -283,6 +307,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
