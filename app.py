@@ -51,34 +51,49 @@ def index():
             #search-box input { flex: 1; background: #000; border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; }
             #search-box button { background: var(--warning-gold); color: #000; border: none; padding: 10px 15px; font-weight: 900; border-radius: 6px; }
 
+            /* AJUSTE: BORDAS DO TICKET AUMENTADAS */
             .card { 
                 background: var(--air-blue); width: 95%; max-width: 620px;
-                border-radius: 15px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
-                overflow: hidden; transform: scale(0.96);
+                border: 4px solid rgba(255, 255, 255, 0.1); /* Borda externa sutil */
+                border-radius: 25px; /* Cantos mais arredondados */
+                position: relative; 
+                box-shadow: 0 30px 60px rgba(0,0,0,0.9); 
+                overflow: hidden; 
+                transform: scale(0.96);
             }
 
-            .notch { position: absolute; width: 30px; height: 30px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
-            .notch-left { left: -15px; } .notch-right { right: -15px; }
+            .notch { position: absolute; width: 40px; height: 40px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
+            .notch-left { left: -20px; } .notch-right { right: -20px; }
 
-            .header { padding: 12px 0; text-align: center; color: white; font-weight: 900; font-size: 0.95em; display: flex; align-items: center; justify-content: center; gap: 20px; }
-            .header span { font-size: 2.8em; line-height: 0; position: relative; top: 4px; }
+            .header { padding: 18px 0; text-align: center; color: white; font-weight: 900; font-size: 1em; display: flex; align-items: center; justify-content: center; gap: 20px; }
+            .header span { font-size: 3em; line-height: 0; position: relative; top: 4px; }
 
-            .white-area { background: #fdfdfd; margin: 0 8px; display: flex; padding: 20px 15px; min-height: 240px; border-radius: 3px; }
-            .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
-            .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+            /* AJUSTE: ÁREA BRANCA COM MAIS MARGEM/BORDA */
+            .white-area { 
+                background: #fdfdfd; 
+                margin: 0 15px; /* Mais espaço azul nas laterais */
+                display: flex; 
+                padding: 30px 20px; /* Mais respiro interno */
+                min-height: 260px; 
+                border-radius: 8px; 
+                border: 1px solid #ddd;
+            }
+
+            .col-left { flex: 1.6; border-right: 2px dashed #eee; padding-right: 20px; display: flex; flex-direction: column; justify-content: center; }
+            .col-right { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #888; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
-            .value { font-size: 1.25em; font-weight: 900; color: var(--air-blue); margin-bottom: 10px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
+            .label { color: #aaa; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; }
+            .value { font-size: 1.35em; font-weight: 900; color: var(--air-blue); margin-bottom: 15px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
             
-            #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.3em; }
+            #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.5em; }
             
-            .footer { padding: 0 0 12px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
-            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 8px; }
+            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
+            .yellow-lines { width: 100%; height: 8px; border-top: 3px solid var(--warning-gold); border-bottom: 3px solid var(--warning-gold); margin-bottom: 12px; }
             
-            .status-msg { padding: 2px 10px; min-height: 1.6em; display: flex; justify-content: center; align-items: center; }
+            .status-msg { padding: 4px 15px; min-height: 1.8em; display: flex; justify-content: center; align-items: center; }
             .status-msg .letter-slot {
-                color: var(--warning-gold); background: #000; margin: 0 1px; padding: 0 3.5px;
-                border-radius: 2px; font-size: 0.75em; font-weight: 900; border: 1px solid #333;
+                color: var(--warning-gold); background: #000; margin: 0 1.5px; padding: 0 4px;
+                border-radius: 3px; font-size: 0.85em; font-weight: 900; border: 1px solid #333;
             }
         </style>
     </head>
@@ -103,7 +118,7 @@ def index():
                 <div class="col-right">
                     <div class="label">AIRCRAFT TYPE</div><div id="type_id" class="value">----</div>
                     <div class="label">BEARING</div><div class="value"><span id="compass">↑</span></div>
-                    <div style="height:35px; width:100%; background:repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px); border:1px solid #eee;"></div>
+                    <div style="height:40px; width:100%; background:repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 4px); border:1px solid #eee; margin-top:10px;"></div>
                 </div>
             </div>
             <div class="footer">
@@ -151,29 +166,17 @@ def index():
                     iniciarRadar();
                 }, () => { document.getElementById('search-box').style.display = "flex"; });
                 
-                // ALTERNÂNCIA DO RODAPÉ AJUSTADA PARA 10 SEGUNDOS (10000ms)
                 setInterval(() => {
                     if(!currentTarget) {
-                        const envMsgs = [
-                            "RADAR SWEEP ACTIVE",
-                            "TEMP: 24C / SKY CLEAR",
-                            "VISIBILITY: 10KM+",
-                            "LOCAL QNH: 1013 HPA"
-                        ];
+                        const envMsgs = ["RADAR SWEEP ACTIVE", "TEMP: 24C / SKY CLEAR", "VISIBILITY: 10KM+", "LOCAL QNH: 1013 HPA"];
                         updateWithEffect('status', envMsgs[statusIndex % envMsgs.length]);
                         statusIndex++;
                     } else {
-                        const flightMsgs = [
-                            `FLT: ${currentTarget.callsign}`,
-                            `PATH: ${currentTarget.origin} > ${currentTarget.dest}`,
-                            `SPEED: ${currentTarget.speed} KTS`,
-                            `TYPE: ${currentTarget.type}`,
-                            "VISIBILITY: 10KM+"
-                        ];
+                        const flightMsgs = [`FLT: ${currentTarget.callsign}`, `PATH: ${currentTarget.origin} > ${currentTarget.dest}`, `SPEED: ${currentTarget.speed} KTS`, `TYPE: ${currentTarget.type}`, "VISIBILITY: 10KM+"];
                         updateWithEffect('status', flightMsgs[statusIndex % flightMsgs.length]);
                         statusIndex++;
                     }
-                }, 10000); // 10 Segundos parado antes de trocar
+                }, 10000);
             };
 
             function iniciarRadar() { setInterval(executarBusca, 8000); executarBusca(); }
@@ -236,6 +239,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
