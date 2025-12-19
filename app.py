@@ -4,7 +4,6 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# Configuração de Alcance
 RAIO_KM = 50.0 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -29,7 +28,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Visual Flight Ticket Pro</title>
+        <title>Visual Radar Pro + Weather</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
@@ -104,6 +103,7 @@ def index():
             let latAlvo = null, lonAlvo = null;
             let targetLock = false;
             let flightData = null;
+            let weatherData = { temp: "--", vis: "--", desc: "SCANNING" };
             let currentMsgIndex = 0;
 
             function splitFlap(text) {
@@ -137,8 +137,14 @@ def index():
                 
                 setInterval(() => {
                     if(!targetLock) {
-                        const searchMsgs = ["SCANNING LIVE AIRSPACE", "RADAR ACTIVE", "UPLINK ESTABLISHED"];
-                        splitFlap(searchMsgs[Math.floor(Math.random() * searchMsgs.length)]);
+                        const searchMsgs = [
+                            "SCANNING LIVE AIRSPACE",
+                            "RADAR ACTIVE",
+                            `TEMP: ${weatherData.temp}°C | SKY: ${weatherData.desc}`,
+                            `VISIBILITY: ${weatherData.vis} KM`
+                        ];
+                        currentMsgIndex = (currentMsgIndex + 1) % searchMsgs.length;
+                        splitFlap(searchMsgs[currentMsgIndex]);
                     } else if(flightData) {
                         const infoCycle = [
                             "TARGET LOCKED",
@@ -146,7 +152,7 @@ def index():
                             `SPEED: ${flightData.speed} KM/H`,
                             `FROM: ${flightData.origin}`,
                             `TO: ${flightData.dest}`,
-                            `SOURCE: ${flightData.source}`
+                            `VISIBILITY: ${weatherData.vis} KM`
                         ];
                         currentMsgIndex = (currentMsgIndex + 1) % infoCycle.length;
                         splitFlap(infoCycle[currentMsgIndex]);
@@ -158,25 +164,22 @@ def index():
                 if(!latAlvo) return;
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
                 .then(res => res.json()).then(data => {
+                    if(data.weather) weatherData = data.weather;
                     if(data.found) {
                         flightData = data;
                         document.getElementById('callsign').innerText = data.callsign;
                         document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
                         document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        
                         let bars = Math.ceil((50 - data.dist) / 10);
                         document.getElementById('signal').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
-                        
                         let eta = data.speed > 0 ? Math.round((data.dist / data.speed) * 60) : "--";
                         document.getElementById('eta').innerText = eta + " MIN";
-
                         if (!targetLock) { alertBeepFiveTimes(); }
                         targetLock = true;
                     } else {
                         targetLock = false; flightData = null;
                         document.getElementById('callsign').innerText = "SEARCHING";
-                        document.getElementById('eta').innerText = "-- MIN";
                     }
                 });
             }
@@ -201,7 +204,20 @@ def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
     
-    # 1. TENTA ADS-B.LOL (A mais rica em detalhes de rota)
+    # 1. BUSCA CLIMA (Open-Meteo)
+    weather = {"temp": "--", "vis": "--", "desc": "N/A"}
+    try:
+        w_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat_u}&longitude={lon_u}&current=temperature_2m,visibility,weather_code"
+        wr = requests.get(w_url, timeout=2).json()
+        if 'current' in wr:
+            weather['temp'] = round(wr['current']['temperature_2m'])
+            weather['vis'] = round(wr['current']['visibility'] / 1000, 1) # Metros para KM
+            # Mapeamento simples de código de clima
+            code = wr['current']['weather_code']
+            weather['desc'] = "CLEAR" if code == 0 else "PARTLY CLOUDY" if code < 4 else "OVERCAST" if code < 50 else "RAINY"
+    except: pass
+
+    # 2. BUSCA RADAR (ADS-B.LOL + REDUNDÂNCIA)
     try:
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, timeout=3).json()
@@ -213,31 +229,15 @@ def get_data():
                 "dist": round(d, 1), "alt": ac.get('alt_baro', 0) / 3.28, 
                 "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
                 "speed": round(ac.get('gs', 0) * 1.852), "origin": ac.get('db_origin', 'N/A'),
-                "dest": ac.get('db_dest', 'N/A'), "source": "ADSB-LOL"
+                "dest": ac.get('db_dest', 'N/A'), "weather": weather
             })
     except: pass
 
-    # 2. TENTA AIRNAV RADARBOX (Simulada via API aberta de rastreio)
-    try:
-        # Nota: A RadarBox é excelente, aqui usamos a ponte de dados que eles compartilham
-        url = f"https://api.adsb.one/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        r = requests.get(url, timeout=3).json()
-        if r.get('ac'):
-            ac = r['ac'][0]
-            d = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
-            return jsonify({
-                "found": True, "callsign": ac.get('flight', 'ACFT').strip(), 
-                "dist": round(d, 1), "alt": ac.get('alt_baro', 0) / 3.28, 
-                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                "speed": round(ac.get('gs', 0) * 1.852), "origin": "EN ROUTE", "dest": "VIX AREA",
-                "source": "RADARBOX-NET"
-            })
-    except: pass
-
-    return jsonify({"found": False})
+    return jsonify({"found": False, "weather": weather})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
