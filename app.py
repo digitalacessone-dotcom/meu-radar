@@ -28,7 +28,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>ATC Radar Pro - Split Flap</title>
+        <title>ATC Radar Pro - Full Split Flap</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -39,21 +39,22 @@ def index():
                 min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            /* EFEITO DE CADA LETRA GIRANDO */
+            /* EFEITO DE CADA LETRA GIRANDO (SPLIT-FLAP) */
             .letter-slot {
                 display: inline-block;
                 position: relative;
                 min-width: 0.6em;
+                text-align: center;
             }
             .flip-char {
                 display: inline-block;
-                animation: flipLetter 0.5s ease;
+                animation: flipLetter 0.4s ease;
                 backface-visibility: hidden;
             }
             @keyframes flipLetter {
-                0% { transform: rotateX(0deg); color: #888; }
-                50% { transform: rotateX(90deg); color: var(--warning-gold); }
-                100% { transform: rotateX(0deg); }
+                0% { transform: rotateX(0deg); filter: brightness(1); }
+                50% { transform: rotateX(90deg); filter: brightness(2); color: white; }
+                100% { transform: rotateX(0deg); filter: brightness(1); }
             }
 
             #search-box { 
@@ -96,9 +97,16 @@ def index():
             #signal-text { font-size: 8px; color: #888; font-weight: bold; display: block; }
             #signal-bars { color: var(--air-blue); font-weight: 900; font-size: 12px; letter-spacing: 2px; }
 
-            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); min-height: 90px; }
+            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); min-height: 100px; }
             .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 12px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.75em; font-weight: bold; text-transform: uppercase; text-align: center; padding: 0 15px; letter-spacing: 1px; }
+            
+            /* RODAPÉ AMARELO COM SUPORTE A LETRAS INDIVIDUAIS */
+            .status-msg { 
+                color: var(--warning-gold); font-size: 0.75em; font-weight: bold; 
+                text-transform: uppercase; text-align: center; padding: 0 15px; 
+                letter-spacing: 1px; display: flex; justify-content: center; flex-wrap: wrap;
+                min-height: 1.5em;
+            }
         </style>
     </head>
     <body>
@@ -134,7 +142,7 @@ def index():
             </div>
             <div class="footer">
                 <div class="yellow-lines"></div>
-                <div id="status" class="status-msg">SCANNING AIRSPACE...</div>
+                <div id="status" class="status-msg">INITIALIZING...</div>
             </div>
         </div>
 
@@ -147,23 +155,25 @@ def index():
                 "RADAR SWEEP ACTIVE: 25KM",
                 "VISIBILITY: CAVOK (10KM+)",
                 "ATC TRANSCEIVER: ONLINE",
-                "TEMP: 24°C / QNH: 1013hPa"
+                "TEMP: 24C / QNH: 1013HPA"
             ];
 
-            // FUNÇÃO DE SPLIT-FLAP (Letra por letra)
+            // FUNÇÃO UNIFICADA DE SPLIT-FLAP
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
-                const currentText = container.innerText;
-                const newText = String(newValue);
+                const currentText = container.innerText || "";
+                const newText = String(newValue).toUpperCase();
                 
                 let finalHTML = "";
-                // Compara caractere por caractere
+                const maxLength = Math.max(currentText.length, newText.length);
+
                 for (let i = 0; i < newText.length; i++) {
                     const char = newText[i];
+                    // Se o caractere for diferente do que está lá, aplica animação
                     if (currentText[i] !== char) {
-                        finalHTML += `<span class="letter-slot"><span class="flip-char">${char}</span></span>`;
+                        finalHTML += `<span class="letter-slot"><span class="flip-char">${char === " " ? "&nbsp;" : char}</span></span>`;
                     } else {
-                        finalHTML += `<span class="letter-slot">${char}</span>`;
+                        finalHTML += `<span class="letter-slot">${char === " " ? "&nbsp;" : char}</span>`;
                     }
                 }
                 container.innerHTML = finalHTML;
@@ -175,10 +185,10 @@ def index():
                     iniciarRadar();
                 }, () => { document.getElementById('search-box').style.display = "flex"; });
                 
+                // CICLO DE STATUS (Rodapé Amarelo agora com efeito!)
                 setInterval(() => {
-                    const statusEl = document.getElementById('status');
                     if(!currentTarget) {
-                        statusEl.innerText = systemMsgs[statusIndex];
+                        updateWithEffect('status', systemMsgs[statusIndex]);
                         statusIndex = (statusIndex + 1) % systemMsgs.length;
                     } else {
                         const flightMsgs = [
@@ -186,10 +196,10 @@ def index():
                             `ROUTE: ${currentTarget.origin} TO ${currentTarget.dest}`,
                             `AIRCRAFT: ${currentTarget.type} | GS: ${currentTarget.speed} KTS`
                         ];
-                        statusEl.innerText = flightMsgs[statusIndex % 3];
+                        updateWithEffect('status', flightMsgs[statusIndex % 3]);
                         statusIndex++;
                     }
-                }, 3000);
+                }, 4000); // Aumentado para 4s para dar tempo de ler o efeito
             };
 
             function iniciarRadar() {
@@ -216,6 +226,7 @@ def index():
                         if(currentTarget) {
                             updateWithEffect('callsign', "SEARCHING");
                             updateWithEffect('dist_body', "-- KM");
+                            updateWithEffect('alt', "00000 FT");
                         }
                         currentTarget = null;
                         document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
@@ -274,6 +285,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
