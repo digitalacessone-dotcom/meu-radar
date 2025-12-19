@@ -33,50 +33,21 @@ def index():
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-            /* CENTRALIZAÇÃO TOTAL E AJUSTE DE TELA */
             body { 
-                background-color: var(--bg-dark); 
-                margin: 0; padding: 0; 
-                display: flex; 
-                flex-direction: column; 
-                align-items: center; 
-                justify-content: center; 
-                width: 100vw;
-                height: 100vh; /* Força a altura da tela inteira */
-                height: -webkit-fill-available; /* Ajuste específico para Safari iOS */
-                font-family: 'Courier New', monospace; 
-                overflow: hidden;
+                background-color: var(--bg-dark); margin: 0; padding: 0; 
+                display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                width: 100vw; height: 100vh; height: -webkit-fill-available;
+                font-family: 'Courier New', monospace; overflow: hidden;
             }
-
             html { height: -webkit-fill-available; }
 
-            .letter-slot {
-                display: inline-block;
-                min-width: 0.65em;
-                text-align: center;
-                position: relative;
-                vertical-align: bottom;
-            }
-
+            .letter-slot { display: inline-block; min-width: 0.65em; text-align: center; position: relative; vertical-align: bottom; }
             .flapping { opacity: 0.6; transform: scaleY(0.7); filter: brightness(1.5); }
 
-            #search-box { 
-                display: none; width: 90%; max-width: 500px; background: rgba(255,255,255,0.1);
-                padding: 10px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--warning-gold); gap: 8px; z-index: 100;
-            }
-            #search-box input { flex: 1; background: #000; border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; }
-            #search-box button { background: var(--warning-gold); color: #000; border: none; padding: 10px 15px; font-weight: 900; border-radius: 6px; }
-
-            /* O CARD AGORA TEM TRANSFORMAÇÃO PARA FICAR SEMPRE CENTRALIZADO */
             .card { 
-                background: var(--air-blue); 
-                width: 92%; 
-                max-width: 600px;
-                border-radius: 15px; 
-                position: relative; 
-                box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
-                overflow: hidden;
-                flex-shrink: 0; /* Impede que o card amasse */
+                background: var(--air-blue); width: 92%; max-width: 600px;
+                border-radius: 15px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
+                overflow: hidden; flex-shrink: 0;
             }
 
             .notch { position: absolute; width: 30px; height: 30px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
@@ -98,9 +69,16 @@ def index():
             .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
             .label { color: #888; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
-            .value { font-size: 1.25em; font-weight: 900; color: var(--air-blue); margin-bottom: 10px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
+            .value { font-size: 1.25em; font-weight: 900; color: var(--air-blue); margin-bottom: 8px; min-height: 1.2em; display: flex; flex-wrap: wrap; justify-content: center; }
             
-            #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.3em; }
+            /* BÚSSOLA UM POUCO MENOR */
+            #compass { 
+                display: inline-block; 
+                transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+                color: var(--warning-gold); 
+                font-size: 1.1em; 
+                margin-top: 2px;
+            }
             
             .barcode { 
                 height: 40px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); 
@@ -124,12 +102,6 @@ def index():
         </style>
     </head>
     <body>
-        
-        <div id="search-box">
-            <input type="text" id="endereco" placeholder="CITY OR ZIP...">
-            <button onclick="buscarEndereco()">GO</button>
-        </div>
-
         <div class="card" onclick="enableAudio()">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
@@ -141,8 +113,11 @@ def index():
                     <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value"></div></div>
                 </div>
                 <div class="col-right">
-                    <div class="label">BEARING</div>
-                    <div class="value"><span id="compass">↑</span></div>
+                    <div><div class="label">SQUAWK</div><div id="squawk" class="value">----</div></div>
+                    <div>
+                        <div class="label">BEARING</div>
+                        <div class="value" style="margin-bottom:0;"><span id="compass">↑</span></div>
+                    </div>
                     <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
                         <div class="barcode"></div>
                     </a>
@@ -216,7 +191,7 @@ def index():
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     iniciarRadar();
-                }, () => { document.getElementById('search-box').style.display = "flex"; });
+                });
                 
                 setInterval(() => {
                     if(!currentTarget) {
@@ -246,6 +221,7 @@ def index():
                         updateWithEffect('callsign', data.callsign);
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
+                        updateWithEffect('squawk', data.squawk);
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
                         let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
@@ -255,23 +231,13 @@ def index():
                             updateWithEffect('callsign', "SEARCHING");
                             updateWithEffect('dist_body', "-- KM");
                             updateWithEffect('alt', "00000 FT");
+                            updateWithEffect('squawk', "----");
+                            document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                             lastHex = null;
                         }
                         currentTarget = null;
-                        document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                     }
                 });
-            }
-
-            async function buscarEndereco() {
-                const query = document.getElementById('endereco').value;
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
-                const data = await res.json();
-                if(data.length > 0) {
-                    latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
-                    document.getElementById('search-box').style.display = "none";
-                    iniciarRadar();
-                }
             }
         </script>
     </body>
@@ -282,7 +248,7 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
-    headers = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"}
+    headers = {"User-Agent": "Mozilla/5.0"}
     try:
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, headers=headers, timeout=5).json()
@@ -294,6 +260,7 @@ def get_data():
                     "found": True, 
                     "hex": ac.get('hex'),
                     "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
+                    "squawk": ac.get('squawk', '7000'), 
                     "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
                     "alt_ft": int(ac.get('alt_baro', 0)), 
                     "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
