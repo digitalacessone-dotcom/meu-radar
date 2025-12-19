@@ -5,7 +5,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 app = Flask(__name__)
 
 # Configurações de Radar
-RAIO_KM = 100.0  # Aumentado para facilitar a localização inicial de aeronaves
+RAIO_KM = 100.0 
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -48,7 +48,6 @@ def index():
             .white-area { background: #fdfdfd; margin: 0 12px; position: relative; display: flex; padding: 30px; min-height: 260px; border-radius: 2px; }
             .white-area::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background-image: linear-gradient(to right, #ccc 40%, transparent 40%); background-size: 14px 100%; }
 
-            /* Carimbo Visual */
             .stamp { position: absolute; top: 50%; left: 45%; transform: translate(-50%, -50%) rotate(-12deg) scale(5); border: 4px double #d32f2f; color: #d32f2f; padding: 10px 20px; font-weight: 900; font-size: 2.2em; opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; pointer-events: none; text-align: center; line-height: 1; }
             .stamp.visible { opacity: 0.25; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
 
@@ -63,7 +62,7 @@ def index():
             
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 10px; border-top: 2.5px solid var(--warning-gold); border-bottom: 2.5px solid var(--warning-gold); margin-bottom: 20px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.85em; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; min-height: 20px; padding: 0 10px; }
+            .status-msg { color: var(--warning-gold); font-size: 0.80em; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; text-align: center; min-height: 20px; padding: 0 10px; }
 
             @media (max-height: 500px) and (orientation: landscape) {
                 .card { transform: scale(0.7); margin-top: -60px; }
@@ -116,7 +115,7 @@ def index():
                 const inter = setInterval(() => {
                     el.innerText = text.split('').map((c, idx) => i > idx ? c : chars[Math.floor(Math.random()*chars.length)]).join('');
                     if(i++ > text.length) clearInterval(inter);
-                }, 30);
+                }, 25);
             }
 
             function alertBeepFiveTimes() {
@@ -139,12 +138,13 @@ def index():
                 executarBusca();
                 setInterval(executarBusca, 10000);
                 setInterval(() => {
+                    // MENSAGENS POR EXTENSO (SEM ABREVIAÇÕES)
                     const searchMsgs = !targetLock ? 
-                        ["SCANNING AIRSPACE", "RADAR ACTIVE", `TEMP: ${weatherData.temp}°C`, `VIS: ${weatherData.vis}KM`] :
-                        ["TARGET LOCKED", `CALLSIGN: ${flightData.callsign}`, `SPEED: ${flightData.speed}KM/H`, "VISUAL CONTACT ACTIVE"];
+                        ["SCANNING LIVE AIRSPACE", "RADAR SYSTEM ACTIVE", `TEMPERATURE: ${weatherData.temp} CELSIUS`, `VISIBILITY: ${weatherData.vis} KILOMETERS`, `SKY CONDITION: ${weatherData.desc}`] :
+                        ["TARGET LOCKED", `CALLSIGN: ${flightData.callsign}`, `SPEED: ${flightData.speed} KM/H`, "VISUAL CONTACT ACTIVE", `VISIBILITY: ${weatherData.vis} KM` ];
                     currentMsgIndex = (currentMsgIndex + 1) % searchMsgs.length;
                     splitFlap(searchMsgs[currentMsgIndex]);
-                }, 4000);
+                }, 4500);
             }
 
             function executarBusca() {
@@ -192,20 +192,18 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
-    
-    # Headers para evitar bloqueio da API
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"}
 
-    weather = {"temp": "--", "vis": "--", "desc": "N/A"}
+    weather = {"temp": "--", "vis": "--", "desc": "SCANNING"}
     try:
         wr = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat_u}&longitude={lon_u}&current=temperature_2m,visibility,weather_code", timeout=2).json()
         if 'current' in wr:
             weather['temp'] = round(wr['current']['temperature_2m'])
             weather['vis'] = round(wr['current']['visibility'] / 1000, 1)
-            weather['desc'] = "CLEAR" if wr['current']['weather_code'] == 0 else "CLOUDY"
+            code = wr['current']['weather_code']
+            weather['desc'] = "CLEAR SKY" if code == 0 else "PARTLY CLOUDY" if code < 4 else "OVERCAST"
     except: pass
 
-    # Tenta obter dados do radar (API 1 e API 2 de backup)
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}",
         f"https://api.adsb.one/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
@@ -215,7 +213,6 @@ def get_data():
         try:
             r = requests.get(url, headers=headers, timeout=4).json()
             if r.get('ac'):
-                # Filtra apenas quem tem posição válida
                 validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
                 if validos:
                     ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
@@ -235,6 +232,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
