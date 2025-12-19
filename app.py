@@ -4,7 +4,7 @@ from math import radians, sin, cos, sqrt, atan2
 
 app = Flask(__name__)
 
-RAIO_KM = 100.0 # Raio maior para facilitar encontrar aviões
+RAIO_KM = 100.0 
 API_URL = "https://api.vatsim.net/v2/fed/flights"
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -20,32 +20,101 @@ def index():
     <html lang="pt">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Radar Boarding Pass GPS</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Radar Boarding Pass Pro</title>
         <style>
-            body { background-color: #124076; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-            .card { width: 340px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-            .header { background: #1A237E; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.2em; }
-            .content { padding: 20px; color: #333; }
-            .label { color: #888; font-size: 0.8em; font-weight: bold; margin-top: 10px; }
-            .value { font-size: 1.4em; font-weight: bold; color: #1A237E; margin-bottom: 15px; }
-            .footer { background: #1A237E; color: #FFD700; padding: 12px; text-align: center; font-size: 0.8em; font-weight: bold; }
+            body { 
+                background-color: #124076; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                height: 100vh; 
+                margin: 0; 
+                font-family: 'Courier New', Courier, monospace; 
+            }
+            /* O Cartão agora é COMPRIDO como no Windows */
+            .card { 
+                width: 600px; 
+                height: 250px;
+                background: white; 
+                border-radius: 15px; 
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+                border: 2px solid #1A237E;
+                overflow: hidden;
+            }
+            .header { 
+                background: #1A237E; 
+                color: white; 
+                padding: 10px; 
+                text-align: center; 
+                font-weight: bold; 
+                font-size: 1.5em;
+                letter-spacing: 5px;
+            }
+            .main-content {
+                display: flex;
+                flex: 1;
+                padding: 15px;
+            }
+            .data-section { flex: 2; border-right: 2px dashed #ccc; padding-right: 15px; }
+            .side-section { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; }
+            
+            .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; }
+            .value { font-size: 1.4em; font-weight: bold; color: #1A237E; margin-bottom: 10px; }
+            
+            .footer { background: #1A237E; color: #FFD700; padding: 8px; text-align: center; font-size: 0.9em; font-weight: bold; }
+
+            /* Aviso para girar a tela no iPhone */
+            @media screen and (orientation: portrait) {
+                #rotate-warning { display: flex; }
+                .card { display: none; }
+            }
+            @media screen and (orientation: landscape) {
+                #rotate-warning { display: none; }
+                .card { display: flex; }
+            }
+            #rotate-warning {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: #124076; color: white;
+                display: none; justify-content: center; align-items: center;
+                text-align: center; flex-direction: column; font-size: 1.2em;
+            }
         </style>
     </head>
     <body>
-        <div class="card">
-            <div class="header">✈ BOARDING PASS (GPS)</div>
-            <div class="content">
-                <div class="label">PASSENGER / CALLSIGN</div>
-                <div id="callsign" class="value">LOCALIZANDO...</div>
-                <div class="label">FROM / TO</div>
-                <div id="route" class="value">--- / ---</div>
-                <div class="label">DISTANCE / ALTITUDE</div>
-                <div id="info" class="value">--- KM / --- FT</div>
-            </div>
-            <div id="status" class="footer">AGUARDANDO GPS...</div>
+        <div id="rotate-warning">
+            <p>🔄 Por favor, gire o iPhone <br> para o modo paisagem (deitado)</p>
         </div>
+
+        <div class="card" onclick="ativarSom()">
+            <div class="header">✈ BOARDING PASS ✈</div>
+            <div class="main-content">
+                <div class="data-section">
+                    <div class="label">PASSENGER / CALLSIGN</div>
+                    <div id="callsign" class="value">BUSCANDO...</div>
+                    <div class="label">FROM / TO</div>
+                    <div id="route" class="value">--- / ---</div>
+                </div>
+                <div class="side-section">
+                    <div class="label">DISTANCE</div>
+                    <div id="dist" class="value">--- KM</div>
+                    <div class="label">ALTITUDE</div>
+                    <div id="alt" class="value">--- FT</div>
+                </div>
+            </div>
+            <div id="status" class="footer">STATUS: AGUARDANDO GPS...</div>
+        </div>
+
         <script>
+            const audioAlerta = new Audio('https://www.soundjay.com/buttons/beep-07a.mp3');
+            let detectadoAnteriormente = false;
+
+            function ativarSom() {
+                audioAlerta.play().then(() => { audioAlerta.pause(); audioAlerta.currentTime = 0; });
+            }
+
             function update() {
                 navigator.geolocation.getCurrentPosition(pos => {
                     const lat = pos.coords.latitude;
@@ -54,15 +123,22 @@ def index():
                         if(data.found) {
                             document.getElementById('callsign').innerText = data.callsign;
                             document.getElementById('route').innerText = data.dep + " / " + data.arr;
-                            document.getElementById('info').innerText = data.dist + " KM / " + data.alt + " FT";
-                            document.getElementById('status').innerText = "AERONAVE PRÓXIMA!";
+                            document.getElementById('dist').innerText = data.dist + " KM";
+                            document.getElementById('alt').innerText = data.alt + " FT";
+                            document.getElementById('status').innerText = "AERONAVE DETECTADA NO RAIO";
+                            
+                            if (!detectadoAnteriormente) {
+                                audioAlerta.play().catch(e => console.log("Clique na tela para som"));
+                                detectadoAnteriormente = true;
+                            }
                         } else {
-                            document.getElementById('status').innerText = "SEM VOOS EM 100KM";
+                            document.getElementById('status').innerText = "BUSCANDO TRÁFEGO EM 100KM...";
+                            detectadoAnteriormente = false;
                         }
                     });
-                }, () => { document.getElementById('status').innerText = "ATIVE O GPS NO SAFARI"; });
+                });
             }
-            setInterval(update, 30000);
+            setInterval(update, 20000);
             update();
         </script>
     </body>
