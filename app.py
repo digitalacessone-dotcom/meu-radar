@@ -41,23 +41,26 @@ def index():
             
             /* AJUSTE PARA TELA DEITADA */
             @media (orientation: landscape) and (max-height: 500px) {
-                #scaler { transform: scale(0.75); margin-top: -20px; }
-                .white-area { min-height: 200px !important; }
+                #scaler { transform: scale(0.72); margin-top: -15px; }
+                .white-area { min-height: 220px !important; padding: 20px 30px !important; }
+                .plane-icon { font-size: 1.8em !important; } /* Aviões um pouco menores apenas no modo deitado para não quebrar */
             }
 
             .notch { position: absolute; width: 44px; height: 44px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -22px; } .notch-right { right: -22px; }
 
-            .header { padding: 25px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 20px; font-weight: 900; letter-spacing: 5px; font-size: 1.2em; }
+            /* CABEÇALHO COM AVIÕES MAIORES */
+            .header { padding: 25px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 15px; font-weight: 900; letter-spacing: 3px; font-size: 1.1em; }
+            .plane-icon { font-size: 2.4em; vertical-align: middle; display: inline-block; line-height: 0; }
+
             .white-area { background: #fdfdfd; margin: 0 12px; position: relative; display: flex; padding: 30px; min-height: 280px; border-radius: 2px; }
             
-            /* CARIMBO COM ZOOM */
             .stamp { 
-                position: absolute; top: 50%; left: 40%; transform: translate(-50%, -50%) rotate(-15deg) scale(5); 
+                position: absolute; top: 55%; left: 45%; transform: translate(-50%, -50%) rotate(-12deg) scale(5); 
                 border: 4px double #d32f2f; color: #d32f2f; padding: 10px 20px; font-weight: 900; font-size: 1.8em; 
                 opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; pointer-events: none;
             }
-            .stamp.visible { opacity: 0.3; transform: translate(-50%, -50%) rotate(-15deg) scale(1); }
+            .stamp.visible { opacity: 0.25; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
 
             .col-left { flex: 1.8; border-right: 2px dashed #eee; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-around; }
             .col-right { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
@@ -66,7 +69,7 @@ def index():
             .value { font-size: 1.65em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; }
             
             #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.4em; color: var(--warning-gold); margin-left: 8px; }
-            .barcode { height: 65px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
+            .barcode { height: 60px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
             
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 10px; border-top: 2.5px solid var(--warning-gold); border-bottom: 2.5px solid var(--warning-gold); margin-bottom: 20px; }
@@ -78,7 +81,11 @@ def index():
             <div class="card">
                 <div class="notch notch-left"></div>
                 <div class="notch notch-right"></div>
-                <div class="header">✈ FLIGHT MANIFEST / PASS ✈</div>
+                <div class="header">
+                    <span class="plane-icon">✈</span> 
+                    <span>FLIGHT MANIFEST</span> 
+                    <span class="plane-icon">✈</span>
+                </div>
                 <div class="white-area">
                     <div class="stamp" id="carimbo">VISUAL CONTACT</div>
                     <div class="col-left">
@@ -96,7 +103,7 @@ def index():
                 </div>
                 <div class="footer">
                     <div class="yellow-lines"></div>
-                    <div id="status" class="status-msg">SCANNING AIRSPACE...</div>
+                    <div id="status" class="status-msg">RADAR SCANNING...</div>
                 </div>
             </div>
         </div>
@@ -135,7 +142,7 @@ def index():
                         targetLock = false;
                         document.getElementById('callsign').innerText = "SEARCHING";
                         document.getElementById('carimbo').classList.remove('visible');
-                        document.getElementById('status').innerText = "SCANNING AIRSPACE...";
+                        document.getElementById('status').innerText = "RADAR SCANNING...";
                     }
                 });
             }
