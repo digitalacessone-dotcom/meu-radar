@@ -28,7 +28,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>ATC Radar Pro - Full Split Flap</title>
+        <title>Split-Flap Radar Board</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -39,21 +39,27 @@ def index():
                 min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            /* EFEITO DE CADA LETRA GIRANDO (SPLIT-FLAP) */
+            /* ESTILO DAS PALHETAS (FLAPS) */
             .letter-slot {
                 display: inline-block;
                 position: relative;
-                min-width: 0.6em;
+                min-width: 0.7em;
                 text-align: center;
+                background: rgba(0,0,0,0.1);
+                margin: 0 1px;
+                border-radius: 2px;
             }
+
             .flip-char {
                 display: inline-block;
-                animation: flipLetter 0.4s ease;
                 backface-visibility: hidden;
+                animation: flapEffect 0.5s ease forwards;
+                transform-origin: center;
             }
-            @keyframes flipLetter {
+
+            @keyframes flapEffect {
                 0% { transform: rotateX(0deg); filter: brightness(1); }
-                50% { transform: rotateX(90deg); filter: brightness(2); color: white; }
+                50% { transform: rotateX(-90deg); filter: brightness(2); background: #333; }
                 100% { transform: rotateX(0deg); filter: brightness(1); }
             }
 
@@ -93,63 +99,53 @@ def index():
                 width: 100%; margin: 8px 0 4px 0; border: 1px solid #eee; 
             }
 
-            .signal-area { width: 100%; text-align: center; margin-top: 5px; }
-            #signal-text { font-size: 8px; color: #888; font-weight: bold; display: block; }
-            #signal-bars { color: var(--air-blue); font-weight: 900; font-size: 12px; letter-spacing: 2px; }
-
-            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); min-height: 100px; }
+            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); min-height: 110px; }
             .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 12px; }
             
-            /* RODAPÉ AMARELO COM SUPORTE A LETRAS INDIVIDUAIS */
             .status-msg { 
-                color: var(--warning-gold); font-size: 0.75em; font-weight: bold; 
-                text-transform: uppercase; text-align: center; padding: 0 15px; 
-                letter-spacing: 1px; display: flex; justify-content: center; flex-wrap: wrap;
-                min-height: 1.5em;
+                color: var(--warning-gold); font-size: 0.72em; font-weight: bold; 
+                text-transform: uppercase; text-align: center; padding: 0 10px; 
+                display: flex; justify-content: center; flex-wrap: wrap;
+                min-height: 1.4em;
             }
         </style>
     </head>
     <body>
         
         <div id="search-box">
-            <input type="text" id="endereco" placeholder="ENTER CITY OR ZIP...">
-            <button onclick="buscarEndereco()">ACTIVATE</button>
+            <input type="text" id="endereco" placeholder="CITY OR ZIP...">
+            <button onclick="buscarEndereco()">GO</button>
         </div>
 
         <div class="card">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
-            <div class="header">✈ ATC BOARDING PASS ✈</div>
+            <div class="header">✈ BOARDING BOARD ✈</div>
             <div class="white-area">
                 <div class="col-left">
-                    <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div></div>
-                    <div><div class="label">AIRCRAFT DISTANCE</div><div id="dist_body" class="value">-- KM</div></div>
-                    <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value">00000 FT</div></div>
+                    <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value"></div></div>
+                    <div><div class="label">AIRCRAFT DISTANCE</div><div id="dist_body" class="value"></div></div>
+                    <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value"></div></div>
                 </div>
                 <div class="col-right">
                     <div class="label">BEARING</div>
                     <div class="value"><span id="compass">↑</span></div>
-                    
                     <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
                         <div class="barcode"></div>
                     </a>
-                    
-                    <div class="signal-area">
-                        <span id="signal-text">SIGNAL INTENSITY</span>
-                        <div id="signal-bars">[ ▯▯▯▯▯ ]</div>
-                    </div>
+                    <div id="signal-bars" style="color:var(--air-blue); font-size:12px; font-weight:900;">[ ▯▯▯▯▯ ]</div>
                 </div>
             </div>
             <div class="footer">
                 <div class="yellow-lines"></div>
-                <div id="status" class="status-msg">INITIALIZING...</div>
+                <div id="status" class="status-msg"></div>
             </div>
         </div>
 
         <script>
             let latAlvo = null, lonAlvo = null;
-            let statusIndex = 0;
             let currentTarget = null;
+            let statusIndex = 0;
 
             const systemMsgs = [
                 "RADAR SWEEP ACTIVE: 25KM",
@@ -158,48 +154,58 @@ def index():
                 "TEMP: 24C / QNH: 1013HPA"
             ];
 
-            // FUNÇÃO UNIFICADA DE SPLIT-FLAP
+            // FUNÇÃO DEFINITIVA DE SPLIT-FLAP (Letra por Letra com Delay)
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
-                const currentText = container.innerText || "";
+                const oldText = container.innerText || "";
                 const newText = String(newValue).toUpperCase();
                 
-                let finalHTML = "";
-                const maxLength = Math.max(currentText.length, newText.length);
-
+                container.innerHTML = ""; // Limpa para reconstruir
+                
+                const maxLength = Math.max(oldText.length, newText.length);
+                
                 for (let i = 0; i < newText.length; i++) {
                     const char = newText[i];
-                    // Se o caractere for diferente do que está lá, aplica animação
-                    if (currentText[i] !== char) {
-                        finalHTML += `<span class="letter-slot"><span class="flip-char">${char === " " ? "&nbsp;" : char}</span></span>`;
+                    const slot = document.createElement("span");
+                    slot.className = "letter-slot";
+                    
+                    // Se o caractere for diferente do anterior, adicionamos o flap animado
+                    if (oldText[i] !== char) {
+                        const span = document.createElement("span");
+                        span.className = "flip-char";
+                        span.style.animationDelay = (i * 0.05) + "s"; // Delay progressivo!
+                        span.innerHTML = char === " " ? "&nbsp;" : char;
+                        slot.appendChild(span);
                     } else {
-                        finalHTML += `<span class="letter-slot">${char === " " ? "&nbsp;" : char}</span>`;
+                        slot.innerHTML = char === " " ? "&nbsp;" : char;
                     }
+                    container.appendChild(slot);
                 }
-                container.innerHTML = finalHTML;
             }
 
             window.onload = function() {
+                updateWithEffect('callsign', 'SEARCHING');
+                updateWithEffect('status', 'INITIALIZING...');
+
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     iniciarRadar();
                 }, () => { document.getElementById('search-box').style.display = "flex"; });
                 
-                // CICLO DE STATUS (Rodapé Amarelo agora com efeito!)
                 setInterval(() => {
                     if(!currentTarget) {
                         updateWithEffect('status', systemMsgs[statusIndex]);
                         statusIndex = (statusIndex + 1) % systemMsgs.length;
                     } else {
                         const flightMsgs = [
-                            `TARGET ACQUIRED: ${currentTarget.callsign}`,
-                            `ROUTE: ${currentTarget.origin} TO ${currentTarget.dest}`,
-                            `AIRCRAFT: ${currentTarget.type} | GS: ${currentTarget.speed} KTS`
+                            `TARGET: ${currentTarget.callsign}`,
+                            `PATH: ${currentTarget.origin} > ${currentTarget.dest}`,
+                            `TYPE: ${currentTarget.type} / ${currentTarget.speed}KTS`
                         ];
                         updateWithEffect('status', flightMsgs[statusIndex % 3]);
                         statusIndex++;
                     }
-                }, 4000); // Aumentado para 4s para dar tempo de ler o efeito
+                }, 4000);
             };
 
             function iniciarRadar() {
@@ -229,7 +235,6 @@ def index():
                             updateWithEffect('alt', "00000 FT");
                         }
                         currentTarget = null;
-                        document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                     }
                 });
             }
@@ -263,28 +268,22 @@ def get_data():
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
                 dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
                 
-                origin = ac.get('t_from', 'N/A').split(' ')[0]
-                dest = ac.get('t_to', 'N/A').split(' ')[0]
-                type_ac = ac.get('t', 'UNKN')
-                speed_kts = ac.get('gs', 0)
-                alt_ft = int((ac.get('alt_baro') or ac.get('alt_geom') or 0))
-
-                map_url = (f"https://globe.adsbexchange.com/?"
-                           f"lat={lat_u}&lon={lon_u}&zoom=11&hex={ac.get('hex', '')}&sel={ac.get('hex', '')}&SiteLat={lat_u}&SiteLon={lon_u}")
-                
                 return jsonify({
                     "found": True, 
                     "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
-                    "dist": round(dist_km, 1), "alt_ft": alt_ft, 
+                    "dist": round(dist_km, 1), "alt_ft": int(ac.get('alt_baro', 0)), 
                     "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                    "map_url": map_url, "origin": origin, "dest": dest,
-                    "type": type_ac, "speed": speed_kts
+                    "map_url": f"https://globe.adsbexchange.com/?lat={lat_u}&lon={lon_u}&zoom=11&hex={ac.get('hex')}",
+                    "origin": ac.get('t_from', 'N/A').split(' ')[0],
+                    "dest": ac.get('t_to', 'N/A').split(' ')[0],
+                    "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0)
                 })
     except: pass
     return jsonify({"found": False})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
