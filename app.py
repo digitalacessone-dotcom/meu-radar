@@ -4,7 +4,6 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# O radar continua buscando em um raio de 25km
 RAIO_KM = 25.0 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -70,30 +69,29 @@ def index():
 
             .white-area { 
                 background: #fdfdfd; margin: 0 10px; position: relative; 
-                display: flex; padding: 25px 15px; min-height: 240px; border-radius: 4px; 
+                display: flex; padding: 20px 15px; min-height: 250px; border-radius: 4px; 
             }
 
             .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
             .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #888; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
-            .value { font-size: 1.3em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; }
+            .label { color: #888; font-size: 0.60em; font-weight: 800; text-transform: uppercase; margin-bottom: 1px; }
+            .value { font-size: 1.1em; font-weight: 900; color: var(--air-blue); margin-bottom: 8px; }
             
             #compass { display: inline-block; transition: transform 0.6s ease; color: var(--warning-gold); font-size: 1.2em; }
             
             .barcode { 
-                height: 55px; 
+                height: 45px; 
                 background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); 
                 width: 100%; margin: 8px 0 4px 0; border: 1px solid #eee; 
             }
 
             .signal-area { width: 100%; text-align: center; }
-            #signal-text { font-size: 8px; color: #888; font-weight: bold; margin-bottom: 2px; display: block; }
             #signal-bars { color: var(--air-blue); font-weight: 900; font-size: 12px; letter-spacing: 2px; }
             
-            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
-            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 15px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.75em; font-weight: bold; text-transform: uppercase; text-align: center; }
+            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); min-height: 80px; }
+            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 10px; }
+            .status-msg { color: var(--warning-gold); font-size: 0.72em; font-weight: bold; text-transform: uppercase; text-align: center; height: 1.2em; }
         </style>
     </head>
     <body>
@@ -106,41 +104,59 @@ def index():
         <div class="card">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
-            <div class="header">✈ BOARDING PASS ✈</div>
+            <div class="header">✈ ATC BOARDING PASS ✈</div>
             <div class="white-area">
                 <div class="col-left">
                     <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div></div>
+                    <div><div class="label">FLIGHT PATH (FROM/TO)</div><div id="route" class="value">-- / --</div></div>
+                    <div><div class="label">AIRCRAFT TYPE / SPEED</div><div id="type_speed" class="value">-- / -- KTS</div></div>
                     <div><div class="label">AIRCRAFT DISTANCE</div><div id="dist_body" class="value">-- KM</div></div>
-                    <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value">00000 FT</div></div>
                 </div>
                 <div class="col-right">
-                    <div class="label">RANGE / BEARING</div>
-                    <div class="value"><span id="dist_side">0.0 KM</span> <span id="compass">↑</span></div>
+                    <div class="label">ALTITUDE (MSL)</div>
+                    <div id="alt" class="value" style="font-size: 1.3em;">00000 FT</div>
+                    
+                    <div class="label">BEARING</div>
+                    <div class="value"><span id="compass">↑</span></div>
                     
                     <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
                         <div class="barcode"></div>
                     </a>
 
                     <div class="signal-area">
-                        <span id="signal-text">SIGNAL INTENSITY</span>
                         <div id="signal-bars">[ ▯▯▯▯▯ ]</div>
                     </div>
                 </div>
             </div>
             <div class="footer">
                 <div class="yellow-lines"></div>
-                <div id="status" class="status-msg">SCANNING AIRSPACE...</div>
+                <div id="status" class="status-msg">SYSTEM INITIALIZING...</div>
             </div>
         </div>
 
         <script>
             let latAlvo = null, lonAlvo = null;
+            let statusIndex = 0;
+            const statusMsgs = [
+                "RADAR SWEEP ACTIVE: 25KM",
+                "VISIBILITY: CAVOK (10KM+)",
+                "ATC TRANSCEIVER: ONLINE",
+                "TEMP: 24°C / QNH: 1013hPa"
+            ];
 
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     iniciarRadar();
                 }, () => { document.getElementById('search-box').style.display = "flex"; });
+                
+                // ATC Cycle: Alterna a cada 3 segundos
+                setInterval(() => {
+                    if(!document.getElementById('status').innerText.includes("TARGET ACQUIRED")) {
+                        document.getElementById('status').innerText = statusMsgs[statusIndex];
+                        statusIndex = (statusIndex + 1) % statusMsgs.length;
+                    }
+                }, 3000);
             };
 
             function iniciarRadar() {
@@ -154,11 +170,10 @@ def index():
                 .then(res => res.json()).then(data => {
                     if(data.found) {
                         document.getElementById('callsign').innerText = data.callsign;
-                        document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
-                        
-                        // Atualizando a distância nos dois lugares
+                        document.getElementById('route').innerText = data.origin + " / " + data.dest;
+                        document.getElementById('type_speed').innerText = data.type + " / " + data.speed + " KTS";
+                        document.getElementById('alt').innerText = data.alt_ft.toLocaleString() + " FT";
                         document.getElementById('dist_body').innerText = data.dist + " KM";
-                        document.getElementById('dist_side').innerText = data.dist + " KM";
                         
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
@@ -167,10 +182,11 @@ def index():
                         let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
                         document.getElementById('signal-bars').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                     } else {
-                        document.getElementById('status').innerText = "RADAR SWEEP ACTIVE...";
-                        document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                         document.getElementById('callsign').innerText = "SEARCHING";
+                        document.getElementById('route').innerText = "-- / --";
+                        document.getElementById('type_speed').innerText = "-- / -- KTS";
                         document.getElementById('dist_body').innerText = "-- KM";
+                        document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                     }
                 });
             }
@@ -204,6 +220,13 @@ def get_data():
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
                 dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
                 
+                # Dados extras de voo
+                origin = ac.get('t_from', 'N/A').split(' ')[0]
+                dest = ac.get('t_to', 'N/A').split(' ')[0]
+                type_ac = ac.get('t', 'UNKN')
+                speed_kts = ac.get('gs', 0)
+                alt_ft = int((ac.get('alt_baro') or ac.get('alt_geom') or 0))
+
                 map_url = (f"https://globe.adsbexchange.com/?"
                            f"lat={lat_u}&lon={lon_u}&zoom=11"
                            f"&hex={ac.get('hex', '')}"
@@ -214,15 +237,18 @@ def get_data():
                     "found": True, 
                     "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
                     "dist": round(dist_km, 1), 
-                    "alt": (ac.get('alt_baro') or ac.get('alt_geom') or 0) / 3.28, 
+                    "alt_ft": alt_ft, 
                     "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                    "map_url": map_url
+                    "map_url": map_url,
+                    "origin": origin, "dest": dest,
+                    "type": type_ac, "speed": speed_kts
                 })
     except: pass
     return jsonify({"found": False})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
