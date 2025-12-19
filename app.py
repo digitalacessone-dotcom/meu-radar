@@ -28,7 +28,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>ATC Boarding Pass</title>
+        <title>ATC Radar Boarding Pass</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -39,7 +39,6 @@ def index():
                 min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            /* EFEITO MECÂNICO SEM FUNDO PRETO */
             .letter-slot {
                 display: inline-block;
                 min-width: 0.65em;
@@ -70,8 +69,20 @@ def index():
             .notch { position: absolute; width: 40px; height: 40px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -20px; } .notch-right { right: -20px; }
 
-            /* CABEÇALHO */
-            .header { padding: 15px 0; text-align: center; color: white; font-weight: 900; letter-spacing: 3px; font-size: 1.1em; }
+            /* CABEÇALHO COM AVIÕES MAIORES */
+            .header { 
+                padding: 18px 0; 
+                text-align: center; 
+                color: white; 
+                font-weight: 900; 
+                letter-spacing: 2px; 
+                font-size: 1.1em;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 15px;
+            }
+            .header span { font-size: 1.6em; } /* Tamanho dos aviões */
 
             .white-area { 
                 background: #fdfdfd; margin: 0 10px; position: relative; 
@@ -91,16 +102,21 @@ def index():
                 width: 100%; margin: 8px 0 4px 0; border: 1px solid #eee; 
             }
 
-            /* RODAPÉ AJUSTADO - MAIS ESTREITO */
+            /* RODAPÉ ESTRITO (IGUAL AO CABEÇALHO) */
             .footer { 
-                padding: 10px 0 15px 0; 
+                padding: 0 0 18px 0; 
                 display: flex; 
                 flex-direction: column; 
                 align-items: center; 
-                background: var(--air-blue); 
-                height: auto; 
+                background: var(--air-blue);
             }
-            .yellow-lines { width: 100%; height: 4px; border-top: 1px solid var(--warning-gold); border-bottom: 1px solid var(--warning-gold); margin-bottom: 10px; }
+            .yellow-lines { 
+                width: 100%; 
+                height: 4px; 
+                border-top: 1px solid var(--warning-gold); 
+                border-bottom: 1px solid var(--warning-gold); 
+                margin-bottom: 8px;
+            }
             
             .status-msg { 
                 color: var(--warning-gold); font-size: 0.72em; font-weight: bold; 
@@ -120,7 +136,9 @@ def index():
         <div class="card">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
-            <div class="header">✈ BOARDING BOARD ✈</div>
+            <div class="header">
+                <span>✈</span> BOARDING BOARD <span>✈</span>
+            </div>
             <div class="white-area">
                 <div class="col-left">
                     <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value"></div></div>
@@ -176,7 +194,7 @@ def index():
                     if (slot.innerText === targetChar) return;
 
                     let cycles = 0;
-                    const maxCycles = 12 + (i * 1); // Delay progressivo leve
+                    const maxCycles = 12 + (i * 1);
                     
                     const interval = setInterval(() => {
                         slot.innerText = chars[Math.floor(Math.random() * chars.length)];
@@ -258,7 +276,6 @@ def index():
     </html>
     ''')
 
-# O código Python (Flask) permanece o mesmo das versões anteriores.
 @app.route('/api/data')
 def get_data():
     lat_u = float(request.args.get('lat', 0))
@@ -287,6 +304,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
