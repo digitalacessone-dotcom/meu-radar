@@ -28,7 +28,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>Real Split-Flap ATC</title>
+        <title>Mechanical Split-Flap Radar</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -39,26 +39,35 @@ def index():
                 min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            /* SLOT MACHINE / FLAP EFFECT */
-            .letter-slot {
-                display: inline-block;
-                min-width: 0.7em;
-                text-align: center;
+            /* CONTAINER DO PAINEL MECÂNICO */
+            .flap-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 2px;
+            }
+
+            .slot {
+                width: 0.7em;
+                height: 1.2em;
+                background: #111;
+                color: white;
                 position: relative;
-                background: rgba(0,0,0,0.05);
-                margin: 0 1px;
-                border-radius: 2px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 3px;
                 overflow: hidden;
+                border-bottom: 1px solid #333;
             }
 
-            .flapping {
-                animation: fastFlap 0.1s infinite;
+            /* ANIMAÇÃO DE QUEDA DA PALHETA */
+            .flap-anim {
+                animation: flipDown 0.15s steps(2) infinite;
             }
 
-            @keyframes fastFlap {
-                0% { transform: translateY(0); opacity: 1; }
-                50% { transform: translateY(-5px); opacity: 0.5; }
-                100% { transform: translateY(0); opacity: 1; }
+            @keyframes flipDown {
+                0% { transform: translateY(-100%); }
+                100% { transform: translateY(100%); }
             }
 
             #search-box { 
@@ -87,8 +96,8 @@ def index():
             .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
             .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #888; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
-            .value { font-size: 1.3em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
+            .label { color: #888; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; }
+            .value { margin-bottom: 15px; min-height: 1.2em; color: var(--air-blue); }
             
             #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.4em; }
             
@@ -100,12 +109,11 @@ def index():
             .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); min-height: 110px; }
             .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 12px; }
             
-            .status-msg { 
-                color: var(--warning-gold); font-size: 0.72em; font-weight: bold; 
-                text-transform: uppercase; text-align: center; padding: 0 10px; 
-                display: flex; justify-content: center; flex-wrap: wrap;
-                min-height: 1.4em;
-            }
+            .status-msg { color: var(--warning-gold); min-height: 1.5em; }
+            
+            /* Ajuste de cor para o texto no ticket vs rodapé */
+            .value .slot { background: var(--air-blue); color: white; }
+            .status-msg .slot { background: #000; color: var(--warning-gold); border: 1px solid #222; }
         </style>
     </head>
     <body>
@@ -118,12 +126,17 @@ def index():
         <div class="card">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
-            <div class="header">✈ BOARDING BOARD ✈</div>
+            <div class="header">✈ ATC BOARDING BOARD ✈</div>
             <div class="white-area">
                 <div class="col-left">
-                    <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value"></div></div>
-                    <div><div class="label">AIRCRAFT DISTANCE</div><div id="dist_body" class="value"></div></div>
-                    <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value"></div></div>
+                    <div class="label">IDENT / CALLSIGN</div>
+                    <div id="callsign" class="value flap-container"></div>
+                    
+                    <div class="label">AIRCRAFT DISTANCE</div>
+                    <div id="dist_body" class="value flap-container"></div>
+                    
+                    <div class="label">ALTITUDE (MSL)</div>
+                    <div id="alt" class="value flap-container"></div>
                 </div>
                 <div class="col-right">
                     <div class="label">BEARING</div>
@@ -131,12 +144,12 @@ def index():
                     <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
                         <div class="barcode"></div>
                     </a>
-                    <div id="signal-bars" style="color:var(--air-blue); font-size:12px; font-weight:900;">[ ▯▯▯▯▯ ]</div>
+                    <div id="signal-bars" style="color:var(--air-blue); font-size:12px; font-weight:900;">[ ▮▮▮▯▯ ]</div>
                 </div>
             </div>
             <div class="footer">
                 <div class="yellow-lines"></div>
-                <div id="status" class="status-msg"></div>
+                <div id="status" class="status-msg flap-container"></div>
             </div>
         </div>
 
@@ -144,58 +157,59 @@ def index():
             let latAlvo = null, lonAlvo = null;
             let currentTarget = null;
             let statusIndex = 0;
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:- ";
+            const alphabet = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->";
 
             const systemMsgs = [
                 "RADAR SWEEP ACTIVE: 25KM",
-                "VISIBILITY: CAVOK (10KM+)",
+                "VISIBILITY: CAVOK",
                 "ATC TRANSCEIVER: ONLINE",
-                "TEMP: 24C / QNH: 1013HPA"
+                "TEMP: 24C / QNH: 1013"
             ];
 
-            // FUNÇÃO "SLOT MACHINE": Gira até encontrar a letra
-            function updateWithEffect(id, newValue) {
+            // FUNÇÃO MOTOR DO SPLIT-FLAP REAL
+            function updateSplitFlap(id, newText) {
                 const container = document.getElementById(id);
-                const newText = String(newValue).toUpperCase();
-                const currentSlots = container.querySelectorAll('.letter-slot');
+                newText = String(newText).toUpperCase();
                 
-                // Ajusta quantidade de slots
-                while (container.childNodes.length < newText.length) {
-                    const s = document.createElement("span");
-                    s.className = "letter-slot";
-                    s.innerHTML = "&nbsp;";
-                    container.appendChild(s);
+                // Garantir que temos slots suficientes
+                while (container.children.length < newText.length) {
+                    const slot = document.createElement('div');
+                    slot.className = 'slot';
+                    slot.innerHTML = '<span>&nbsp;</span>';
+                    container.appendChild(slot);
                 }
-                while (container.childNodes.length > newText.length) {
+                while (container.children.length > newText.length) {
                     container.removeChild(container.lastChild);
                 }
 
-                const slots = container.querySelectorAll('.letter-slot');
-                
-                newText.split('').forEach((targetChar, i) => {
-                    const slot = slots[i];
-                    if (slot.innerText === targetChar) return;
+                Array.from(container.children).forEach((slot, i) => {
+                    const targetChar = newText[i] || " ";
+                    const currentSpan = slot.querySelector('span');
+                    const currentChar = currentSpan.innerText;
 
-                    let cycles = 0;
-                    const maxCycles = 10 + (i * 2); // Letras da direita demoram mais
-                    
-                    const interval = setInterval(() => {
-                        slot.innerText = chars[Math.floor(Math.random() * chars.length)];
-                        slot.classList.add('flapping');
+                    if (currentChar !== targetChar) {
+                        let step = alphabet.indexOf(currentChar);
+                        if (step === -1) step = 0;
                         
-                        cycles++;
-                        if (cycles >= maxCycles) {
-                            clearInterval(interval);
-                            slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
-                            slot.classList.remove('flapping');
-                        }
-                    }, 50);
+                        // Inicia animação de "giro" mecânico
+                        currentSpan.classList.add('flap-anim');
+                        
+                        const timer = setInterval(() => {
+                            step = (step + 1) % alphabet.length;
+                            currentSpan.innerText = alphabet[step];
+                            
+                            if (alphabet[step] === targetChar) {
+                                clearInterval(timer);
+                                currentSpan.classList.remove('flap-anim');
+                            }
+                        }, 40 + (i * 10)); // Atraso progressivo para efeito cascata
+                    }
                 });
             }
 
             window.onload = function() {
-                updateWithEffect('callsign', 'SEARCHING');
-                updateWithEffect('status', 'INITIALIZING...');
+                updateSplitFlap('callsign', 'SEARCHING');
+                updateSplitFlap('status', 'INITIALIZING SYSTEM');
 
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
@@ -204,7 +218,7 @@ def index():
                 
                 setInterval(() => {
                     if(!currentTarget) {
-                        updateWithEffect('status', systemMsgs[statusIndex]);
+                        updateSplitFlap('status', systemMsgs[statusIndex]);
                         statusIndex = (statusIndex + 1) % systemMsgs.length;
                     } else {
                         const flightMsgs = [
@@ -212,10 +226,10 @@ def index():
                             `PATH: ${currentTarget.origin} > ${currentTarget.dest}`,
                             `TYPE: ${currentTarget.type} / ${currentTarget.speed}KTS`
                         ];
-                        updateWithEffect('status', flightMsgs[statusIndex % 3]);
+                        updateSplitFlap('status', flightMsgs[statusIndex % 3]);
                         statusIndex++;
                     }
-                }, 5000);
+                }, 6000);
             };
 
             function iniciarRadar() {
@@ -229,17 +243,15 @@ def index():
                 .then(res => res.json()).then(data => {
                     if(data.found) {
                         currentTarget = data;
-                        updateWithEffect('callsign', data.callsign);
-                        updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
-                        updateWithEffect('dist_body', data.dist + " KM");
+                        updateSplitFlap('callsign', data.callsign);
+                        updateSplitFlap('alt', data.alt_ft + " FT");
+                        updateSplitFlap('dist_body', data.dist + " KM");
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-                        let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
-                        document.getElementById('signal-bars').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                     } else {
                         if(currentTarget) {
-                            updateWithEffect('callsign', "SEARCHING");
-                            updateWithEffect('dist_body', "-- KM");
+                            updateSplitFlap('callsign', "SEARCHING");
+                            updateSplitFlap('dist_body', "00.0 KM");
                         }
                         currentTarget = null;
                     }
