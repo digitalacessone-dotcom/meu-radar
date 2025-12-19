@@ -5,7 +5,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-RAIO_KM = 120.0 
+RAIO_KM = 100.0  
 USER_AGENTS = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X)"]
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -33,75 +33,44 @@ def index():
         <title>Visual Radar Pro - Campos</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
+            body { background-color: var(--bg-dark); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
             
-            body { 
-                background-color: var(--bg-dark); 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                min-height: 100vh; 
-                margin: 0; 
-                font-family: 'Courier New', monospace; 
-                overflow: hidden; 
-            }
+            #scaler { width: 100%; display: flex; justify-content: center; align-items: center; transition: all 0.3s; }
+
+            .card { background: var(--air-blue); width: 95%; max-width: 650px; border-radius: 25px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden; }
             
-            /* CONTENT WRAPPER PARA ESCALA */
-            #scaler {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                width: 100%;
-                transition: transform 0.3s ease;
-            }
-
-            .card { 
-                background: var(--air-blue); 
-                width: 92%; 
-                max-width: 600px; 
-                border-radius: 25px; 
-                position: relative; 
-                box-shadow: 0 30px 60px rgba(0,0,0,0.7); 
-                overflow: hidden; 
-            }
-
-            /* AJUSTE PARA TELA DEITADA (LANDSCAPE) */
+            /* AJUSTE PARA TELA DEITADA */
             @media (orientation: landscape) and (max-height: 500px) {
-                #scaler { transform: scale(0.85); } /* Diminui o bilhete para caber na altura */
-                .header { padding: 10px 0 !important; }
-                .white-area { padding: 15px 30px !important; min-height: 180px !important; }
-                .footer { padding-bottom: 10px !important; }
+                #scaler { transform: scale(0.75); margin-top: -20px; }
+                .white-area { min-height: 200px !important; }
             }
 
-            .notch { position: absolute; width: 40px; height: 40px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
-            .notch-left { left: -20px; } .notch-right { right: -20px; }
+            .notch { position: absolute; width: 44px; height: 44px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
+            .notch-left { left: -22px; } .notch-right { right: -22px; }
 
-            .header { padding: 25px 0; text-align: center; color: white; font-weight: 900; letter-spacing: 5px; font-size: 1.1em; }
+            .header { padding: 25px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 20px; font-weight: 900; letter-spacing: 5px; font-size: 1.2em; }
+            .white-area { background: #fdfdfd; margin: 0 12px; position: relative; display: flex; padding: 30px; min-height: 280px; border-radius: 2px; }
             
-            .white-area { background: #fdfdfd; margin: 0 12px; position: relative; display: flex; padding: 30px; min-height: 250px; border-radius: 2px; }
-            
-            .tear-line { position: absolute; right: 35%; top: 0; bottom: 0; border-right: 2px dashed #eee; z-index: 5; }
-            .tear-line.active { border-right-color: var(--warning-gold); animation: blink 1s infinite; }
-            @keyframes blink { 50% { opacity: 0.2; } }
-
+            /* CARIMBO COM ZOOM */
             .stamp { 
-                position: absolute; top: 50%; left: 35%; transform: translate(-50%, -50%) rotate(-15deg) scale(4); 
-                border: 4px double #d32f2f; color: #d32f2f; padding: 8px 15px; font-weight: 900; font-size: 1.6em; 
-                opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; pointer-events: none;
+                position: absolute; top: 50%; left: 40%; transform: translate(-50%, -50%) rotate(-15deg) scale(5); 
+                border: 4px double #d32f2f; color: #d32f2f; padding: 10px 20px; font-weight: 900; font-size: 1.8em; 
+                opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; pointer-events: none;
             }
-            .stamp.visible { opacity: 0.35; transform: translate(-50%, -50%) rotate(-15deg) scale(1); }
+            .stamp.visible { opacity: 0.3; transform: translate(-50%, -50%) rotate(-15deg) scale(1); }
 
             .col-left { flex: 1.8; border-right: 2px dashed #eee; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-around; }
             .col-right { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #999; font-size: 0.6em; font-weight: 800; text-transform: uppercase; }
-            .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); margin-bottom: 10px; }
+            .label { color: #999; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+            .value { font-size: 1.65em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; }
             
-            #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.2em; color: var(--warning-gold); }
-            .barcode { height: 50px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 80%; margin-top: 10px; }
+            #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.4em; color: var(--warning-gold); margin-left: 8px; }
+            .barcode { height: 65px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
             
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
-            .yellow-lines { width: 100%; height: 8px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 15px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.8em; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; }
+            .yellow-lines { width: 100%; height: 10px; border-top: 2.5px solid var(--warning-gold); border-bottom: 2.5px solid var(--warning-gold); margin-bottom: 20px; }
+            .status-msg { color: var(--warning-gold); font-size: 0.85em; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; }
         </style>
     </head>
     <body onclick="audioAlerta.play().catch(()=>{})">
@@ -109,24 +78,22 @@ def index():
             <div class="card">
                 <div class="notch notch-left"></div>
                 <div class="notch notch-right"></div>
-                <div class="header">✈ FLIGHT MANIFEST ✈</div>
-                
+                <div class="header">✈ FLIGHT MANIFEST / PASS ✈</div>
                 <div class="white-area">
-                    <div class="tear-line" id="picote"></div>
                     <div class="stamp" id="carimbo">VISUAL CONTACT</div>
-                    
                     <div class="col-left">
-                        <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div></div>
-                        <div><div class="label">ALTITUDE (FL)</div><div id="alt" class="value">00000 FT</div></div>
+                        <div><div class="label">IDENTIFICATION / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div></div>
+                        <div><div class="label">ESTIMATED VISUAL (ETA)</div><div id="eta" class="value">-- MIN</div></div>
+                        <div><div class="label">PRESSURE ALTITUDE (FL)</div><div id="alt" class="value">00000 FT</div></div>
                     </div>
                     <div class="col-right">
-                        <div class="label">BEARING</div>
-                        <div id="compass">↑</div>
-                        <div id="dist" class="value" style="margin-top:5px;">0.0 KM</div>
+                        <div class="label">RANGE & BEARING</div>
+                        <div class="value"><span id="dist">0.0 KM</span><span id="compass">↑</span></div>
                         <div class="barcode"></div>
+                        <div class="label" style="font-size: 8px;">SIGNAL INTENSITY</div>
+                        <div id="signal" style="color:var(--air-blue); font-weight:bold;">[ ▯▯▯▯▯ ]</div>
                     </div>
                 </div>
-
                 <div class="footer">
                     <div class="yellow-lines"></div>
                     <div id="status" class="status-msg">SCANNING AIRSPACE...</div>
@@ -141,22 +108,26 @@ def index():
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    setInterval(executarBusca, 8000);
-                }, () => { latAlvo = -21.76; lonAlvo = -41.33; setInterval(executarBusca, 8000); });
+                    setInterval(executarBusca, 10000);
+                }, () => { latAlvo = -21.76; lonAlvo = -41.33; setInterval(executarBusca, 10000); });
             };
 
             function executarBusca() {
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}`).then(res => res.json()).then(data => {
                     if(data.found) {
                         document.getElementById('callsign').innerText = data.callsign;
-                        document.getElementById('alt').innerText = data.alt + " FT";
+                        document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
                         document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        document.getElementById('status').innerText = "TARGET ACQUIRED";
-                        document.getElementById('carimbo').classList.add('visible');
                         
-                        if(data.dist < 15) document.getElementById('picote').classList.add('active');
-                        else document.getElementById('picote').classList.remove('active');
+                        let eta = data.speed > 0 ? Math.round((data.dist / data.speed) * 60) : "--";
+                        document.getElementById('eta').innerText = eta + " MIN";
+
+                        let bars = Math.ceil((100 - data.dist) / 20);
+                        document.getElementById('signal').innerText = "[" + "▮".repeat(Math.max(1, bars)) + "▯".repeat(Math.max(0, 5-bars)) + "]";
+                        
+                        document.getElementById('carimbo').classList.add('visible');
+                        document.getElementById('status').innerText = "TARGET LOCKED";
 
                         if(!targetLock) audioAlerta.play().catch(()=>{});
                         targetLock = true;
@@ -164,7 +135,6 @@ def index():
                         targetLock = false;
                         document.getElementById('callsign').innerText = "SEARCHING";
                         document.getElementById('carimbo').classList.remove('visible');
-                        document.getElementById('picote').classList.remove('active');
                         document.getElementById('status').innerText = "SCANNING AIRSPACE...";
                     }
                 });
@@ -182,11 +152,12 @@ def get_data():
         r = requests.get(f"https://api.adsb.one/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}", headers=headers, timeout=5).json()
         if r.get('ac'):
             ac = sorted(r['ac'], key=lambda x: haversine(lat_u, lon_u, x.get('lat',0), x.get('lon',0)))[0]
+            dist = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
             return jsonify({
                 "found": True, "callsign": ac.get('flight', 'UNKN').strip(),
-                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1),
-                "alt": int(ac.get('alt_baro', 0)),
-                "bearing": int(calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']))
+                "dist": round(dist, 1), "alt": ac.get('alt_baro', 0) / 3.28,
+                "bearing": int(calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon'])),
+                "speed": round(ac.get('gs', 0) * 1.852)
             })
     except: pass
     return jsonify({"found": False})
