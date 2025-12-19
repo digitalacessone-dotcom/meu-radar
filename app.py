@@ -151,7 +151,7 @@ def index():
                     iniciarRadar();
                 }, () => { document.getElementById('search-box').style.display = "flex"; });
                 
-                // LÓGICA DE ALTERNÂNCIA DO RODAPÉ (A cada 4 segundos)
+                // ALTERNÂNCIA DO RODAPÉ AJUSTADA PARA 10 SEGUNDOS (10000ms)
                 setInterval(() => {
                     if(!currentTarget) {
                         const envMsgs = [
@@ -173,7 +173,7 @@ def index():
                         updateWithEffect('status', flightMsgs[statusIndex % flightMsgs.length]);
                         statusIndex++;
                     }
-                }, 4000);
+                }, 10000); // 10 Segundos parado antes de trocar
             };
 
             function iniciarRadar() { setInterval(executarBusca, 8000); executarBusca(); }
