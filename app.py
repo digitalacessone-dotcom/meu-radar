@@ -40,11 +40,8 @@ def index():
             }
 
             .letter-slot {
-                display: inline-block;
-                min-width: 0.65em;
-                text-align: center;
-                position: relative;
-                vertical-align: bottom;
+                display: inline-block; min-width: 0.65em; text-align: center;
+                position: relative; vertical-align: bottom;
             }
 
             .flapping { opacity: 0.6; transform: scaleY(0.7); filter: brightness(1.5); }
@@ -66,18 +63,11 @@ def index():
             .notch-left { left: -15px; } .notch-right { right: -15px; }
 
             .header { 
-                padding: 10px 0; 
-                text-align: center; 
-                color: white; 
-                font-weight: 900; 
-                font-size: 0.9em;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 12px;
-                letter-spacing: 1px;
+                padding: 12px 0; text-align: center; color: white; font-weight: 900; 
+                font-size: 0.95em; display: flex; align-items: center; justify-content: center;
+                gap: 20px; letter-spacing: 2px;
             }
-            .header span { font-size: 1.4em; }
+            .header span { font-size: 2.8em; line-height: 0; position: relative; top: 4px; }
 
             .white-area { 
                 background: #fdfdfd; margin: 0 8px; position: relative; 
@@ -97,21 +87,8 @@ def index():
                 width: 100%; margin: 5px 0; border: 1px solid #eee; 
             }
 
-            /* RODAPÉ COM FAIXAS AMARELAS MAIS ESPESSAS */
-            .footer { 
-                padding: 0 0 12px 0; 
-                display: flex; 
-                flex-direction: column; 
-                align-items: center; 
-                background: var(--air-blue);
-            }
-            .yellow-lines { 
-                width: 100%; 
-                height: 6px; /* Aumentado */
-                border-top: 2px solid var(--warning-gold); /* Aumentado de 1px para 2px */
-                border-bottom: 2px solid var(--warning-gold); /* Aumentado de 1px para 2px */
-                margin-bottom: 6px;
-            }
+            .footer { padding: 0 0 12px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
+            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 6px; }
             
             .status-msg { 
                 color: var(--warning-gold); font-size: 0.68em; font-weight: bold; 
@@ -122,7 +99,6 @@ def index():
         </style>
     </head>
     <body>
-        
         <div id="search-box">
             <input type="text" id="endereco" placeholder="CITY OR ZIP...">
             <button onclick="buscarEndereco()">GO</button>
@@ -141,6 +117,9 @@ def index():
                     <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value"></div></div>
                 </div>
                 <div class="col-right">
+                    <div class="label">AIRCRAFT TYPE</div>
+                    <div id="type_id" class="value">----</div>
+                    
                     <div class="label">BEARING</div>
                     <div class="value"><span id="compass">↑</span></div>
                     <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
@@ -202,19 +181,14 @@ def index():
                 
                 setInterval(() => {
                     if(!currentTarget) {
-                        const systemMsgs = [
-                            "RADAR SWEEP ACTIVE",
-                            "VISIBILITY: CAVOK (10KM+)",
-                            "ATC TRANSCEIVER: ONLINE",
-                            "TEMP: 22C / SKY: CLEAR SKY"
-                        ];
+                        const systemMsgs = ["RADAR SWEEP ACTIVE", "ATC TRANSCEIVER: ONLINE"];
                         updateWithEffect('status', systemMsgs[statusIndex % systemMsgs.length]);
                         statusIndex++;
                     } else {
                         const flightMsgs = [
                             `TARGET: ${currentTarget.callsign}`,
                             `PATH: ${currentTarget.origin} > ${currentTarget.dest}`,
-                            `TYPE: ${currentTarget.type} / ${currentTarget.speed}KTS`
+                            `SPEED: ${currentTarget.speed}KTS`
                         ];
                         updateWithEffect('status', flightMsgs[statusIndex % 3]);
                         statusIndex++;
@@ -234,17 +208,11 @@ def index():
                     if(data.found) {
                         currentTarget = data;
                         updateWithEffect('callsign', data.callsign);
+                        updateWithEffect('type_id', data.type); // ATUALIZA O TIPO
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-                    } else {
-                        if(currentTarget) {
-                            updateWithEffect('callsign', "SEARCHING");
-                            updateWithEffect('dist_body', "-- KM");
-                            updateWithEffect('alt', "00000 FT");
-                        }
-                        currentTarget = null;
                     }
                 });
             }
@@ -292,6 +260,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
