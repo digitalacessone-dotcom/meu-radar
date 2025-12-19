@@ -28,7 +28,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>Mechanical Split-Flap Radar</title>
+        <title>ATC Boarding Pass</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -39,35 +39,19 @@ def index():
                 min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            /* CONTAINER DO PAINEL MECÂNICO */
-            .flap-container {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 2px;
-            }
-
-            .slot {
-                width: 0.7em;
-                height: 1.2em;
-                background: #111;
-                color: white;
+            /* EFEITO MECÂNICO SEM FUNDO PRETO */
+            .letter-slot {
+                display: inline-block;
+                min-width: 0.65em;
+                text-align: center;
                 position: relative;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border-radius: 3px;
-                overflow: hidden;
-                border-bottom: 1px solid #333;
+                vertical-align: bottom;
             }
 
-            /* ANIMAÇÃO DE QUEDA DA PALHETA */
-            .flap-anim {
-                animation: flipDown 0.15s steps(2) infinite;
-            }
-
-            @keyframes flipDown {
-                0% { transform: translateY(-100%); }
-                100% { transform: translateY(100%); }
+            .flapping {
+                opacity: 0.6;
+                transform: scaleY(0.7);
+                filter: brightness(1.5);
             }
 
             #search-box { 
@@ -86,6 +70,7 @@ def index():
             .notch { position: absolute; width: 40px; height: 40px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -20px; } .notch-right { right: -20px; }
 
+            /* CABEÇALHO */
             .header { padding: 15px 0; text-align: center; color: white; font-weight: 900; letter-spacing: 3px; font-size: 1.1em; }
 
             .white-area { 
@@ -96,8 +81,8 @@ def index():
             .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
             .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #888; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; }
-            .value { margin-bottom: 15px; min-height: 1.2em; color: var(--air-blue); }
+            .label { color: #888; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+            .value { font-size: 1.3em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
             
             #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.4em; }
             
@@ -106,14 +91,23 @@ def index():
                 width: 100%; margin: 8px 0 4px 0; border: 1px solid #eee; 
             }
 
-            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); min-height: 110px; }
-            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 12px; }
+            /* RODAPÉ AJUSTADO - MAIS ESTREITO */
+            .footer { 
+                padding: 10px 0 15px 0; 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                background: var(--air-blue); 
+                height: auto; 
+            }
+            .yellow-lines { width: 100%; height: 4px; border-top: 1px solid var(--warning-gold); border-bottom: 1px solid var(--warning-gold); margin-bottom: 10px; }
             
-            .status-msg { color: var(--warning-gold); min-height: 1.5em; }
-            
-            /* Ajuste de cor para o texto no ticket vs rodapé */
-            .value .slot { background: var(--air-blue); color: white; }
-            .status-msg .slot { background: #000; color: var(--warning-gold); border: 1px solid #222; }
+            .status-msg { 
+                color: var(--warning-gold); font-size: 0.72em; font-weight: bold; 
+                text-transform: uppercase; text-align: center; padding: 0 10px; 
+                display: flex; justify-content: center; flex-wrap: wrap;
+                min-height: 1.2em; letter-spacing: 1px;
+            }
         </style>
     </head>
     <body>
@@ -126,17 +120,12 @@ def index():
         <div class="card">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
-            <div class="header">✈ ATC BOARDING BOARD ✈</div>
+            <div class="header">✈ BOARDING BOARD ✈</div>
             <div class="white-area">
                 <div class="col-left">
-                    <div class="label">IDENT / CALLSIGN</div>
-                    <div id="callsign" class="value flap-container"></div>
-                    
-                    <div class="label">AIRCRAFT DISTANCE</div>
-                    <div id="dist_body" class="value flap-container"></div>
-                    
-                    <div class="label">ALTITUDE (MSL)</div>
-                    <div id="alt" class="value flap-container"></div>
+                    <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value"></div></div>
+                    <div><div class="label">AIRCRAFT DISTANCE</div><div id="dist_body" class="value"></div></div>
+                    <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value"></div></div>
                 </div>
                 <div class="col-right">
                     <div class="label">BEARING</div>
@@ -144,12 +133,12 @@ def index():
                     <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
                         <div class="barcode"></div>
                     </a>
-                    <div id="signal-bars" style="color:var(--air-blue); font-size:12px; font-weight:900;">[ ▮▮▮▯▯ ]</div>
+                    <div id="signal-bars" style="color:var(--air-blue); font-size:12px; font-weight:900;">[ ▯▯▯▯▯ ]</div>
                 </div>
             </div>
             <div class="footer">
                 <div class="yellow-lines"></div>
-                <div id="status" class="status-msg flap-container"></div>
+                <div id="status" class="status-msg"></div>
             </div>
         </div>
 
@@ -157,59 +146,55 @@ def index():
             let latAlvo = null, lonAlvo = null;
             let currentTarget = null;
             let statusIndex = 0;
-            const alphabet = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->";
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:- ";
 
             const systemMsgs = [
                 "RADAR SWEEP ACTIVE: 25KM",
-                "VISIBILITY: CAVOK",
+                "VISIBILITY: CAVOK (10KM+)",
                 "ATC TRANSCEIVER: ONLINE",
-                "TEMP: 24C / QNH: 1013"
+                "TEMP: 24C / QNH: 1013HPA"
             ];
 
-            // FUNÇÃO MOTOR DO SPLIT-FLAP REAL
-            function updateSplitFlap(id, newText) {
+            function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
-                newText = String(newText).toUpperCase();
+                const newText = String(newValue).toUpperCase();
                 
-                // Garantir que temos slots suficientes
-                while (container.children.length < newText.length) {
-                    const slot = document.createElement('div');
-                    slot.className = 'slot';
-                    slot.innerHTML = '<span>&nbsp;</span>';
-                    container.appendChild(slot);
+                while (container.childNodes.length < newText.length) {
+                    const s = document.createElement("span");
+                    s.className = "letter-slot";
+                    s.innerHTML = "&nbsp;";
+                    container.appendChild(s);
                 }
-                while (container.children.length > newText.length) {
+                while (container.childNodes.length > newText.length) {
                     container.removeChild(container.lastChild);
                 }
 
-                Array.from(container.children).forEach((slot, i) => {
-                    const targetChar = newText[i] || " ";
-                    const currentSpan = slot.querySelector('span');
-                    const currentChar = currentSpan.innerText;
+                const slots = container.querySelectorAll('.letter-slot');
+                
+                newText.split('').forEach((targetChar, i) => {
+                    const slot = slots[i];
+                    if (slot.innerText === targetChar) return;
 
-                    if (currentChar !== targetChar) {
-                        let step = alphabet.indexOf(currentChar);
-                        if (step === -1) step = 0;
+                    let cycles = 0;
+                    const maxCycles = 12 + (i * 1); // Delay progressivo leve
+                    
+                    const interval = setInterval(() => {
+                        slot.innerText = chars[Math.floor(Math.random() * chars.length)];
+                        slot.classList.add('flapping');
                         
-                        // Inicia animação de "giro" mecânico
-                        currentSpan.classList.add('flap-anim');
-                        
-                        const timer = setInterval(() => {
-                            step = (step + 1) % alphabet.length;
-                            currentSpan.innerText = alphabet[step];
-                            
-                            if (alphabet[step] === targetChar) {
-                                clearInterval(timer);
-                                currentSpan.classList.remove('flap-anim');
-                            }
-                        }, 40 + (i * 10)); // Atraso progressivo para efeito cascata
-                    }
+                        cycles++;
+                        if (cycles >= maxCycles) {
+                            clearInterval(interval);
+                            slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
+                            slot.classList.remove('flapping');
+                        }
+                    }, 40);
                 });
             }
 
             window.onload = function() {
-                updateSplitFlap('callsign', 'SEARCHING');
-                updateSplitFlap('status', 'INITIALIZING SYSTEM');
+                updateWithEffect('callsign', 'SEARCHING');
+                updateWithEffect('status', 'INITIALIZING...');
 
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
@@ -218,7 +203,7 @@ def index():
                 
                 setInterval(() => {
                     if(!currentTarget) {
-                        updateSplitFlap('status', systemMsgs[statusIndex]);
+                        updateWithEffect('status', systemMsgs[statusIndex]);
                         statusIndex = (statusIndex + 1) % systemMsgs.length;
                     } else {
                         const flightMsgs = [
@@ -226,10 +211,10 @@ def index():
                             `PATH: ${currentTarget.origin} > ${currentTarget.dest}`,
                             `TYPE: ${currentTarget.type} / ${currentTarget.speed}KTS`
                         ];
-                        updateSplitFlap('status', flightMsgs[statusIndex % 3]);
+                        updateWithEffect('status', flightMsgs[statusIndex % 3]);
                         statusIndex++;
                     }
-                }, 6000);
+                }, 5000);
             };
 
             function iniciarRadar() {
@@ -243,15 +228,15 @@ def index():
                 .then(res => res.json()).then(data => {
                     if(data.found) {
                         currentTarget = data;
-                        updateSplitFlap('callsign', data.callsign);
-                        updateSplitFlap('alt', data.alt_ft + " FT");
-                        updateSplitFlap('dist_body', data.dist + " KM");
+                        updateWithEffect('callsign', data.callsign);
+                        updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
+                        updateWithEffect('dist_body', data.dist + " KM");
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
                     } else {
                         if(currentTarget) {
-                            updateSplitFlap('callsign', "SEARCHING");
-                            updateSplitFlap('dist_body', "00.0 KM");
+                            updateWithEffect('callsign', "SEARCHING");
+                            updateWithEffect('dist_body', "-- KM");
                         }
                         currentTarget = null;
                     }
@@ -273,6 +258,7 @@ def index():
     </html>
     ''')
 
+# O código Python (Flask) permanece o mesmo das versões anteriores.
 @app.route('/api/data')
 def get_data():
     lat_u = float(request.args.get('lat', 0))
