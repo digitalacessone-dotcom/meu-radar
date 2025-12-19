@@ -5,7 +5,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# Configurações de busca
+# CONFIGURAÇÕES
 RAIO_KM = 100.0  
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
@@ -44,7 +44,7 @@ def index():
             input { flex: 1; background: #000; border: 1px solid #333; padding: 12px; color: white; outline: none; }
             button { background: var(--warning-gold); color: #000; border: none; padding: 12px 20px; font-weight: 900; cursor: pointer; }
 
-            .card { background: var(--air-blue); width: 95%; max-width: 650px; border-radius: 25px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden; }
+            .card { background: var(--air-blue); width: 95%; max-width: 650px; border-radius: 25px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden; cursor: pointer; }
             .notch { position: absolute; width: 44px; height: 44px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -22px; } .notch-right { right: -22px; }
 
@@ -66,14 +66,14 @@ def index():
             .status-msg { color: var(--warning-gold); font-size: 0.85em; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; min-height: 20px; padding: 0 10px; }
         </style>
     </head>
-    <body onclick="audioAlerta.play().catch(()=>{})">
+    <body>
         
         <div id="search-box">
-            <input type="text" id="endereco" placeholder="ENTER CITY...">
-            <button onclick="buscarEndereco()">ACTIVATE</button>
+            <input type="text" id="endereco" placeholder="DIGITE SUA CIDADE...">
+            <button onclick="buscarEndereco()">ATIVAR</button>
         </div>
 
-        <div class="card">
+        <div class="card" id="main-card">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
             <div class="header"><span>✈</span> FLIGHT MANIFEST / PASS <span>✈</span></div>
@@ -93,7 +93,7 @@ def index():
             </div>
             <div class="footer">
                 <div class="yellow-lines"></div>
-                <div id="status" class="status-msg">INITIALIZING RADAR...</div>
+                <div id="status" class="status-msg">TAP TO ACTIVATE AUDIO</div>
             </div>
         </div>
 
@@ -102,6 +102,12 @@ def index():
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
             let latAlvo = null, lonAlvo = null, targetLock = false, flightData = null;
             let weatherData = { temp: "--", vis: "--", desc: "STBY" };
+
+            // DESBLOQUEIO DE ÁUDIO
+            document.body.addEventListener('click', function() {
+                audioAlerta.play().then(() => { audioAlerta.pause(); audioAlerta.currentTime = 0; })
+                .catch(e => {});
+            }, { once: true });
 
             function splitFlap(text) {
                 const el = document.getElementById('status');
@@ -120,6 +126,7 @@ def index():
             };
 
             function iniciarRadar() {
+                executarBusca();
                 setInterval(executarBusca, 10000);
                 let cycle = 0;
                 setInterval(() => {
@@ -135,7 +142,7 @@ def index():
                 .then(res => res.json()).then(data => {
                     weatherData = data.weather;
                     if(data.found) {
-                        flightData = data;
+                        if(!targetLock) audioAlerta.play().catch(()=>{});
                         document.getElementById('callsign').innerText = data.callsign;
                         document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
                         document.getElementById('dist').innerText = data.dist + " KM";
@@ -165,24 +172,32 @@ def get_data():
     lat_u, lon_u = float(request.args.get('lat', 0)), float(request.args.get('lon', 0))
     headers = {'User-Agent': random.choice(USER_AGENTS)}
     
-    # Busca Clima
+    # 1. CLIMA
     weather = {"temp": "--", "vis": "--", "desc": "N/A"}
     try:
         wr = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat_u}&longitude={lon_u}&current=temperature_2m,visibility,weather_code", timeout=2).json()
         weather = {"temp": round(wr['current']['temperature_2m']), "vis": round(wr['current']['visibility']/1000, 1), "desc": "CLEAR" if wr['current']['weather_code'] == 0 else "CLOUDY"}
     except: pass
 
-    # Busca Radar
+    # 2. RADAR (ADSB.ONE + PROTEÇÃO DE IP)
     try:
         r = requests.get(f"https://api.adsb.one/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}", headers=headers, timeout=5).json()
         if r.get('ac'):
             ac = sorted(r['ac'], key=lambda x: haversine(lat_u, lon_u, x.get('lat',0), x.get('lon',0)))[0]
-            return jsonify({"found": True, "callsign": ac.get('flight', 'UNKN').strip(), "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), "alt": ac.get('alt_baro', 0) / 3.28, "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']), "speed": round(ac.get('gs', 0) * 1.852), "weather": weather})
+            return jsonify({
+                "found": True, 
+                "callsign": ac.get('flight', 'UNKN').strip(), 
+                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                "alt": ac.get('alt_baro', 0) / 3.28, 
+                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']), 
+                "weather": weather
+            })
     except: pass
     return jsonify({"found": False, "weather": weather})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
