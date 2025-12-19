@@ -1,18 +1,11 @@
 from flask import Flask, render_template_string, jsonify, request
 import requests
-import random
 from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-RAIO_KM = 80.0
-
-# Lista de User-Agents para rotacionar o "disfarce" do navegador
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1"
-]
+# Configurações
+RAIO_KM = 100.0  # Aumentei o raio para facilitar testes iniciais
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -30,7 +23,6 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 
 @app.route('/')
 def index():
-    # O HTML permanece o mesmo do layout que você aprovou
     return render_template_string('''
     <!DOCTYPE html>
     <html lang="pt-br">
@@ -40,7 +32,7 @@ def index():
         <title>ATC Premium Pass</title>
         <style>
             :root { --air-blue: #226488; --warning-gold: #FFD700; --bg-dark: #f0f4f7; }
-            * { box-sizing: border-box; }
+            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
             body { background-color: var(--bg-dark); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; overflow: hidden; }
             .card { background: white; width: 95%; max-width: 850px; border-radius: 20px; display: flex; overflow: hidden; border: 1px solid #ddd; box-shadow: 0 20px 40px rgba(0,0,0,0.1); position: relative; }
             .left-stub { width: 25%; background: var(--air-blue); color: white; padding: 20px; display: flex; flex-direction: column; border-right: 2px dashed rgba(255,255,255,0.3); }
@@ -58,7 +50,7 @@ def index():
             .flapping { animation: flap 0.07s infinite; }
             @keyframes flap { 50% { transform: scaleY(0.5); opacity: 0.5; } }
             #compass { font-size: 2.2em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
-            #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.5s; opacity: 0.1; }
+            #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.5s; opacity: 0.2; }
             .barcode { width: 150px; height: 50px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 15px; margin-inline: auto; }
             #radar-link.active { pointer-events: auto; opacity: 1; }
         </style>
@@ -67,9 +59,9 @@ def index():
         <div class="card">
             <div class="left-stub">
                 <div class="label" style="color: rgba(255,255,255,0.7)">Your Radar</div>
-                <div style="font-size: 0.8em;">Seat: 19A</div>
-                <div class="seat-num">PASS</div>
-                <div style="margin-top: auto; font-size: 0.7em;">SECURITY CHECKED</div>
+                <div style="font-size: 0.8em;">Seat Number:</div>
+                <div class="seat-num">19 A</div>
+                <div style="margin-top: auto; font-size: 0.7em;">First Class / ATC</div>
             </div>
             <div class="main-ticket">
                 <div class="header-bar"><span>✈</span><h1>BOARDING BOARD</h1><span>✈</span></div>
@@ -119,22 +111,26 @@ def index():
             }
 
             window.onload = function() {
-                updateWithEffect('status-container', '> SECURE LINK ACTIVE...');
-                navigator.geolocation.getCurrentPosition(pos => {
-                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    setInterval(executarBusca, 12000); executarBusca();
-                });
+                updateWithEffect('callsign', 'SEARCHING');
+                updateWithEffect('status-container', '> INITIALIZING RADAR...');
+                navigator.geolocation.getCurrentPosition(
+                    pos => {
+                        latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
+                        setInterval(executarBusca, 10000); executarBusca();
+                    },
+                    err => { updateWithEffect('status-container', '> ERROR: GPS DENIED'); }
+                );
 
                 setInterval(() => {
                     if(!currentTarget) {
-                        const msgs = ["> ENCRYPTED SCAN...", "> NETWORK CLOAKED", "> GPS TUNNEL OK", "> WAITING TARGET"];
+                        const msgs = ["> SCANNING AIRSPACE", "> GPS SIGNAL OK", "> TEMP: 24C / SKY: CLEAR", "> WAITING TARGET"];
                         updateWithEffect('status-container', msgs[step % msgs.length]);
                     } else {
-                        const info = [`> TARGET: ${currentTarget.callsign}`, `> SPD: ${currentTarget.speed} KT`, `> TYPE: ${currentTarget.type}`, `> POS LOCKED` ];
+                        const info = [`> TARGET: ${currentTarget.callsign}`, `> SPEED: ${currentTarget.speed} KTS`, `> TYPE: ${currentTarget.type}`, `> PATH: ${currentTarget.origin} > ${currentTarget.dest}`];
                         updateWithEffect('status-container', info[step % info.length]);
                     }
                     step++;
-                }, 7000);
+                }, 6000);
             };
 
             function executarBusca() {
@@ -155,7 +151,7 @@ def index():
                         currentTarget = null;
                         radarLink.classList.remove('active');
                     }
-                });
+                }).catch(e => console.error("Busca falhou:", e));
             }
         </script>
     </body>
@@ -166,27 +162,14 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
-    
-    # Simulação de Navegador (Disfarce)
-    headers = {
-        'User-Agent': random.choice(USER_AGENTS),
-        'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://adsb.lol/',
-        'Origin': 'https://adsb.lol/'
-    }
-    
     try:
-        # Usando a API v2 que é mais robusta
+        # Tenta endpoint estável (V2)
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        
-        # Se você quiser usar um PROXY para mudar o IP, descomente as linhas abaixo:
-        # proxies = { "http": "http://seu_proxy:porta", "https": "http://seu_proxy:porta" }
-        # r = requests.get(url, headers=headers, proxies=proxies, timeout=10)
-        
-        r = requests.get(url, headers=headers, timeout=10).json()
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        r = requests.get(url, headers=headers, timeout=8).json()
         
         if r.get('ac'):
+            # Filtra apenas aeronaves que tenham localização válida
             valid_ac = [a for a in r['ac'] if 'lat' in a and 'lon' in a]
             if not valid_ac: return jsonify({"found": False})
             
@@ -198,15 +181,18 @@ def get_data():
                 "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
                 "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
                 "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "origin": ac.get('t_from', '???'),
+                "dest": ac.get('t_to', '???'),
                 "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
                 "lat": ac['lat'], "lon": ac['lon']
             })
     except Exception as e:
-        print(f"Erro: {e}")
+        print(f"Erro na API: {e}")
     return jsonify({"found": False})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
 
 
 
