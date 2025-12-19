@@ -28,22 +28,17 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>ATC Radar Boarding Pass</title>
+        <title>ATC Radar Pro</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
             body { 
-                background-color: var(--bg-dark); 
-                margin: 0; padding: 0; 
-                display: flex; flex-direction: column;
-                align-items: center; justify-content: center; 
-                min-height: 100vh;
-                font-family: 'Courier New', monospace;
-                overflow: hidden;
+                background-color: var(--bg-dark); margin: 0; padding: 0; 
+                display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            /* EFEITO DE LETRAS GIRANDO (FLIP) */
             .flip { display: inline-block; animation: flipAnim 0.4s ease; }
             @keyframes flipAnim {
                 0% { transform: rotateX(0deg); opacity: 1; }
@@ -52,18 +47,15 @@ def index():
             }
 
             #search-box { 
-                display: none; width: 90%; max-width: 500px;
-                background: rgba(255,255,255,0.1);
+                display: none; width: 90%; max-width: 500px; background: rgba(255,255,255,0.1);
                 padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--warning-gold); gap: 8px; z-index: 100;
             }
             #search-box input { flex: 1; background: #000; border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; }
             #search-box button { background: var(--warning-gold); color: #000; border: none; padding: 10px 15px; font-weight: 900; border-radius: 6px; }
 
             .card { 
-                background: var(--air-blue); 
-                width: 95%; max-width: 620px;
-                border-radius: 20px; position: relative; 
-                box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
+                background: var(--air-blue); width: 95%; max-width: 620px;
+                border-radius: 20px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
                 overflow: hidden; transform: scale(0.96);
             }
 
@@ -74,31 +66,29 @@ def index():
 
             .white-area { 
                 background: #fdfdfd; margin: 0 10px; position: relative; 
-                display: flex; padding: 20px 15px; min-height: 270px; border-radius: 4px; 
+                display: flex; padding: 25px 15px; min-height: 240px; border-radius: 4px; 
             }
 
             .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
             .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #888; font-size: 0.60em; font-weight: 800; text-transform: uppercase; margin-bottom: 1px; }
-            .value { font-size: 1.1em; font-weight: 900; color: var(--air-blue); margin-bottom: 8px; min-height: 1.2em; }
+            .label { color: #888; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+            .value { font-size: 1.3em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; min-height: 1.2em; }
             
             #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.4em; }
             
             .barcode { 
-                height: 45px; 
-                background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); 
+                height: 50px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); 
                 width: 100%; margin: 8px 0 4px 0; border: 1px solid #eee; 
             }
 
-            /* ESCALA DE SINAL */
             .signal-area { width: 100%; text-align: center; margin-top: 5px; }
             #signal-text { font-size: 8px; color: #888; font-weight: bold; display: block; }
             #signal-bars { color: var(--air-blue); font-weight: 900; font-size: 12px; letter-spacing: 2px; }
 
-            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); min-height: 85px; }
+            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); min-height: 90px; }
             .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 12px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.72em; font-weight: bold; text-transform: uppercase; text-align: center; }
+            .status-msg { color: var(--warning-gold); font-size: 0.75em; font-weight: bold; text-transform: uppercase; text-align: center; padding: 0 15px; letter-spacing: 1px; }
         </style>
     </head>
     <body>
@@ -114,15 +104,11 @@ def index():
             <div class="header">✈ ATC BOARDING PASS ✈</div>
             <div class="white-area">
                 <div class="col-left">
-                    <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">---</div></div>
-                    <div><div class="label">FLIGHT PATH (FROM/TO)</div><div id="route" class="value">--- / ---</div></div>
-                    <div><div class="label">AIRCRAFT TYPE / GS</div><div id="type_speed" class="value">--- / ---</div></div>
-                    <div><div class="label">AIRCRAFT DISTANCE</div><div id="dist_body" class="value">---</div></div>
+                    <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div></div>
+                    <div><div class="label">AIRCRAFT DISTANCE</div><div id="dist_body" class="value">-- KM</div></div>
+                    <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value">00000 FT</div></div>
                 </div>
                 <div class="col-right">
-                    <div class="label">ALTITUDE (MSL)</div>
-                    <div id="alt" class="value" style="font-size: 1.2em;">0 FT</div>
-                    
                     <div class="label">BEARING</div>
                     <div class="value"><span id="compass">↑</span></div>
                     
@@ -138,21 +124,22 @@ def index():
             </div>
             <div class="footer">
                 <div class="yellow-lines"></div>
-                <div id="status" class="status-msg">INITIALIZING RADAR...</div>
+                <div id="status" class="status-msg">SCANNING AIRSPACE...</div>
             </div>
         </div>
 
         <script>
             let latAlvo = null, lonAlvo = null;
             let statusIndex = 0;
-            const statusMsgs = [
+            let currentTarget = null;
+
+            const systemMsgs = [
                 "RADAR SWEEP ACTIVE: 25KM",
                 "VISIBILITY: CAVOK (10KM+)",
                 "ATC TRANSCEIVER: ONLINE",
                 "TEMP: 24°C / QNH: 1013hPa"
             ];
 
-            // FUNÇÃO QUE FAZ O EFEITO DE GIRAR O TEXTO
             function updateWithEffect(id, newValue) {
                 const el = document.getElementById(id);
                 if (el.innerText !== newValue) {
@@ -166,12 +153,22 @@ def index():
                     iniciarRadar();
                 }, () => { document.getElementById('search-box').style.display = "flex"; });
                 
-                // ATC CYCLE (ALTERNA AS MENSAGENS)
+                // CICLO DE STATUS (Rodapé Amarelo)
                 setInterval(() => {
                     const statusEl = document.getElementById('status');
-                    if(!statusEl.innerText.includes("TARGET ACQUIRED")) {
-                        statusEl.innerText = statusMsgs[statusIndex];
-                        statusIndex = (statusIndex + 1) % statusMsgs.length;
+                    if(!currentTarget) {
+                        // Modo Busca: Mostra mensagens de sistema
+                        statusEl.innerText = systemMsgs[statusIndex];
+                        statusIndex = (statusIndex + 1) % systemMsgs.length;
+                    } else {
+                        // Modo Alvo: Mostra dados da aeronave em ciclo
+                        const flightMsgs = [
+                            `TARGET ACQUIRED: ${currentTarget.callsign}`,
+                            `ROUTE: ${currentTarget.origin} TO ${currentTarget.dest}`,
+                            `AIRCRAFT: ${currentTarget.type} | GS: ${currentTarget.speed} KTS`
+                        ];
+                        statusEl.innerText = flightMsgs[statusIndex % 3];
+                        statusIndex++;
                     }
                 }, 3000);
             };
@@ -186,21 +183,20 @@ def index():
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
                 .then(res => res.json()).then(data => {
                     if(data.found) {
+                        currentTarget = data;
                         updateWithEffect('callsign', data.callsign);
-                        updateWithEffect('route', data.origin + " / " + data.dest);
-                        updateWithEffect('type_speed', data.type + " / " + data.speed + " KTS");
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
                         
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-                        document.getElementById('status').innerText = "TARGET ACQUIRED: " + data.callsign;
 
-                        // ESCALA DE SINAL ATUALIZADA
                         let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
                         document.getElementById('signal-bars').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                     } else {
+                        currentTarget = null;
                         updateWithEffect('callsign', "SEARCHING");
+                        document.getElementById('dist_body').innerText = "-- KM";
                         document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                     }
                 });
@@ -235,6 +231,7 @@ def get_data():
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
                 dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
                 
+                # Dados para o ciclo amarelo
                 origin = ac.get('t_from', 'N/A').split(' ')[0]
                 dest = ac.get('t_to', 'N/A').split(' ')[0]
                 type_ac = ac.get('t', 'UNKN')
@@ -257,6 +254,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
