@@ -5,7 +5,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-RAIO_KM = 100.0  
+RAIO_KM = 120.0  
 USER_AGENTS = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X)"]
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -33,30 +33,33 @@ def index():
         <title>Visual Radar Pro - Campos</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
-            body { background-color: var(--bg-dark); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
+            body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
             
+            #search-box { display: none; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--warning-gold); width: 90%; max-width: 600px; gap: 10px; z-index: 100; animation: fadeIn 0.5s; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+            
+            input { flex: 1; background: #000; border: 1px solid #333; padding: 12px; color: white; outline: none; border-radius: 5px; font-family: inherit; }
+            #search-box button { background: var(--warning-gold); color: #000; border: none; padding: 12px 20px; font-weight: 900; cursor: pointer; border-radius: 5px; }
+
             #scaler { width: 100%; display: flex; justify-content: center; align-items: center; transition: all 0.3s; }
 
             .card { background: var(--air-blue); width: 95%; max-width: 650px; border-radius: 25px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden; }
             
-            /* AJUSTE PARA TELA DEITADA */
             @media (orientation: landscape) and (max-height: 500px) {
-                #scaler { transform: scale(0.72); margin-top: -15px; }
-                .white-area { min-height: 220px !important; padding: 20px 30px !important; }
-                .plane-icon { font-size: 1.8em !important; } /* Aviões um pouco menores apenas no modo deitado para não quebrar */
+                #scaler { transform: scale(0.7); margin-top: -10px; }
+                #search-box { margin-bottom: 5px; padding: 8px; }
             }
 
             .notch { position: absolute; width: 44px; height: 44px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -22px; } .notch-right { right: -22px; }
 
-            /* CABEÇALHO COM AVIÕES MAIORES */
-            .header { padding: 25px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 15px; font-weight: 900; letter-spacing: 3px; font-size: 1.1em; }
-            .plane-icon { font-size: 2.4em; vertical-align: middle; display: inline-block; line-height: 0; }
+            .header { padding: 25px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 20px; font-weight: 900; letter-spacing: 5px; font-size: 1.1em; }
+            .plane-icon { font-size: 2.8em; vertical-align: middle; line-height: 0; }
 
             .white-area { background: #fdfdfd; margin: 0 12px; position: relative; display: flex; padding: 30px; min-height: 280px; border-radius: 2px; }
             
             .stamp { 
-                position: absolute; top: 55%; left: 45%; transform: translate(-50%, -50%) rotate(-12deg) scale(5); 
+                position: absolute; top: 50%; left: 45%; transform: translate(-50%, -50%) rotate(-12deg) scale(5); 
                 border: 4px double #d32f2f; color: #d32f2f; padding: 10px 20px; font-weight: 900; font-size: 1.8em; 
                 opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; pointer-events: none;
             }
@@ -68,7 +71,7 @@ def index():
             .label { color: #999; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
             .value { font-size: 1.65em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; }
             
-            #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.4em; color: var(--warning-gold); margin-left: 8px; }
+            #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.5em; color: var(--warning-gold); margin-left: 8px; }
             .barcode { height: 60px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
             
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
@@ -77,6 +80,12 @@ def index():
         </style>
     </head>
     <body onclick="audioAlerta.play().catch(()=>{})">
+        
+        <div id="search-box">
+            <input type="text" id="endereco" placeholder="DIGITE CIDADE OU COORDENADAS...">
+            <button onclick="buscarEndereco()">ATIVAR</button>
+        </div>
+
         <div id="scaler">
             <div class="card">
                 <div class="notch notch-left"></div>
@@ -103,24 +112,40 @@ def index():
                 </div>
                 <div class="footer">
                     <div class="yellow-lines"></div>
-                    <div id="status" class="status-msg">RADAR SCANNING...</div>
+                    <div id="status" class="status-msg">WAITING FOR GPS...</div>
                 </div>
             </div>
         </div>
 
         <script>
             const audioAlerta = new Audio('https://www.soundjay.com/buttons/beep-07a.mp3');
-            let latAlvo, lonAlvo, targetLock = false;
+            let latAlvo = null, lonAlvo = null, targetLock = false;
 
             window.onload = function() {
+                // Se o GPS não responder em 3s, mostra a busca
+                const gpsTimeout = setTimeout(() => {
+                    if(!latAlvo) document.getElementById('search-box').style.display = "flex";
+                }, 3000);
+
                 navigator.geolocation.getCurrentPosition(pos => {
+                    clearTimeout(gpsTimeout);
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    setInterval(executarBusca, 10000);
-                }, () => { latAlvo = -21.76; lonAlvo = -41.33; setInterval(executarBusca, 10000); });
+                    iniciarRadar();
+                }, () => {
+                    document.getElementById('search-box').style.display = "flex";
+                });
             };
 
+            function iniciarRadar() {
+                document.getElementById('status').innerText = "RADAR SCANNING...";
+                executarBusca();
+                setInterval(executarBusca, 10000);
+            }
+
             function executarBusca() {
-                fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}`).then(res => res.json()).then(data => {
+                if(!latAlvo) return;
+                fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
+                .then(res => res.json()).then(data => {
                     if(data.found) {
                         document.getElementById('callsign').innerText = data.callsign;
                         document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
@@ -145,6 +170,19 @@ def index():
                         document.getElementById('status').innerText = "RADAR SCANNING...";
                     }
                 });
+            }
+
+            async function buscarEndereco() {
+                const q = document.getElementById('endereco').value;
+                if(!q) return;
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
+                const data = await res.json();
+                if(data.length > 0) {
+                    latAlvo = parseFloat(data[0].lat); 
+                    lonAlvo = parseFloat(data[0].lon);
+                    document.getElementById('search-box').style.display = "none";
+                    iniciarRadar();
+                }
             }
         </script>
     </body>
@@ -171,6 +209,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
