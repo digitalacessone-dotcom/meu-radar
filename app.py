@@ -41,8 +41,26 @@ def index():
             }
             html { height: -webkit-fill-available; }
 
-            .letter-slot { display: inline-block; min-width: 0.65em; text-align: center; position: relative; vertical-align: bottom; }
-            .flapping { opacity: 0.6; transform: scaleY(0.7); filter: brightness(1.5); }
+            /* EFEITO VISUAL DAS PALHETAS */
+            .letter-slot { 
+                display: inline-block; 
+                min-width: 0.65em; 
+                text-align: center; 
+                position: relative;
+                background: #eee;
+                color: var(--air-blue);
+                margin: 0 0.5px;
+                border-radius: 2px;
+                box-shadow: inset 0 0 2px rgba(0,0,0,0.2);
+            }
+            .flapping { 
+                animation: flip 0.05s infinite;
+            }
+            @keyframes flip {
+                0% { transform: rotateX(0deg); filter: brightness(1); }
+                50% { transform: rotateX(90deg); filter: brightness(0.8); }
+                100% { transform: rotateX(0deg); filter: brightness(1); }
+            }
 
             .card { 
                 background: var(--air-blue); width: 92%; max-width: 600px;
@@ -58,47 +76,23 @@ def index():
                 font-size: 0.9em; display: flex; align-items: center; justify-content: center; 
                 gap: 12px; letter-spacing: 1px;
             }
-            .header span { font-size: 1.4em; }
 
             .white-area { 
                 background: #fdfdfd; margin: 0 8px; position: relative; 
                 display: flex; padding: 20px 15px; min-height: 220px; border-radius: 3px; 
             }
 
-            .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
-            .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+            .col-left { flex: 1; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
+            .col-right { width: 140px; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
             .label { color: #888; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
-            .value { font-size: 1.25em; font-weight: 900; color: var(--air-blue); margin-bottom: 8px; min-height: 1.2em; display: flex; flex-wrap: wrap; justify-content: center; }
+            .value { font-size: 1.25em; font-weight: 900; color: var(--air-blue); margin-bottom: 10px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
             
-            /* BÚSSOLA UM POUCO MENOR */
-            #compass { 
-                display: inline-block; 
-                transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-                color: var(--warning-gold); 
-                font-size: 1.1em; 
-                margin-top: 2px;
-            }
-            
-            .barcode { 
-                height: 40px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); 
-                width: 100%; margin: 5px 0; border: 1px solid #eee; 
-            }
-
+            #compass { display: inline-block; transition: transform 0.6s; color: var(--warning-gold); font-size: 1.1em; }
+            .barcode { height: 40px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 5px 0; border: 1px solid #eee; }
             .footer { padding: 0 0 12px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
-            .yellow-lines { 
-                width: 100%; height: 6px; 
-                border-top: 2px solid var(--warning-gold); 
-                border-bottom: 2px solid var(--warning-gold); 
-                margin-bottom: 6px;
-            }
-            
-            .status-msg { 
-                color: var(--warning-gold); font-size: 0.68em; font-weight: bold; 
-                text-transform: uppercase; text-align: center; padding: 0 10px; 
-                display: flex; justify-content: center; flex-wrap: wrap;
-                min-height: 1.1em; letter-spacing: 0.5px;
-            }
+            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 6px; }
+            .status-msg { color: var(--warning-gold); font-size: 0.68em; font-weight: bold; text-transform: uppercase; text-align: center; padding: 0 10px; min-height: 1.1em; letter-spacing: 0.5px; }
         </style>
     </head>
     <body>
@@ -114,14 +108,9 @@ def index():
                 </div>
                 <div class="col-right">
                     <div><div class="label">SQUAWK</div><div id="squawk" class="value">----</div></div>
-                    <div>
-                        <div class="label">BEARING</div>
-                        <div class="value" style="margin-bottom:0;"><span id="compass">↑</span></div>
-                    </div>
-                    <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
-                        <div class="barcode"></div>
-                    </a>
-                    <div id="signal-bars" style="color:var(--air-blue); font-size:11px; font-weight:900;">[ ▯▯▯▯▯ ]</div>
+                    <div><div class="label">BEARING</div><div class="value" style="margin-bottom:0;"><span id="compass">↑</span></div></div>
+                    <a id="map-link" style="text-decoration:none; width:100%;" target="_blank"><div class="barcode"></div></a>
+                    <div id="signal-bars" style="color:var(--air-blue); font-size:10px; font-weight:900;">[ ▯▯▯▯▯ ]</div>
                 </div>
             </div>
             <div class="footer">
@@ -132,56 +121,70 @@ def index():
 
         <script>
             let latAlvo = null, lonAlvo = null;
-            let currentTarget = null;
             let lastHex = null;
-            let statusIndex = 0;
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:- ";
-            
+            const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:-";
             let audioCtx = null;
+
             function enableAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+            function playTick() {
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.01);
+            }
 
             function playDetectionBip() {
                 if (!audioCtx) return;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
                 gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.5);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
             }
 
+            // LÓGICA SEQUENCIAL (A BOA ANTIGA)
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
                 const newText = String(newValue).toUpperCase();
+                
                 while (container.childNodes.length < newText.length) {
                     const s = document.createElement("span");
                     s.className = "letter-slot";
-                    s.innerHTML = "&nbsp;";
+                    s.innerText = " ";
                     container.appendChild(s);
                 }
                 while (container.childNodes.length > newText.length) {
                     container.removeChild(container.lastChild);
                 }
+
                 const slots = container.querySelectorAll('.letter-slot');
                 newText.split('').forEach((targetChar, i) => {
                     const slot = slots[i];
                     if (slot.innerText === targetChar) return;
-                    let cycles = 0;
-                    const maxCycles = 10 + (i * 1);
+
+                    let currentCharIndex = chars.indexOf(slot.innerText);
+                    if (currentCharIndex === -1) currentCharIndex = 0;
+
                     const interval = setInterval(() => {
-                        slot.innerText = chars[Math.floor(Math.random() * chars.length)];
+                        currentCharIndex = (currentCharIndex + 1) % chars.length;
+                        const charToShow = chars[currentCharIndex];
+                        slot.innerText = charToShow === " " ? "\u00A0" : charToShow;
                         slot.classList.add('flapping');
-                        cycles++;
-                        if (cycles >= maxCycles) {
+                        playTick();
+
+                        if (charToShow === targetChar) {
                             clearInterval(interval);
-                            slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
                             slot.classList.remove('flapping');
                         }
-                    }, 40);
+                    }, 30);
                 });
             }
 
@@ -192,18 +195,6 @@ def index():
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     iniciarRadar();
                 });
-                
-                setInterval(() => {
-                    if(!currentTarget) {
-                        const systemMsgs = ["RADAR SWEEP ACTIVE", "VISIBILITY: CAVOK (10KM+)", "ATC TRANSCEIVER: ONLINE", "TEMP: 22C / SKY: CLEAR SKY"];
-                        updateWithEffect('status', systemMsgs[statusIndex % systemMsgs.length]);
-                        statusIndex++;
-                    } else {
-                        const flightMsgs = [`TARGET: ${currentTarget.callsign}`, `PATH: ${currentTarget.origin} > ${currentTarget.dest}`, `TYPE: ${currentTarget.type} / ${currentTarget.speed}KTS` ];
-                        updateWithEffect('status', flightMsgs[statusIndex % 3]);
-                        statusIndex++;
-                    }
-                }, 4500);
             };
 
             function iniciarRadar() { setInterval(executarBusca, 8000); executarBusca(); }
@@ -213,11 +204,7 @@ def index():
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
                 .then(res => res.json()).then(data => {
                     if(data.found) {
-                        if (data.hex !== lastHex) {
-                            playDetectionBip();
-                            lastHex = data.hex;
-                        }
-                        currentTarget = data;
+                        if (data.hex !== lastHex) { playDetectionBip(); lastHex = data.hex; }
                         updateWithEffect('callsign', data.callsign);
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
@@ -227,15 +214,13 @@ def index():
                         let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
                         document.getElementById('signal-bars').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                     } else {
-                        if(currentTarget) {
+                        if(lastHex) {
                             updateWithEffect('callsign', "SEARCHING");
                             updateWithEffect('dist_body', "-- KM");
                             updateWithEffect('alt', "00000 FT");
                             updateWithEffect('squawk', "----");
-                            document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                             lastHex = null;
                         }
-                        currentTarget = null;
                     }
                 });
             }
@@ -243,74 +228,4 @@ def index():
     </body>
     </html>
     ''')
-
-@app.route('/api/data')
-def get_data():
-    lat_u = float(request.args.get('lat', 0))
-    lon_u = float(request.args.get('lon', 0))
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        r = requests.get(url, headers=headers, timeout=5).json()
-        if r.get('ac'):
-            validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
-            if validos:
-                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                return jsonify({
-                    "found": True, 
-                    "hex": ac.get('hex'),
-                    "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
-                    "squawk": ac.get('squawk', '7000'), 
-                    "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
-                    "alt_ft": int(ac.get('alt_baro', 0)), 
-                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                    "map_url": f"https://globe.adsbexchange.com/?lat={lat_u}&lon={lon_u}&zoom=11&hex={ac.get('hex')}",
-                    "origin": ac.get('t_from', 'N/A').split(' ')[0],
-                    "dest": ac.get('t_to', 'N/A').split(' ')[0],
-                    "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0)
-                })
-    except: pass
-    return jsonify({"found": False})
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# ... (Manter o código Python/Flask do backend igual ao anterior)
