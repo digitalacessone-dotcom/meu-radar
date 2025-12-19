@@ -4,7 +4,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# CONFIGURAÇÃO DE RAIO: 25KM
+# O radar continua buscando em um raio de 25km
 RAIO_KM = 25.0 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -29,7 +29,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>Radar Boarding Pass - iPhone 15 Pro</title>
+        <title>Radar Boarding Pass - Pro</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -45,8 +45,7 @@ def index():
             }
 
             #search-box { 
-                display: none; 
-                width: 90%; max-width: 500px;
+                display: none; width: 90%; max-width: 500px;
                 background: rgba(255,255,255,0.1);
                 padding: 10px; border-radius: 12px;
                 margin-bottom: 15px; border: 1px solid var(--warning-gold);
@@ -94,14 +93,14 @@ def index():
             
             .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 15px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.75em; font-weight: bold; text-transform: uppercase; text-align: center; padding: 0 10px; }
+            .status-msg { color: var(--warning-gold); font-size: 0.75em; font-weight: bold; text-transform: uppercase; text-align: center; }
         </style>
     </head>
     <body>
         
         <div id="search-box">
-            <input type="text" id="endereco" placeholder="ENTER CITY OR ZIP CODE...">
-            <button onclick="buscarEndereco()">ACTIVATE</button>
+            <input type="text" id="endereco" placeholder="ENTER CITY OR ZIP...">
+            <button onclick="buscarEndereco()">OK</button>
         </div>
 
         <div class="card">
@@ -111,12 +110,12 @@ def index():
             <div class="white-area">
                 <div class="col-left">
                     <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div></div>
-                    <div><div class="label">ACTIVE RADAR RANGE</div><div class="value">25 KM</div></div>
+                    <div><div class="label">AIRCRAFT DISTANCE</div><div id="dist_body" class="value">-- KM</div></div>
                     <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value">00000 FT</div></div>
                 </div>
                 <div class="col-right">
                     <div class="label">RANGE / BEARING</div>
-                    <div class="value"><span id="dist">0.0 KM</span> <span id="compass">↑</span></div>
+                    <div class="value"><span id="dist_side">0.0 KM</span> <span id="compass">↑</span></div>
                     
                     <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
                         <div class="barcode"></div>
@@ -130,7 +129,7 @@ def index():
             </div>
             <div class="footer">
                 <div class="yellow-lines"></div>
-                <div id="status" class="status-msg">SCANNING AIRSPACE (25KM)...</div>
+                <div id="status" class="status-msg">SCANNING AIRSPACE...</div>
             </div>
         </div>
 
@@ -156,7 +155,11 @@ def index():
                     if(data.found) {
                         document.getElementById('callsign').innerText = data.callsign;
                         document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
-                        document.getElementById('dist').innerText = data.dist + " KM";
+                        
+                        // Atualizando a distância nos dois lugares
+                        document.getElementById('dist_body').innerText = data.dist + " KM";
+                        document.getElementById('dist_side').innerText = data.dist + " KM";
+                        
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
                         document.getElementById('status').innerText = "TARGET ACQUIRED: " + data.callsign;
@@ -164,9 +167,10 @@ def index():
                         let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
                         document.getElementById('signal-bars').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                     } else {
-                        document.getElementById('status').innerText = "RADAR SWEEP ACTIVE (25KM)...";
+                        document.getElementById('status').innerText = "RADAR SWEEP ACTIVE...";
                         document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                         document.getElementById('callsign').innerText = "SEARCHING";
+                        document.getElementById('dist_body').innerText = "-- KM";
                     }
                 });
             }
@@ -190,7 +194,7 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
-    headers = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"}
+    headers = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"}
     try:
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, headers=headers, timeout=5).json()
@@ -200,7 +204,6 @@ def get_data():
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
                 dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
                 
-                # Link otimizado com foco e seleção
                 map_url = (f"https://globe.adsbexchange.com/?"
                            f"lat={lat_u}&lon={lon_u}&zoom=11"
                            f"&hex={ac.get('hex', '')}"
@@ -220,6 +223,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
