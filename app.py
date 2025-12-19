@@ -80,7 +80,7 @@ def index():
         <div class="card">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
-            <div class="header"><span>✈</span> FLIGHT PASS <span>✈</span></div>
+            <div class="header"><span>✈</span> BOARDING PASS <span>✈</span></div>
             <div class="white-area">
                 <div class="stamp" id="carimbo">VISUAL CONTACT</div>
                 <div class="col-left">
@@ -138,7 +138,6 @@ def index():
                 executarBusca();
                 setInterval(executarBusca, 10000);
                 setInterval(() => {
-                    // MENSAGENS POR EXTENSO (SEM ABREVIAÇÕES)
                     const searchMsgs = !targetLock ? 
                         ["SCANNING LIVE AIRSPACE", "RADAR SYSTEM ACTIVE", `TEMPERATURE: ${weatherData.temp} CELSIUS`, `VISIBILITY: ${weatherData.vis} KILOMETERS`, `SKY CONDITION: ${weatherData.desc}`] :
                         ["TARGET LOCKED", `CALLSIGN: ${flightData.callsign}`, `SPEED: ${flightData.speed} KM/H`, "VISUAL CONTACT ACTIVE", `VISIBILITY: ${weatherData.vis} KM` ];
@@ -232,6 +231,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
