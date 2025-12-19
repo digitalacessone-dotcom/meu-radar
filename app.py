@@ -66,16 +66,9 @@ def index():
             .notch-left { left: -15px; } .notch-right { right: -15px; }
 
             .header { 
-                padding: 10px 0; 
-                text-align: center; 
-                color: white; 
-                font-weight: 900; 
-                font-size: 0.9em;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 12px;
-                letter-spacing: 1px;
+                padding: 10px 0; text-align: center; color: white; font-weight: 900; 
+                font-size: 0.9em; display: flex; align-items: center; justify-content: center; 
+                gap: 12px; letter-spacing: 1px;
             }
             .header span { font-size: 1.4em; }
 
@@ -97,19 +90,11 @@ def index():
                 width: 100%; margin: 5px 0; border: 1px solid #eee; 
             }
 
-            /* RODAPÉ COM FAIXAS AMARELAS MAIS ESPESSAS */
-            .footer { 
-                padding: 0 0 12px 0; 
-                display: flex; 
-                flex-direction: column; 
-                align-items: center; 
-                background: var(--air-blue);
-            }
+            .footer { padding: 0 0 12px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { 
-                width: 100%; 
-                height: 6px; /* Aumentado */
-                border-top: 2px solid var(--warning-gold); /* Aumentado de 1px para 2px */
-                border-bottom: 2px solid var(--warning-gold); /* Aumentado de 1px para 2px */
+                width: 100%; height: 6px; 
+                border-top: 2px solid var(--warning-gold); 
+                border-bottom: 2px solid var(--warning-gold); 
                 margin-bottom: 6px;
             }
             
@@ -128,12 +113,10 @@ def index():
             <button onclick="buscarEndereco()">GO</button>
         </div>
 
-        <div class="card">
+        <div class="card" onclick="enableAudio()">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
-            <div class="header">
-                <span>✈</span> BOARDING BOARD <span>✈</span>
-            </div>
+            <div class="header"><span>✈</span> BOARDING BOARD <span>✈</span></div>
             <div class="white-area">
                 <div class="col-left">
                     <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value"></div></div>
@@ -160,6 +143,25 @@ def index():
             let currentTarget = null;
             let statusIndex = 0;
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:- ";
+            
+            // LÓGICA DO BIP MECÂNICO
+            let audioCtx = null;
+            function enableAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+            function playTick() {
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.03);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.03);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.03);
+            }
 
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
@@ -182,6 +184,7 @@ def index():
                     const interval = setInterval(() => {
                         slot.innerText = chars[Math.floor(Math.random() * chars.length)];
                         slot.classList.add('flapping');
+                        playTick(); // O som toca a cada mudança de caractere
                         cycles++;
                         if (cycles >= maxCycles) {
                             clearInterval(interval);
@@ -202,30 +205,18 @@ def index():
                 
                 setInterval(() => {
                     if(!currentTarget) {
-                        const systemMsgs = [
-                            "RADAR SWEEP ACTIVE",
-                            "VISIBILITY: CAVOK (10KM+)",
-                            "ATC TRANSCEIVER: ONLINE",
-                            "TEMP: 22C / SKY: CLEAR SKY"
-                        ];
+                        const systemMsgs = ["RADAR SWEEP ACTIVE", "VISIBILITY: CAVOK (10KM+)", "ATC TRANSCEIVER: ONLINE", "TEMP: 22C / SKY: CLEAR SKY"];
                         updateWithEffect('status', systemMsgs[statusIndex % systemMsgs.length]);
                         statusIndex++;
                     } else {
-                        const flightMsgs = [
-                            `TARGET: ${currentTarget.callsign}`,
-                            `PATH: ${currentTarget.origin} > ${currentTarget.dest}`,
-                            `TYPE: ${currentTarget.type} / ${currentTarget.speed}KTS`
-                        ];
+                        const flightMsgs = [`TARGET: ${currentTarget.callsign}`, `PATH: ${currentTarget.origin} > ${currentTarget.dest}`, `TYPE: ${currentTarget.type} / ${currentTarget.speed}KTS` ];
                         updateWithEffect('status', flightMsgs[statusIndex % 3]);
                         statusIndex++;
                     }
                 }, 4500);
             };
 
-            function iniciarRadar() {
-                setInterval(executarBusca, 8000);
-                executarBusca();
-            }
+            function iniciarRadar() { setInterval(executarBusca, 8000); executarBusca(); }
 
             function executarBusca() {
                 if(!latAlvo) return;
@@ -292,6 +283,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
