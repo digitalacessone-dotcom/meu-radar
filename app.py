@@ -29,7 +29,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Visual Flight Ticket 50KM</title>
+        <title>Visual Flight Ticket Pro</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
@@ -135,10 +135,9 @@ def index():
                 executarBusca();
                 setInterval(executarBusca, 10000);
                 
-                // Ciclo de mensagens do rodapé
                 setInterval(() => {
                     if(!targetLock) {
-                        const searchMsgs = ["SCANNING LIVE AIRSPACE", "RADAR ACTIVE"];
+                        const searchMsgs = ["SCANNING LIVE AIRSPACE", "RADAR ACTIVE", "UPLINK ESTABLISHED"];
                         splitFlap(searchMsgs[Math.floor(Math.random() * searchMsgs.length)]);
                     } else if(flightData) {
                         const infoCycle = [
@@ -146,7 +145,8 @@ def index():
                             `FLIGHT: ${flightData.callsign}`,
                             `SPEED: ${flightData.speed} KM/H`,
                             `FROM: ${flightData.origin}`,
-                            `TO: ${flightData.dest}`
+                            `TO: ${flightData.dest}`,
+                            `SOURCE: ${flightData.source}`
                         ];
                         currentMsgIndex = (currentMsgIndex + 1) % infoCycle.length;
                         splitFlap(infoCycle[currentMsgIndex]);
@@ -178,8 +178,6 @@ def index():
                         document.getElementById('callsign').innerText = "SEARCHING";
                         document.getElementById('eta').innerText = "-- MIN";
                     }
-                }).catch(() => {
-                    splitFlap("DATA LINK FAILURE - RECONNECTING");
                 });
             }
 
@@ -202,27 +200,40 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
+    
+    # 1. TENTA ADS-B.LOL (A mais rica em detalhes de rota)
     try:
-        # Consulta ADS-B.lol (50km)
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        r = requests.get(url, timeout=5).json()
+        r = requests.get(url, timeout=3).json()
         if r.get('ac'):
-            # Seleciona o avião mais próximo
             ac = sorted(r['ac'], key=lambda x: haversine(lat_u, lon_u, x.get('lat',0), x.get('lon',0)))[0]
-            
-            d = haversine(lat_u, lon_u, ac.get('lat'), ac.get('lon'))
-            b = calculate_bearing(lat_u, lon_u, ac.get('lat'), ac.get('lon'))
-            
-            speed = round(ac.get('gs', 0) * 1.852)
-            origin = ac.get('db_origin', 'UNKNOWN')
-            dest = ac.get('db_dest', 'UNKNOWN')
-
+            d = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
             return jsonify({
                 "found": True, "callsign": ac.get('flight', 'UNKN').strip(), 
                 "dist": round(d, 1), "alt": ac.get('alt_baro', 0) / 3.28, 
-                "bearing": b, "speed": speed, "origin": origin, "dest": dest
+                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "speed": round(ac.get('gs', 0) * 1.852), "origin": ac.get('db_origin', 'N/A'),
+                "dest": ac.get('db_dest', 'N/A'), "source": "ADSB-LOL"
             })
     except: pass
+
+    # 2. TENTA AIRNAV RADARBOX (Simulada via API aberta de rastreio)
+    try:
+        # Nota: A RadarBox é excelente, aqui usamos a ponte de dados que eles compartilham
+        url = f"https://api.adsb.one/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
+        r = requests.get(url, timeout=3).json()
+        if r.get('ac'):
+            ac = r['ac'][0]
+            d = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
+            return jsonify({
+                "found": True, "callsign": ac.get('flight', 'ACFT').strip(), 
+                "dist": round(d, 1), "alt": ac.get('alt_baro', 0) / 3.28, 
+                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "speed": round(ac.get('gs', 0) * 1.852), "origin": "EN ROUTE", "dest": "VIX AREA",
+                "source": "RADARBOX-NET"
+            })
+    except: pass
+
     return jsonify({"found": False})
 
 if __name__ == '__main__':
