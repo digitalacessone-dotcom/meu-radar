@@ -21,27 +21,27 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Radar Boarding Pass</title>
+        <title>Flight Manifest Boarding Pass</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
-            body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; }
+            body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow-x: hidden; }
             
-            /* Busca - Oculta por padrão */
-            #search-box { display: none; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid var(--warning-gold); width: 90%; max-width: 550px; gap: 10px; }
+            /* Busca: só aparece se o GPS falhar */
+            #search-box { display: none; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid var(--warning-gold); width: 90%; max-width: 550px; gap: 10px; z-index: 100; }
             input { flex: 1; background: #000; border: 1px solid #333; padding: 12px; color: white; font-weight: bold; outline: none; }
-            button { background: var(--warning-gold); color: #000; border: none; padding: 12px 20px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+            button { background: var(--warning-gold); color: #000; border: none; padding: 12px 20px; font-weight: 900; cursor: pointer; }
 
-            /* O TICKET (Réplica 1:1) */
-            .card { background: var(--air-blue); width: 95%; max-width: 650px; border-radius: 25px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden; padding-bottom: 10px; }
+            /* O TICKET */
+            .card { background: var(--air-blue); width: 95%; max-width: 650px; border-radius: 25px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden; transition: transform 0.3s ease; }
             
             /* Meias-Luas Laterais */
             .notch { position: absolute; width: 44px; height: 44px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -22px; }
             .notch-right { right: -22px; }
 
-            /* Cabeçalho */
+            /* Cabeçalho com Aviões Grandes */
             .header { padding: 25px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 20px; font-weight: 900; letter-spacing: 5px; font-size: 1.2em; }
-            .header span { font-size: 2em; }
+            .header span { font-size: 2.2em; }
 
             /* Área Branca com Picotado */
             .white-area { background: #fdfdfd; margin: 0 12px; position: relative; display: flex; padding: 30px; min-height: 240px; border-radius: 2px; }
@@ -56,10 +56,20 @@ def index():
             .barcode { height: 70px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 12px 0; }
             .scan-info { font-size: 9px; font-weight: 900; color: #444; letter-spacing: 1.5px; }
 
-            /* Rodapé com as Duas Linhas Amarelas Paralelas */
+            /* Rodapé Azul com Linhas Amarelas */
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 10px; border-top: 2.5px solid var(--warning-gold); border-bottom: 2.5px solid var(--warning-gold); margin-bottom: 20px; box-sizing: border-box; }
-            .status-msg { color: var(--warning-gold); font-size: 0.95em; font-weight: bold; letter-spacing: 2.5px; min-height: 25px; text-transform: uppercase; }
+            .status-msg { color: var(--warning-gold); font-size: 0.95em; font-weight: bold; letter-spacing: 2.5px; min-height: 25px; text-transform: uppercase; text-align: center; width: 90%; }
+
+            /* AJUSTE PARA CELULAR DEITADO (LANDSCAPE) */
+            @media (max-height: 500px) and (orientation: landscape) {
+                .card { transform: scale(0.8); margin: -30px 0; }
+                .header { padding: 10px 0; }
+                .white-area { min-height: 180px; padding: 15px 30px; }
+                .footer { padding-bottom: 15px; }
+                .yellow-lines { margin-bottom: 10px; }
+                #search-box { margin-bottom: 10px; transform: scale(0.9); }
+            }
 
             @media (max-width: 500px) {
                 .white-area { flex-direction: column; padding: 25px; }
@@ -71,8 +81,8 @@ def index():
     <body onclick="ativarAlertas()">
         
         <div id="search-box">
-            <input type="text" id="endereco" placeholder="ENTER ICAO / CEP / CITY">
-            <button onclick="buscarEndereco()">ENGAGE</button>
+            <input type="text" id="endereco" placeholder="DIGITE LOCAL OU CEP...">
+            <button onclick="buscarEndereco()">ATIVAR</button>
         </div>
 
         <div class="card">
@@ -151,14 +161,12 @@ def index():
 
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
-                    // Sintonizou GPS: Esconde a barra
                     document.getElementById('search-box').style.display = "none";
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     systemTime = new Date().toLocaleTimeString();
                     rotacionar();
                     iniciarRadar();
                 }, () => {
-                    // GPS não sintonizado: Mostra a barra de busca
                     document.getElementById('search-box').style.display = "flex";
                     rotacionar();
                 });
@@ -184,6 +192,9 @@ def index():
                     } else {
                         targetLock = false;
                         document.getElementById('callsign').innerText = "SCANNING";
+                        document.getElementById('route').innerText = "--- / ---";
+                        document.getElementById('alt').innerText = "00000 FT";
+                        document.getElementById('dist').innerText = "0.0 KM";
                     }
                 });
             }
@@ -194,7 +205,7 @@ def index():
                 const data = await res.json();
                 if(data.length > 0) {
                     latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
-                    document.getElementById('search-box').style.display = "none"; // Esconde após digitar
+                    document.getElementById('search-box').style.display = "none";
                     iniciarRadar();
                 }
             }
@@ -202,7 +213,26 @@ def index():
     </body>
     </html>
     ''')
-# (O restante da rota /api/data permanece igual)
+
+@app.route('/api/data')
+def get_data():
+    lat_user = float(request.args.get('lat', 0))
+    lon_user = float(request.args.get('lon', 0))
+    try:
+        r = requests.get(API_URL, timeout=10).json()
+        for p in r.get('pilots', []):
+            lat, lon = p.get('latitude'), p.get('longitude')
+            if lat and lon:
+                d = haversine(lat_user, lon_user, lat, lon)
+                if d <= RAIO_KM:
+                    f = p.get('flight_plan', {})
+                    return jsonify({"found": True, "callsign": p.get('callsign'), "dep": f.get('departure', 'UNK'), "arr": f.get('arrival', 'UNK'), "dist": round(d, 1), "alt": p.get('altitude', 0)})
+    except: pass
+    return jsonify({"found": False})
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
+
 
 
 
