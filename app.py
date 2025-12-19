@@ -4,6 +4,7 @@ from math import radians, sin, cos, sqrt, atan2
 
 app = Flask(__name__)
 
+# Configurações do Radar
 RAIO_KM = 100.0 
 API_URL = "https://api.vatsim.net/v2/fed/flights"
 
@@ -21,21 +22,18 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Radar Boarding Pass Pro</title>
+        <title>Radar Pro GPS</title>
         <style>
             body { 
                 background-color: #124076; 
                 display: flex; 
                 justify-content: center; 
                 align-items: center; 
-                height: 100vh; 
+                min-height: 100vh; 
                 margin: 0; 
                 font-family: 'Courier New', Courier, monospace; 
             }
-            /* O Cartão agora é COMPRIDO como no Windows */
             .card { 
-                width: 600px; 
-                height: 250px;
                 background: white; 
                 border-radius: 15px; 
                 display: flex;
@@ -43,52 +41,30 @@ def index():
                 box-shadow: 0 15px 35px rgba(0,0,0,0.6);
                 border: 2px solid #1A237E;
                 overflow: hidden;
+                transition: all 0.4s ease;
             }
-            .header { 
-                background: #1A237E; 
-                color: white; 
-                padding: 10px; 
-                text-align: center; 
-                font-weight: bold; 
-                font-size: 1.5em;
-                letter-spacing: 5px;
+            /* MODO DEITADO (PAISAGEM) */
+            @media screen and (orientation: landscape) {
+                .card { width: 600px; height: 260px; }
+                .main-content { display: flex; flex: 1; padding: 15px; }
+                .data-section { flex: 2; border-right: 2px dashed #ccc; padding-right: 15px; }
+                .side-section { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; }
             }
-            .main-content {
-                display: flex;
-                flex: 1;
-                padding: 15px;
+            /* MODO EM PÉ (RETRATO) */
+            @media screen and (orientation: portrait) {
+                .card { width: 90%; height: auto; max-width: 350px; }
+                .main-content { display: block; padding: 20px; }
+                .data-section { border-right: none; border-bottom: 2px dashed #ccc; padding-bottom: 15px; margin-bottom: 15px; }
+                .side-section { padding-left: 0; }
             }
-            .data-section { flex: 2; border-right: 2px dashed #ccc; padding-right: 15px; }
-            .side-section { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; }
-            
+            .header { background: #1A237E; color: white; padding: 10px; text-align: center; font-weight: bold; font-size: 1.5em; letter-spacing: 5px; }
             .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; }
             .value { font-size: 1.4em; font-weight: bold; color: #1A237E; margin-bottom: 10px; }
-            
             .footer { background: #1A237E; color: #FFD700; padding: 8px; text-align: center; font-size: 0.9em; font-weight: bold; }
-
-            /* Aviso para girar a tela no iPhone */
-            @media screen and (orientation: portrait) {
-                #rotate-warning { display: flex; }
-                .card { display: none; }
-            }
-            @media screen and (orientation: landscape) {
-                #rotate-warning { display: none; }
-                .card { display: flex; }
-            }
-            #rotate-warning {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: #124076; color: white;
-                display: none; justify-content: center; align-items: center;
-                text-align: center; flex-direction: column; font-size: 1.2em;
-            }
         </style>
     </head>
-    <body>
-        <div id="rotate-warning">
-            <p>🔄 Por favor, gire o iPhone <br> para o modo paisagem (deitado)</p>
-        </div>
-
-        <div class="card" onclick="ativarSom()">
+    <body onclick="ativarSom()">
+        <div class="card">
             <div class="header">✈ BOARDING PASS ✈</div>
             <div class="main-content">
                 <div class="data-section">
@@ -109,10 +85,18 @@ def index():
 
         <script>
             const audioAlerta = new Audio('https://www.soundjay.com/buttons/beep-07a.mp3');
+            let somAtivado = false;
             let detectadoAnteriormente = false;
 
             function ativarSom() {
-                audioAlerta.play().then(() => { audioAlerta.pause(); audioAlerta.currentTime = 0; });
+                if(!somAtivado) {
+                    audioAlerta.play().then(() => {
+                        audioAlerta.pause();
+                        audioAlerta.currentTime = 0;
+                        somAtivado = true;
+                        console.log("Som desbloqueado");
+                    });
+                }
             }
 
             function update() {
@@ -125,19 +109,22 @@ def index():
                             document.getElementById('route').innerText = data.dep + " / " + data.arr;
                             document.getElementById('dist').innerText = data.dist + " KM";
                             document.getElementById('alt').innerText = data.alt + " FT";
-                            document.getElementById('status').innerText = "AERONAVE DETECTADA NO RAIO";
+                            document.getElementById('status').innerText = "AERONAVE DETECTADA!";
                             
-                            if (!detectadoAnteriormente) {
-                                audioAlerta.play().catch(e => console.log("Clique na tela para som"));
+                            if (!detectadoAnteriormente && somAtivado) {
+                                audioAlerta.play();
                                 detectadoAnteriormente = true;
                             }
                         } else {
-                            document.getElementById('status').innerText = "BUSCANDO TRÁFEGO EM 100KM...";
+                            document.getElementById('status').innerText = "BUSCANDO EM 100KM...";
                             detectadoAnteriormente = false;
                         }
                     });
-                });
+                }, (err) => {
+                    document.getElementById('status').innerText = "ERRO: ATIVE O GPS NO SAFARI";
+                }, { enableHighAccuracy: true });
             }
+
             setInterval(update, 20000);
             update();
         </script>
@@ -165,3 +152,4 @@ def get_data():
                     })
     except: pass
     return jsonify({"found": False})
+
