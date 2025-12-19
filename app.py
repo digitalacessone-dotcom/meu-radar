@@ -4,7 +4,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# RAIO DE BUSCA: 25KM
+# CONFIGURAÇÃO DE RAIO: 25KM
 RAIO_KM = 25.0 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -25,7 +25,7 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 def index():
     return render_template_string('''
     <!DOCTYPE html>
-    <html lang="pt-br">
+    <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -77,7 +77,7 @@ def index():
             .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
             .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #888; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+            .label { color: #888; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
             .value { font-size: 1.3em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; }
             
             #compass { display: inline-block; transition: transform 0.6s ease; color: var(--warning-gold); font-size: 1.2em; }
@@ -100,8 +100,8 @@ def index():
     <body>
         
         <div id="search-box">
-            <input type="text" id="endereco" placeholder="CIDADE OU CEP...">
-            <button onclick="buscarEndereco()">OK</button>
+            <input type="text" id="endereco" placeholder="ENTER CITY OR ZIP CODE...">
+            <button onclick="buscarEndereco()">ACTIVATE</button>
         </div>
 
         <div class="card">
@@ -110,12 +110,12 @@ def index():
             <div class="header">✈ BOARDING PASS ✈</div>
             <div class="white-area">
                 <div class="col-left">
-                    <div><div class="label">CALLSIGN / ID</div><div id="callsign" class="value">BUSCANDO</div></div>
-                    <div><div class="label">RAIO ATIVO</div><div class="value">25 KM</div></div>
-                    <div><div class="label">ALTITUDE</div><div id="alt" class="value">00000 FT</div></div>
+                    <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div></div>
+                    <div><div class="label">ACTIVE RADAR RANGE</div><div class="value">25 KM</div></div>
+                    <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value">00000 FT</div></div>
                 </div>
                 <div class="col-right">
-                    <div class="label">DISTÂNCIA / RUMO</div>
+                    <div class="label">RANGE / BEARING</div>
                     <div class="value"><span id="dist">0.0 KM</span> <span id="compass">↑</span></div>
                     
                     <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
@@ -159,12 +159,12 @@ def index():
                         document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-                        document.getElementById('status').innerText = "TARGET LOCKED: " + data.callsign;
+                        document.getElementById('status').innerText = "TARGET ACQUIRED: " + data.callsign;
 
                         let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
                         document.getElementById('signal-bars').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                     } else {
-                        document.getElementById('status').innerText = "SCANNING LIVE AIRSPACE (25KM)...";
+                        document.getElementById('status').innerText = "RADAR SWEEP ACTIVE (25KM)...";
                         document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                         document.getElementById('callsign').innerText = "SEARCHING";
                     }
@@ -200,8 +200,7 @@ def get_data():
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
                 dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
                 
-                # NOVO LINK: Centraliza em você (SiteLat/SiteLon) e seleciona a aeronave (hex)
-                # O zoom 11 é ideal para o raio de 25km aparecer bem na tela do iPhone
+                # Link otimizado com foco e seleção
                 map_url = (f"https://globe.adsbexchange.com/?"
                            f"lat={lat_u}&lon={lon_u}&zoom=11"
                            f"&hex={ac.get('hex', '')}"
