@@ -25,42 +25,64 @@ def index():
         <title>Radar Pro</title>
         <style>
             body { background-color: #124076; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', Courier, monospace; }
-            .search-container { display: none; background: white; padding: 10px; border-radius: 10px; margin-bottom: 20px; gap: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 90%; max-width: 500px; }
+            .search-container { display: none; background: white; padding: 10px; border-radius: 10px; margin-bottom: 20px; gap: 5px; width: 90%; max-width: 500px; }
             input { flex: 1; border: 1px solid #ccc; padding: 10px; border-radius: 5px; font-size: 16px; }
-            button { background: #1A237E; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-            .card { background: white; border-radius: 15px; display: flex; flex-direction: column; box-shadow: 0 15px 35px rgba(0,0,0,0.6); border: 2px solid #1A237E; overflow: hidden; width: 90%; max-width: 600px; }
-            .header { background: #1A237E; color: white; padding: 10px; text-align: center; font-weight: bold; font-size: 1.5em; letter-spacing: 5px; }
-            .main-content { display: flex; padding: 20px; }
-            .data-section { flex: 2; border-right: 2px dashed #ccc; padding-right: 15px; }
-            .side-section { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
-            .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; }
-            .value { font-size: 1.4em; font-weight: bold; color: #1A237E; margin-bottom: 10px; }
-            .barcode { width: 100%; height: 50px; background: linear-gradient(90deg, #000 5%, transparent 5%, transparent 10%, #000 10%, #000 12%, transparent 12%, transparent 20%, #000 20%, #000 25%, transparent 25%, transparent 30%, #000 30%, #000 31%, transparent 31%, transparent 40%, #000 40%, #000 45%); background-size: 30px 100%; }
-            .footer { background: #1A237E; color: #FFD700; padding: 8px; text-align: center; font-size: 0.8em; font-weight: bold; }
-            @media (max-width: 500px) { .main-content { flex-direction: column; } .data-section { border-right: none; border-bottom: 2px dashed #ccc; padding-bottom: 15px; margin-bottom: 15px; } }
+            button { background: #1A237E; color: white; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; }
+            
+            .card { background: white; border-radius: 15px; display: flex; flex-direction: column; box-shadow: 0 15px 35px rgba(0,0,0,0.6); border: 2px solid #1A237E; overflow: hidden; width: 95%; max-width: 600px; }
+            .header { background: #1A237E; color: white; padding: 12px; text-align: center; font-weight: bold; font-size: 1.5em; letter-spacing: 5px; }
+            
+            .main-content { display: flex; padding: 15px; min-height: 180px; }
+            .data-section { flex: 2; border-right: 2px dashed #ccc; padding-right: 15px; display: flex; flex-direction: column; justify-content: space-around; }
+            .side-section { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+            
+            .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+            .value { font-size: 1.3em; font-weight: bold; color: #1A237E; margin-bottom: 8px; }
+            .value a { color: #1A237E; text-decoration: underline; text-decoration-color: #FFD700; }
+            
+            .barcode { width: 100%; height: 60px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 4px, #000 4px, #000 5px, transparent 5px, transparent 8px); margin: 10px 0; }
+            
+            .footer { background: #1A237E; color: #FFD700; padding: 10px; text-align: center; font-size: 0.8em; font-weight: bold; text-transform: uppercase; }
+            
+            @media (max-width: 480px) {
+                .main-content { flex-direction: column; padding: 20px; }
+                .data-section { border-right: none; border-bottom: 2px dashed #ccc; padding-right: 0; padding-bottom: 15px; margin-bottom: 15px; }
+                .side-section { padding-left: 0; }
+                .barcode { height: 40px; }
+            }
         </style>
     </head>
-    <body onclick="pedirPermissao()">
+    <body onclick="ativarAlertas()">
         <div id="busca" class="search-container">
             <input type="text" id="endereco" placeholder="Digite Rua, Nº ou CEP...">
             <button onclick="buscarEndereco()">VIGIAR</button>
         </div>
+
         <div class="card">
             <div class="header">✈ BOARDING PASS ✈</div>
             <div class="main-content">
                 <div class="data-section">
-                    <div class="label">PASSENGER / CALLSIGN</div>
-                    <div id="callsign" class="value">AGUARDANDO...</div>
-                    <div class="label">FROM / TO</div>
-                    <div id="route" class="value">--- / ---</div>
+                    <div>
+                        <div class="label">PASSENGER / CALLSIGN</div>
+                        <div id="callsign" class="value">BUSCANDO...</div>
+                    </div>
+                    <div>
+                        <div class="label">FROM / TO</div>
+                        <div id="route" class="value">--- / ---</div>
+                    </div>
+                    <div>
+                        <div class="label">ALTITUDE</div>
+                        <div id="alt" class="value">--- FT</div>
+                    </div>
                 </div>
                 <div class="side-section">
                     <div class="label">DISTANCE</div>
                     <div id="dist" class="value">--- KM</div>
                     <div class="barcode"></div>
+                    <div style="font-size: 0.6em; color: #555;">SCAN ACTIVE: 25KM</div>
                 </div>
             </div>
-            <div id="status" class="footer">TOQUE NA TELA PARA ATIVAR ALERTAS</div>
+            <div id="status" class="footer">AGUARDANDO GPS...</div>
         </div>
 
         <script>
@@ -68,55 +90,61 @@ def index():
             let latAlvo = null, lonAlvo = null;
             let detectadoAnteriormente = false;
 
-            function pedirPermissao() {
-                // Ativa o som
+            function ativarAlertas() {
                 audioAlerta.play().then(() => { audioAlerta.pause(); audioAlerta.currentTime = 0; });
-                
-                // Pede permissão para notificações (essencial para tela bloqueada)
-                if ("Notification" in window) {
-                    Notification.requestPermission();
-                }
+                if ("Notification" in window) { Notification.requestPermission(); }
             }
 
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     document.getElementById('status').innerText = "VIGIANDO SUA POSIÇÃO";
-                    setInterval(executarBusca, 20000); executarBusca();
+                    iniciarRadar();
                 }, (err) => {
-                    document.getElementById('status').innerText = "DIGITE O LOCAL:";
+                    document.getElementById('status').innerText = "GPS INDISPONÍVEL. USE O ENDEREÇO:";
                     document.getElementById('busca').style.display = "flex";
-                });
+                }, { timeout: 8000 });
             };
 
             async function buscarEndereco() {
                 const query = document.getElementById('endereco').value;
+                if(!query) return;
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
                 const data = await res.json();
                 if(data.length > 0) {
                     latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
-                    document.getElementById('status').innerText = "VIGIANDO: " + query.toUpperCase();
-                    setInterval(executarBusca, 20000); executarBusca();
+                    document.getElementById('status').innerText = "VIGIANDO: " + query.substring(0,20).toUpperCase();
+                    iniciarRadar();
                 }
+            }
+
+            function iniciarRadar() {
+                setInterval(executarBusca, 15000); 
+                executarBusca();
             }
 
             function executarBusca() {
                 if(!latAlvo) return;
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}`).then(res => res.json()).then(data => {
                     if(data.found) {
-                        document.getElementById('callsign').innerText = data.callsign;
+                        const mapsUrl = `https://www.google.com/maps?q=${data.lat},${data.lon}`;
+                        document.getElementById('callsign').innerHTML = `<a href="${mapsUrl}" target="_blank">${data.callsign}</a>`;
                         document.getElementById('route').innerText = data.dep + " / " + data.arr;
+                        document.getElementById('alt').innerText = data.alt.toLocaleString() + " FT";
                         document.getElementById('dist').innerText = data.dist + " KM";
                         
                         if (!detectadoAnteriormente) {
                             audioAlerta.play();
                             if (Notification.permission === "granted") {
-                                new Notification("Avião Detectado!", { body: `Voo ${data.callsign} a ${data.dist}km`, icon: "/static/icon.png" });
+                                new Notification("Avião Detectado!", { body: `Voo ${data.callsign} a ${data.dist}km` });
                             }
                             detectadoAnteriormente = true;
                         }
                     } else {
                         document.getElementById('callsign').innerText = "BUSCANDO...";
+                        document.getElementById('route').innerText = "--- / ---";
+                        document.getElementById('alt').innerText = "--- FT";
+                        document.getElementById('dist').innerText = "--- KM";
                         detectadoAnteriormente = false;
                     }
                 });
@@ -138,8 +166,15 @@ def get_data():
                 d = haversine(lat_user, lon_user, lat, lon)
                 if d <= RAIO_KM:
                     f = p.get('flight_plan', {})
-                    return jsonify({"found": True, "callsign": p.get('callsign'), "dep": f.get('departure', 'UNK'), "arr": f.get('arrival', 'UNK'), "dist": round(d, 1)})
+                    return jsonify({
+                        "found": True, 
+                        "callsign": p.get('callsign'),
+                        "dep": f.get('departure', 'UNK'), 
+                        "arr": f.get('arrival', 'UNK'),
+                        "dist": round(d, 1), 
+                        "alt": p.get('altitude', 0),
+                        "lat": lat, "lon": lon
+                    })
     except: pass
     return jsonify({"found": False})
-
 
