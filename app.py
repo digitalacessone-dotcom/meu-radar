@@ -28,7 +28,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>ATC Radar Pro</title>
+        <title>ATC Radar Pro - Split Flap</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -39,11 +39,21 @@ def index():
                 min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            .flip { display: inline-block; animation: flipAnim 0.4s ease; }
-            @keyframes flipAnim {
-                0% { transform: rotateX(0deg); opacity: 1; }
-                50% { transform: rotateX(90deg); opacity: 0.5; }
-                100% { transform: rotateX(0deg); opacity: 1; }
+            /* EFEITO DE CADA LETRA GIRANDO */
+            .letter-slot {
+                display: inline-block;
+                position: relative;
+                min-width: 0.6em;
+            }
+            .flip-char {
+                display: inline-block;
+                animation: flipLetter 0.5s ease;
+                backface-visibility: hidden;
+            }
+            @keyframes flipLetter {
+                0% { transform: rotateX(0deg); color: #888; }
+                50% { transform: rotateX(90deg); color: var(--warning-gold); }
+                100% { transform: rotateX(0deg); }
             }
 
             #search-box { 
@@ -73,7 +83,7 @@ def index():
             .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
             .label { color: #888; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
-            .value { font-size: 1.3em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; min-height: 1.2em; }
+            .value { font-size: 1.3em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
             
             #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.4em; }
             
@@ -140,11 +150,23 @@ def index():
                 "TEMP: 24°C / QNH: 1013hPa"
             ];
 
+            // FUNÇÃO DE SPLIT-FLAP (Letra por letra)
             function updateWithEffect(id, newValue) {
-                const el = document.getElementById(id);
-                if (el.innerText !== newValue) {
-                    el.innerHTML = `<span class="flip">${newValue}</span>`;
+                const container = document.getElementById(id);
+                const currentText = container.innerText;
+                const newText = String(newValue);
+                
+                let finalHTML = "";
+                // Compara caractere por caractere
+                for (let i = 0; i < newText.length; i++) {
+                    const char = newText[i];
+                    if (currentText[i] !== char) {
+                        finalHTML += `<span class="letter-slot"><span class="flip-char">${char}</span></span>`;
+                    } else {
+                        finalHTML += `<span class="letter-slot">${char}</span>`;
+                    }
                 }
+                container.innerHTML = finalHTML;
             }
 
             window.onload = function() {
@@ -153,15 +175,12 @@ def index():
                     iniciarRadar();
                 }, () => { document.getElementById('search-box').style.display = "flex"; });
                 
-                // CICLO DE STATUS (Rodapé Amarelo)
                 setInterval(() => {
                     const statusEl = document.getElementById('status');
                     if(!currentTarget) {
-                        // Modo Busca: Mostra mensagens de sistema
                         statusEl.innerText = systemMsgs[statusIndex];
                         statusIndex = (statusIndex + 1) % systemMsgs.length;
                     } else {
-                        // Modo Alvo: Mostra dados da aeronave em ciclo
                         const flightMsgs = [
                             `TARGET ACQUIRED: ${currentTarget.callsign}`,
                             `ROUTE: ${currentTarget.origin} TO ${currentTarget.dest}`,
@@ -194,9 +213,11 @@ def index():
                         let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
                         document.getElementById('signal-bars').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                     } else {
+                        if(currentTarget) {
+                            updateWithEffect('callsign', "SEARCHING");
+                            updateWithEffect('dist_body', "-- KM");
+                        }
                         currentTarget = null;
-                        updateWithEffect('callsign', "SEARCHING");
-                        document.getElementById('dist_body').innerText = "-- KM";
                         document.getElementById('signal-bars').innerText = "[ ▯▯▯▯▯ ]";
                     }
                 });
@@ -231,7 +252,6 @@ def get_data():
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
                 dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
                 
-                # Dados para o ciclo amarelo
                 origin = ac.get('t_from', 'N/A').split(' ')[0]
                 dest = ac.get('t_to', 'N/A').split(' ')[0]
                 type_ac = ac.get('t', 'UNKN')
@@ -254,6 +274,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
