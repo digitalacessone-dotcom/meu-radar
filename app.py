@@ -41,11 +41,16 @@ def index():
             .notch { position: absolute; width: 44px; height: 44px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -22px; } .notch-right { right: -22px; }
 
+            /* AJUSTE: Aviões maiores como solicitado */
             .header { padding: 25px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 20px; font-weight: 900; letter-spacing: 5px; font-size: 1.2em; }
-            .header span { font-size: 2.2em; }
+            .header span { font-size: 3.5em; line-height: 0; }
 
             .white-area { background: #fdfdfd; margin: 0 12px; position: relative; display: flex; padding: 30px; min-height: 260px; border-radius: 2px; }
             .white-area::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background-image: linear-gradient(to right, #ccc 40%, transparent 40%); background-size: 14px 100%; }
+
+            /* AJUSTE: Adicionado estilo do carimbo */
+            .stamp { position: absolute; top: 50%; left: 45%; transform: translate(-50%, -50%) rotate(-12deg) scale(5); border: 4px double #d32f2f; color: #d32f2f; padding: 10px 20px; font-weight: 900; font-size: 2.5em; opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; pointer-events: none; }
+            .stamp.visible { opacity: 0.25; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
 
             .col-left { flex: 1.8; border-right: 2px dashed #eee; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-around; }
             .col-right { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
@@ -53,7 +58,7 @@ def index():
             .label { color: #999; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
             .value { font-size: 1.65em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; }
             
-            #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.2em; color: var(--warning-gold); }
+            #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.5em; color: var(--warning-gold); }
             .barcode { height: 65px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
             
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
@@ -78,6 +83,7 @@ def index():
             <div class="notch notch-right"></div>
             <div class="header"><span>✈</span> FLIGHT MANIFEST / PASS <span>✈</span></div>
             <div class="white-area">
+                <div class="stamp" id="carimbo">VISUAL CONTACT</div>
                 <div class="col-left">
                     <div><div class="label">IDENTIFICATION / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div></div>
                     <div><div class="label">ESTIMATED VISUAL (ETA)</div><div id="eta" class="value">-- MIN</div></div>
@@ -175,11 +181,17 @@ def index():
                         document.getElementById('signal').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                         let eta = data.speed > 0 ? Math.round((data.dist / data.speed) * 60) : "--";
                         document.getElementById('eta').innerText = eta + " MIN";
+                        
+                        // AJUSTE: Ativa o carimbo quando acha
+                        document.getElementById('carimbo').classList.add('visible');
+                        
                         if (!targetLock) { alertBeepFiveTimes(); }
                         targetLock = true;
                     } else {
                         targetLock = false; flightData = null;
                         document.getElementById('callsign').innerText = "SEARCHING";
+                        // AJUSTE: Remove o carimbo se perder o sinal
+                        document.getElementById('carimbo').classList.remove('visible');
                     }
                 });
             }
@@ -204,20 +216,17 @@ def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
     
-    # 1. BUSCA CLIMA (Open-Meteo)
     weather = {"temp": "--", "vis": "--", "desc": "N/A"}
     try:
         w_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat_u}&longitude={lon_u}&current=temperature_2m,visibility,weather_code"
         wr = requests.get(w_url, timeout=2).json()
         if 'current' in wr:
             weather['temp'] = round(wr['current']['temperature_2m'])
-            weather['vis'] = round(wr['current']['visibility'] / 1000, 1) # Metros para KM
-            # Mapeamento simples de código de clima
+            weather['vis'] = round(wr['current']['visibility'] / 1000, 1)
             code = wr['current']['weather_code']
             weather['desc'] = "CLEAR" if code == 0 else "PARTLY CLOUDY" if code < 4 else "OVERCAST" if code < 50 else "RAINY"
     except: pass
 
-    # 2. BUSCA RADAR (ADS-B.LOL + REDUNDÂNCIA)
     try:
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, timeout=3).json()
