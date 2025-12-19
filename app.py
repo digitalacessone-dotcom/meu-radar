@@ -41,36 +41,42 @@ def index():
             }
             html { height: -webkit-fill-available; }
 
-            /* CAMPO DE PESQUISA RESTAURADO */
             #search-box { 
-                display: none; width: 90%; max-width: 500px; background: rgba(255,255,255,0.1);
-                padding: 10px; border-radius: 12px; margin-bottom: 20px; 
-                border: 1px solid var(--warning-gold); gap: 8px; z-index: 100;
+                display: none; width: 90%; max-width: 500px; background: rgba(0,0,0,0.5);
+                padding: 15px; border-radius: 12px; margin-bottom: 20px; 
+                border: 2px solid var(--warning-gold); gap: 10px; z-index: 100;
             }
-            #search-box input { flex: 1; background: #000; border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; outline: none; }
-            #search-box button { background: var(--warning-gold); color: #000; border: none; padding: 10px 15px; font-weight: 900; border-radius: 6px; cursor: pointer; }
+            #search-box input { flex: 1; background: #000; border: 1px solid var(--warning-gold); padding: 12px; color: var(--warning-gold); border-radius: 6px; font-weight: bold; }
+            #search-box button { background: var(--warning-gold); color: #000; border: none; padding: 10px 20px; font-weight: 900; border-radius: 6px; cursor: pointer; }
 
-            /* LETRAS AMARELAS SEM FUNDO BRANCO */
+            /* ESTILO DAS PALHETAS (SPLIT-FLAP) */
             .letter-slot { 
                 display: inline-block; 
-                min-width: 0.65em; 
+                min-width: 0.7em; 
+                height: 1.2em;
+                line-height: 1.2em;
                 text-align: center; 
                 position: relative;
-                color: var(--warning-gold); /* Letra amarela */
-                background: transparent;    /* Sem fundo branco */
-                margin: 0 0.2px;
-                text-shadow: 0 0 2px rgba(255, 215, 0, 0.3);
+                color: var(--warning-gold);
+                background: #111; /* Fundo preto da plaqueta */
+                margin: 0 1px;
+                border-radius: 3px;
+                border-bottom: 1px solid #000;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.5);
             }
             
-            .flapping { animation: flip 0.06s infinite; }
-            @keyframes flip {
-                0% { transform: scaleY(1); opacity: 1; }
-                50% { transform: scaleY(0); opacity: 0.5; }
-                100% { transform: scaleY(1); opacity: 1; }
+            .flapping { 
+                animation: mechanical-flip 0.1s ease-in-out;
+            }
+
+            @keyframes mechanical-flip {
+                0% { transform: scaleY(1); filter: brightness(1.2); }
+                50% { transform: scaleY(0.5); filter: brightness(0.7); }
+                100% { transform: scaleY(1); filter: brightness(1.2); }
             }
 
             .card { 
-                background: var(--air-blue); width: 92%; max-width: 600px;
+                background: var(--air-blue); width: 92%; max-width: 620px;
                 border-radius: 15px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
                 overflow: hidden; flex-shrink: 0;
             }
@@ -82,38 +88,33 @@ def index():
 
             .white-area { 
                 background: #fdfdfd; margin: 0 8px; position: relative; 
-                display: flex; padding: 20px 15px; min-height: 220px; border-radius: 3px; 
+                display: flex; padding: 25px 15px; min-height: 240px; border-radius: 3px; 
             }
 
-            .col-left { flex: 1; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
-            .col-right { width: 140px; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+            .col-left { flex: 1; border-right: 1px dashed #ccc; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
+            .col-right { width: 150px; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #888; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; }
-            /* Valores agora usam o azul do card como fundo visual ou apenas a cor */
-            .value { font-size: 1.25em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
+            .label { color: #888; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; }
+            .value { font-size: 1.3em; font-weight: 900; margin-bottom: 15px; min-height: 1.3em; display: flex; flex-wrap: wrap; }
             
-            /* Ajuste específico para as letras amarelas aparecerem bem na área branca */
-            .white-area .letter-slot { color: var(--air-blue); } 
-            /* Se quiser que as letras sejam amarelas MESMO na parte branca, mude acima para var(--warning-gold) e adicione um fundo escuro nos slots */
-
-            #compass { display: inline-block; transition: transform 0.6s; color: var(--warning-gold); font-size: 1.1em; }
-            .barcode { height: 40px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 8px 0; border: 1px solid #eee; }
-            .footer { padding: 0 0 12px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
-            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 8px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.75em; font-weight: bold; text-transform: uppercase; text-align: center; padding: 0 10px; min-height: 1.1em; }
+            #compass { display: inline-block; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); color: var(--warning-gold); font-size: 1.2em; }
+            .barcode { height: 45px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; border: 1px solid #ddd; }
+            .footer { padding: 0 0 15px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
+            .yellow-lines { width: 100%; height: 8px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 10px; }
+            .status-msg { color: var(--warning-gold); font-size: 0.75em; font-weight: bold; text-transform: uppercase; text-align: center; padding: 0 10px; min-height: 1.2em; }
         </style>
     </head>
     <body>
         
         <div id="search-box">
             <input type="text" id="endereco" placeholder="CITY OR ZIP CODE...">
-            <button onclick="buscarEndereco()">SEARCH</button>
+            <button onclick="buscarEndereco()">GO</button>
         </div>
 
         <div class="card" onclick="enableAudio()">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
-            <div class="header"><span>✈</span> BOARDING BOARD <span>✈</span></div>
+            <div class="header">✈ BOARDING BOARD ✈</div>
             <div class="white-area">
                 <div class="col-left">
                     <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value"></div></div>
@@ -124,7 +125,7 @@ def index():
                     <div><div class="label">SQUAWK</div><div id="squawk" class="value">----</div></div>
                     <div><div class="label">BEARING</div><div class="value" style="margin-bottom:0;"><span id="compass">↑</span></div></div>
                     <a id="map-link" style="text-decoration:none; width:100%;" target="_blank"><div class="barcode"></div></a>
-                    <div id="signal-bars" style="color:var(--air-blue); font-size:10px; font-weight:900;">[ ▯▯▯▯▯ ]</div>
+                    <div id="signal-bars" style="color:var(--air-blue); font-size:11px; font-weight:900; margin-top:5px;">[ ▯▯▯▯▯ ]</div>
                 </div>
             </div>
             <div class="footer">
@@ -146,10 +147,11 @@ def index():
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'square';
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.02);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.01);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.02);
             }
 
             function playDetectionBip() {
@@ -168,6 +170,7 @@ def index():
                 const container = document.getElementById(id);
                 const newText = String(newValue).toUpperCase();
                 
+                // Ajusta o número de plaquetas
                 while (container.childNodes.length < newText.length) {
                     const s = document.createElement("span");
                     s.className = "letter-slot";
@@ -183,34 +186,38 @@ def index():
                     const slot = slots[i];
                     if (slot.innerText === targetChar) return;
 
-                    let currentCharIndex = chars.indexOf(slot.innerText);
-                    if (currentCharIndex === -1) currentCharIndex = 0;
+                    // Delay por slot para efeito cascata (50ms por letra)
+                    setTimeout(() => {
+                        let currentCharIndex = chars.indexOf(slot.innerText);
+                        if (currentCharIndex === -1) currentCharIndex = 0;
 
-                    const interval = setInterval(() => {
-                        currentCharIndex = (currentCharIndex + 1) % chars.length;
-                        const charToShow = chars[currentCharIndex];
-                        slot.innerText = charToShow === " " ? "\u00A0" : charToShow;
-                        slot.classList.add('flapping');
-                        playTick();
+                        const interval = setInterval(() => {
+                            currentCharIndex = (currentCharIndex + 1) % chars.length;
+                            const charToShow = chars[currentCharIndex];
+                            
+                            slot.innerText = charToShow === " " ? "\u00A0" : charToShow;
+                            slot.classList.add('flapping');
+                            playTick();
 
-                        if (charToShow === targetChar) {
-                            clearInterval(interval);
-                            slot.classList.remove('flapping');
-                        }
-                    }, 25);
+                            if (charToShow === targetChar) {
+                                clearInterval(interval);
+                                setTimeout(() => slot.classList.remove('flapping'), 100);
+                            }
+                        }, 60); // VELOCIDADE REDUZIDA PARA VER O GIRO (60ms)
+                    }, i * 50); 
                 });
             }
 
             window.onload = function() {
                 updateWithEffect('callsign', 'SEARCHING');
-                updateWithEffect('status', 'WAITING GPS...');
+                updateWithEffect('status', 'WAITING GPS SIGNAL...');
                 
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     iniciarRadar();
                 }, err => {
                     document.getElementById('search-box').style.display = "flex";
-                    updateWithEffect('status', 'ENTER LOCATION ABOVE');
+                    updateWithEffect('status', 'INPUT LOCATION MANUALLY');
                 });
             };
 
@@ -226,7 +233,11 @@ def index():
                 }
             }
 
-            function iniciarRadar() { setInterval(executarBusca, 8000); executarBusca(); }
+            function iniciarRadar() { 
+                setInterval(executarBusca, 10000); 
+                executarBusca(); 
+                updateWithEffect('status', 'RADAR SCANNING ACTIVE');
+            }
 
             function executarBusca() {
                 if(!latAlvo) return;
@@ -258,4 +269,3 @@ def index():
     </html>
     ''')
 
-# O backend Python permanece o mesmo
