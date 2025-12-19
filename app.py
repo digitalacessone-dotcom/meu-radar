@@ -6,7 +6,6 @@ app = Flask(__name__)
 
 RAIO_KM = 50.0 
 
-# Funções matemáticas permanecem iguais para garantir a precisão do radar
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
     dlat, dlon = radians(lat2-lat1), radians(lon2-lon1)
@@ -31,139 +30,118 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <title>ATC Premium Pass</title>
         <style>
-            :root { --air-blue: #226488; --warning-gold: #FFD700; --bg-dark: #0a192f; }
-            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
+            :root { 
+                --air-blue: #1a4a6e; 
+                --warning-gold: #FFD700; 
+                --bg-canvas: #e0e6ed; 
+            }
+            
             body { 
-                background-color: #f0f4f7; margin: 0; padding: 0; 
-                display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden;
+                background-color: var(--bg-canvas); margin: 0; padding: 0; 
+                display: flex; align-items: center; justify-content: center; 
+                min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif;
             }
 
             .card { 
-                background: white; width: 95%; max-width: 850px;
-                border-radius: 20px; position: relative; 
-                box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
-                display: flex; overflow: hidden; border: 1px solid #ddd;
+                background: white; width: 95%; max-width: 800px;
+                border-radius: 15px; position: relative; 
+                box-shadow: 0 30px 60px rgba(0,0,0,0.15); 
+                display: flex; flex-direction: column; overflow: hidden;
+                border: 1px solid rgba(0,0,0,0.1);
             }
 
-            /* MEIAS-LUAS GRANDES */
-            .notch { 
-                position: absolute; width: 80px; height: 80px; 
-                background: #f0f4f7; border-radius: 50%; 
-                top: 50%; transform: translateY(-50%); z-index: 30; 
-            }
-            .notch-left { left: -40px; }
-            .notch-right { right: -40px; }
+            .ticket-main { display: flex; flex: 1; min-height: 250px; }
 
-            /* SEÇÃO ESQUERDA (STUB) */
-            .left-stub {
-                width: 25%; background: var(--air-blue); color: white;
-                padding: 20px; display: flex; flex-direction: column;
-                border-right: 2px dashed rgba(255,255,255,0.3); position: relative;
-            }
-            .left-stub .seat-num { font-size: 4em; font-weight: 900; margin-top: 20px; line-height: 1; }
-            .left-stub .seat-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; }
-
-            /* SEÇÃO DIREITA (CORPO) */
-            .main-ticket { flex: 1; display: flex; flex-direction: column; }
-
-            .header-bar { 
-                background: var(--air-blue); height: 80px; display: flex; 
-                align-items: center; justify-content: space-between; padding: 0 40px; color: white;
-            }
-            .header-bar h1 { font-size: 1.5em; letter-spacing: 5px; margin: 0; }
-            .plane-icon { font-size: 2em; opacity: 0.8; }
-
-            /* CONTEÚDO DOS DADOS */
-            .content-area { 
-                padding: 30px 50px; display: flex; flex: 1; background: white;
-            }
-            .col { display: flex; flex-direction: column; justify-content: space-around; }
-            .col-data { flex: 2; border-right: 1px solid #eee; }
-            .col-side { flex: 1; padding-left: 30px; align-items: center; }
-
-            .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
-            .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); min-height: 1.2em; display: flex; }
-
-            /* TERMINAL DE STATUS NO RODAPÉ */
-            .terminal-footer { 
-                background: #000; color: var(--warning-gold); 
-                padding: 10px 40px; font-family: 'Courier New', monospace; font-size: 0.9em;
+            .stub-side {
+                width: 28%; background: var(--air-blue); color: white;
+                padding: 30px 20px; display: flex; flex-direction: column;
+                border-right: 2px dashed rgba(255,255,255,0.2);
             }
 
-            /* EFEITO FLAP */
-            .letter-slot { display: inline-block; min-width: 0.6em; text-align: center; }
-            .flapping { animation: flap 0.06s infinite; }
-            @keyframes flap { 50% { transform: scaleY(0.5); opacity: 0.5; } }
+            .body-side { flex: 1; display: flex; flex-direction: column; }
 
-            #compass { font-size: 2em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
-            .barcode { width: 150px; height: 50px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 20px; opacity: 0.7; }
+            .header-strip { 
+                background: var(--air-blue); padding: 15px 40px; 
+                display: flex; justify-content: space-between; align-items: center; color: white;
+            }
+            .header-strip h1 { margin: 0; font-size: 1.2em; letter-spacing: 4px; font-weight: 300; }
+
+            .info-grid { padding: 30px 40px; display: flex; justify-content: space-between; flex: 1; }
+            
+            .label { color: #999; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; }
+            .value { font-size: 1.6em; font-weight: 900; color: var(--air-blue); margin-bottom: 20px; }
+
+            /* PAINEL INFERIOR PRETO COM LETRAS AMARELAS (FLAP) */
+            .status-terminal { 
+                background: #000; padding: 15px 40px; 
+                border-top: 4px solid var(--warning-gold);
+                min-height: 60px; display: flex; align-items: center;
+                overflow: hidden;
+            }
+
+            .letter-slot {
+                display: inline-block; background: #111; color: var(--warning-gold);
+                font-family: 'Courier New', monospace; font-weight: 900; font-size: 1.1em;
+                margin: 0 1px; padding: 2px 6px; border-radius: 3px;
+                border: 1px solid #333; min-width: 0.7em; text-align: center;
+            }
+
+            .flapping { animation: flap-effect 0.07s infinite; }
+            @keyframes flap-effect { 0% { transform: scaleY(1); } 50% { transform: scaleY(0.3); opacity: 0.5; } 100% { transform: scaleY(1); } }
+
+            #compass { font-size: 2.5em; color: #ff9800; display: inline-block; transition: transform 1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         </style>
     </head>
     <body>
 
         <div class="card">
-            <div class="notch notch-left"></div>
-            <div class="notch notch-right"></div>
+            <div class="ticket-main">
+                <div class="stub-side">
+                    <div class="label" style="color:rgba(255,255,255,0.6)">Flight Sector</div>
+                    <div style="font-size: 3.5em; font-weight: 900;">19A</div>
+                    <div class="label" style="color:rgba(255,255,255,0.6); margin-top:auto;">Premium / ATC</div>
+                </div>
 
-            <div class="left-stub">
-                <div class="label" style="color: rgba(255,255,255,0.7)">Your Radar</div>
-                <div class="seat-label">Seat Number:</div>
-                <div class="seat-num">19 A</div>
-                <div class="seat-label" style="margin-top: auto;">First Class / ATC</div>
+                <div class="body-side">
+                    <div class="header-strip">
+                        <span>✈</span>
+                        <h1>BOARDING BOARD</h1>
+                        <span>✈</span>
+                    </div>
+
+                    <div class="info-grid">
+                        <div style="flex: 2;">
+                            <div class="label">Ident / Callsign</div>
+                            <div id="callsign" class="value">SEARCHING</div>
+                            <div class="label">Aircraft Distance</div>
+                            <div id="dist_body" class="value">-- KM</div>
+                            <div class="label">Altitude (MSL)</div>
+                            <div id="alt" class="value">00000 FT</div>
+                        </div>
+                        <div style="flex: 1; text-align: center; border-left: 1px solid #eee; padding-left: 20px;">
+                            <div class="label">Bearing</div>
+                            <div id="compass">↑</div>
+                            <div class="label" style="margin-top:20px">Type</div>
+                            <div id="type_id" class="value">----</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="main-ticket">
-                <div class="header-bar">
-                    <span class="plane-icon">✈</span>
-                    <h1>BOARDING BOARD</h1>
-                    <span class="plane-icon">✈</span>
-                </div>
-
-                <div class="content-area">
-                    <div class="col col-data">
-                        <div>
-                            <div class="label">Ident / Callsign</div>
-                            <div id="callsign" class="value"></div>
-                        </div>
-                        <div>
-                            <div class="label">Aircraft Distance</div>
-                            <div id="dist_body" class="value"></div>
-                        </div>
-                        <div>
-                            <div class="label">Altitude (MSL)</div>
-                            <div id="alt" class="value"></div>
-                        </div>
-                    </div>
-
-                    <div class="col col-side">
-                        <div class="label">Type</div>
-                        <div id="type_id" class="value">----</div>
-                        <div class="label" style="margin-top: 20px;">Bearing</div>
-                        <div id="compass">↑</div>
-                        <div class="barcode"></div>
-                    </div>
-                </div>
-
-                <div class="terminal-footer">
-                    <div id="status">> RADAR INITIALIZING...</div>
-                </div>
+            <div class="status-terminal">
+                <div id="status-container"></div>
             </div>
         </div>
 
         <script>
-            // Lógica de animação e busca idêntica ao seu código anterior, 
-            // adaptada para os novos IDs de elemento.
             let latAlvo = null, lonAlvo = null;
             let currentTarget = null;
-            let statusIndex = 0;
+            let step = 0;
             const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->";
 
-            function updateWithEffect(id, newValue) {
-                const container = document.getElementById(id);
-                if (!container) return;
-                const newText = String(newValue).toUpperCase();
+            function updateFlapEffect(containerId, text) {
+                const container = document.getElementById(containerId);
+                const newText = text.toUpperCase();
                 
                 while (container.childNodes.length < newText.length) {
                     const s = document.createElement("span"); s.className = "letter-slot"; s.innerHTML = "&nbsp;"; container.appendChild(s);
@@ -171,53 +149,65 @@ def index():
                 while (container.childNodes.length > newText.length) { container.removeChild(container.lastChild); }
 
                 const slots = container.querySelectorAll('.letter-slot');
-                newText.split('').forEach((targetChar, i) => {
-                    const slot = slots[i];
-                    if (slot.innerText === targetChar) return;
-                    let cycles = 0;
-                    const interval = setInterval(() => {
-                        slot.innerText = chars[Math.floor(Math.random() * chars.length)];
-                        slot.classList.add('flapping');
-                        if (++cycles >= 10 + i) {
-                            clearInterval(interval);
-                            slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
-                            slot.classList.remove('flapping');
+                newText.split('').forEach((char, i) => {
+                    if (slots[i].innerText === char) return;
+                    
+                    let count = 0;
+                    const iter = setInterval(() => {
+                        slots[i].innerText = chars[Math.floor(Math.random() * chars.length)];
+                        slots[i].classList.add('flapping');
+                        if (++count > 10 + i) {
+                            clearInterval(iter);
+                            slots[i].innerText = char === " " ? "\u00A0" : char;
+                            slots[i].classList.remove('flapping');
                         }
-                    }, 60);
+                    }, 50);
                 });
             }
 
             window.onload = function() {
-                updateWithEffect('callsign', 'SEARCHING');
+                updateFlapEffect('status-container', '> INITIALIZING RADAR...');
+                
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    iniciarRadar();
+                    setInterval(fetchData, 8000);
+                    fetchData();
                 });
 
+                // Alternância de informações no painel amarelo
                 setInterval(() => {
-                    const statusElem = document.getElementById('status');
                     if(!currentTarget) {
-                        const msgs = ["> SCANNING AIRSPACE...", "> SYSTEM OK", "> WAITING FOR SIGNAL"];
-                        statusElem.innerText = msgs[statusIndex % msgs.length];
+                        const msgs = [
+                            "> SCANNING AIRSPACE", 
+                            "> GPS SIGNAL OK", 
+                            "> TEMP: 24C / SKY: CLEAR",
+                            "> VISIBILITY: 10KM+",
+                            "> WAITING TARGET"
+                        ];
+                        updateFlapEffect('status-container', msgs[step % msgs.length]);
                     } else {
-                        statusElem.innerText = `> TARGET: ${currentTarget.callsign} | SPEED: ${currentTarget.speed} KTS`;
+                        const info = [
+                            `> TARGET: ${currentTarget.callsign}`,
+                            `> SPEED: ${currentTarget.speed} KTS`,
+                            `> TYPE: ${currentTarget.type}`,
+                            `> PATH: ${currentTarget.origin} > ${currentTarget.dest}`
+                        ];
+                        updateFlapEffect('status-container', info[step % info.length]);
                     }
-                    statusIndex++;
-                }, 5000);
+                    step++;
+                }, 6000);
             };
 
-            function iniciarRadar() { setInterval(executarBusca, 8000); executarBusca(); }
-
-            function executarBusca() {
+            function fetchData() {
                 if(!latAlvo) return;
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
-                .then(res => res.json()).then(data => {
+                .then(r => r.json()).then(data => {
                     if(data.found) {
                         currentTarget = data;
-                        updateWithEffect('callsign', data.callsign);
-                        updateWithEffect('type_id', data.type);
-                        updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
-                        updateWithEffect('dist_body', data.dist + " KM");
+                        document.getElementById('callsign').innerText = data.callsign;
+                        document.getElementById('dist_body').innerText = data.dist + " KM";
+                        document.getElementById('alt').innerText = data.alt_ft.toLocaleString() + " FT";
+                        document.getElementById('type_id').innerText = data.type;
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                     }
                 });
@@ -227,7 +217,32 @@ def index():
     </html>
     ''')
 
-# O restante das rotas Python se mantém igual.
+@app.route('/api/data')
+def get_data():
+    lat_u = float(request.args.get('lat', 0))
+    lon_u = float(request.args.get('lon', 0))
+    try:
+        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
+        r = requests.get(url, timeout=5).json()
+        if r.get('ac'):
+            ac = sorted(r['ac'], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+            return jsonify({
+                "found": True, 
+                "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
+                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                "alt_ft": int(ac.get('alt_baro', 0)), 
+                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "origin": ac.get('t_from', 'N/A').split(' ')[0],
+                "dest": ac.get('t_to', 'N/A').split(' ')[0],
+                "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
+                "lat": ac['lat'], "lon": ac['lon']
+            })
+    except: pass
+    return jsonify({"found": False})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
 
 
 
