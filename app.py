@@ -28,7 +28,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>Split-Flap Radar Board</title>
+        <title>Real Split-Flap ATC</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -39,28 +39,26 @@ def index():
                 min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            /* ESTILO DAS PALHETAS (FLAPS) */
+            /* SLOT MACHINE / FLAP EFFECT */
             .letter-slot {
                 display: inline-block;
-                position: relative;
                 min-width: 0.7em;
                 text-align: center;
-                background: rgba(0,0,0,0.1);
+                position: relative;
+                background: rgba(0,0,0,0.05);
                 margin: 0 1px;
                 border-radius: 2px;
+                overflow: hidden;
             }
 
-            .flip-char {
-                display: inline-block;
-                backface-visibility: hidden;
-                animation: flapEffect 0.5s ease forwards;
-                transform-origin: center;
+            .flapping {
+                animation: fastFlap 0.1s infinite;
             }
 
-            @keyframes flapEffect {
-                0% { transform: rotateX(0deg); filter: brightness(1); }
-                50% { transform: rotateX(-90deg); filter: brightness(2); background: #333; }
-                100% { transform: rotateX(0deg); filter: brightness(1); }
+            @keyframes fastFlap {
+                0% { transform: translateY(0); opacity: 1; }
+                50% { transform: translateY(-5px); opacity: 0.5; }
+                100% { transform: translateY(0); opacity: 1; }
             }
 
             #search-box { 
@@ -146,6 +144,7 @@ def index():
             let latAlvo = null, lonAlvo = null;
             let currentTarget = null;
             let statusIndex = 0;
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:- ";
 
             const systemMsgs = [
                 "RADAR SWEEP ACTIVE: 25KM",
@@ -154,33 +153,44 @@ def index():
                 "TEMP: 24C / QNH: 1013HPA"
             ];
 
-            // FUNÇÃO DEFINITIVA DE SPLIT-FLAP (Letra por Letra com Delay)
+            // FUNÇÃO "SLOT MACHINE": Gira até encontrar a letra
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
-                const oldText = container.innerText || "";
                 const newText = String(newValue).toUpperCase();
+                const currentSlots = container.querySelectorAll('.letter-slot');
                 
-                container.innerHTML = ""; // Limpa para reconstruir
-                
-                const maxLength = Math.max(oldText.length, newText.length);
-                
-                for (let i = 0; i < newText.length; i++) {
-                    const char = newText[i];
-                    const slot = document.createElement("span");
-                    slot.className = "letter-slot";
-                    
-                    // Se o caractere for diferente do anterior, adicionamos o flap animado
-                    if (oldText[i] !== char) {
-                        const span = document.createElement("span");
-                        span.className = "flip-char";
-                        span.style.animationDelay = (i * 0.05) + "s"; // Delay progressivo!
-                        span.innerHTML = char === " " ? "&nbsp;" : char;
-                        slot.appendChild(span);
-                    } else {
-                        slot.innerHTML = char === " " ? "&nbsp;" : char;
-                    }
-                    container.appendChild(slot);
+                // Ajusta quantidade de slots
+                while (container.childNodes.length < newText.length) {
+                    const s = document.createElement("span");
+                    s.className = "letter-slot";
+                    s.innerHTML = "&nbsp;";
+                    container.appendChild(s);
                 }
+                while (container.childNodes.length > newText.length) {
+                    container.removeChild(container.lastChild);
+                }
+
+                const slots = container.querySelectorAll('.letter-slot');
+                
+                newText.split('').forEach((targetChar, i) => {
+                    const slot = slots[i];
+                    if (slot.innerText === targetChar) return;
+
+                    let cycles = 0;
+                    const maxCycles = 10 + (i * 2); // Letras da direita demoram mais
+                    
+                    const interval = setInterval(() => {
+                        slot.innerText = chars[Math.floor(Math.random() * chars.length)];
+                        slot.classList.add('flapping');
+                        
+                        cycles++;
+                        if (cycles >= maxCycles) {
+                            clearInterval(interval);
+                            slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
+                            slot.classList.remove('flapping');
+                        }
+                    }, 50);
+                });
             }
 
             window.onload = function() {
@@ -205,7 +215,7 @@ def index():
                         updateWithEffect('status', flightMsgs[statusIndex % 3]);
                         statusIndex++;
                     }
-                }, 4000);
+                }, 5000);
             };
 
             function iniciarRadar() {
@@ -222,17 +232,14 @@ def index():
                         updateWithEffect('callsign', data.callsign);
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
-                        
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-
                         let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
                         document.getElementById('signal-bars').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
                     } else {
                         if(currentTarget) {
                             updateWithEffect('callsign', "SEARCHING");
                             updateWithEffect('dist_body', "-- KM");
-                            updateWithEffect('alt', "00000 FT");
                         }
                         currentTarget = null;
                     }
@@ -266,12 +273,11 @@ def get_data():
             validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
             if validos:
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
-                
                 return jsonify({
                     "found": True, 
                     "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
-                    "dist": round(dist_km, 1), "alt_ft": int(ac.get('alt_baro', 0)), 
+                    "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                    "alt_ft": int(ac.get('alt_baro', 0)), 
                     "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
                     "map_url": f"https://globe.adsbexchange.com/?lat={lat_u}&lon={lon_u}&zoom=11&hex={ac.get('hex')}",
                     "origin": ac.get('t_from', 'N/A').split(' ')[0],
