@@ -39,18 +39,10 @@ def index():
                 min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            .letter-slot {
-                display: inline-block; min-width: 0.65em; text-align: center;
-                position: relative; vertical-align: bottom;
-            }
+            .letter-slot { display: inline-block; min-width: 0.65em; text-align: center; position: relative; vertical-align: bottom; }
 
-            /* EFEITO FLAP REALISTA */
             .flapping { animation: flap-anim 0.06s ease-in-out; }
-            @keyframes flap-anim {
-                0% { transform: scaleY(1); opacity: 1; }
-                50% { transform: scaleY(0.5); opacity: 0.7; }
-                100% { transform: scaleY(1); opacity: 1; }
-            }
+            @keyframes flap-anim { 0% { transform: scaleY(1); } 50% { transform: scaleY(0.5); opacity: 0.7; } 100% { transform: scaleY(1); } }
 
             #search-box { 
                 display: none; width: 90%; max-width: 500px; background: rgba(255,255,255,0.1);
@@ -68,18 +60,10 @@ def index():
             .notch { position: absolute; width: 30px; height: 30px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -15px; } .notch-right { right: -15px; }
 
-            .header { 
-                padding: 12px 0; text-align: center; color: white; font-weight: 900; 
-                font-size: 0.95em; display: flex; align-items: center; justify-content: center;
-                gap: 20px; letter-spacing: 2px;
-            }
+            .header { padding: 12px 0; text-align: center; color: white; font-weight: 900; font-size: 0.95em; display: flex; align-items: center; justify-content: center; gap: 20px; }
             .header span { font-size: 2.8em; line-height: 0; position: relative; top: 4px; }
 
-            .white-area { 
-                background: #fdfdfd; margin: 0 8px; position: relative; 
-                display: flex; padding: 20px 15px; min-height: 240px; border-radius: 3px; 
-            }
-
+            .white-area { background: #fdfdfd; margin: 0 8px; display: flex; padding: 20px 15px; min-height: 240px; border-radius: 3px; }
             .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
             .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
@@ -88,35 +72,19 @@ def index():
             
             #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.3em; }
             
-            .barcode { 
-                height: 40px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); 
-                width: 100%; margin: 5px 0; border: 1px solid #eee; 
-            }
-
             .footer { padding: 0 0 12px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 8px; }
             
-            /* STATUS: LETRAS AMARELAS COM FUNDO PRETO */
-            .status-msg { 
-                padding: 2px 10px;
-                min-height: 1.5em;
-                display: flex; justify-content: center; align-items: center;
-            }
+            .status-msg { padding: 2px 10px; min-height: 1.6em; display: flex; justify-content: center; align-items: center; }
             .status-msg .letter-slot {
-                color: var(--warning-gold);
-                background: #000;
-                margin: 0 1px;
-                padding: 0 3px;
-                border-radius: 2px;
-                font-size: 0.75em;
-                font-weight: 900;
-                border: 1px solid #333;
+                color: var(--warning-gold); background: #000; margin: 0 1px; padding: 0 3.5px;
+                border-radius: 2px; font-size: 0.75em; font-weight: 900; border: 1px solid #333;
             }
         </style>
     </head>
     <body>
         <div id="search-box">
-            <input type="text" id="endereco" placeholder="CITY OR ZIP...">
+            <input type="text" id="endereco" placeholder="CIDADE OU CEP...">
             <button onclick="buscarEndereco()">GO</button>
         </div>
 
@@ -133,14 +101,9 @@ def index():
                     <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value"></div></div>
                 </div>
                 <div class="col-right">
-                    <div class="label">AIRCRAFT TYPE</div>
-                    <div id="type_id" class="value">----</div>
-                    
-                    <div class="label">BEARING</div>
-                    <div class="value"><span id="compass">↑</span></div>
-                    <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
-                        <div class="barcode"></div>
-                    </a>
+                    <div class="label">AIRCRAFT TYPE</div><div id="type_id" class="value">----</div>
+                    <div class="label">BEARING</div><div class="value"><span id="compass">↑</span></div>
+                    <div style="height:35px; width:100%; background:repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px); border:1px solid #eee;"></div>
                 </div>
             </div>
             <div class="footer">
@@ -153,71 +116,67 @@ def index():
             let latAlvo = null, lonAlvo = null;
             let currentTarget = null;
             let statusIndex = 0;
-            const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:-";
+            const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->";
 
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
                 const newText = String(newValue).toUpperCase();
-                
                 while (container.childNodes.length < newText.length) {
-                    const s = document.createElement("span");
-                    s.className = "letter-slot";
-                    s.innerHTML = "&nbsp;";
-                    container.appendChild(s);
+                    const s = document.createElement("span"); s.className = "letter-slot"; s.innerHTML = "&nbsp;"; container.appendChild(s);
                 }
-                while (container.childNodes.length > newText.length) {
-                    container.removeChild(container.lastChild);
-                }
+                while (container.childNodes.length > newText.length) { container.removeChild(container.lastChild); }
 
                 const slots = container.querySelectorAll('.letter-slot');
                 newText.split('').forEach((targetChar, i) => {
                     const slot = slots[i];
                     if (slot.innerText === targetChar) return;
-
                     let cycles = 0;
                     const interval = setInterval(() => {
                         slot.innerText = chars[Math.floor(Math.random() * chars.length)];
                         slot.classList.add('flapping');
-                        cycles++;
-
-                        if (cycles >= 10 + i) {
+                        if (++cycles >= 10 + i) {
                             clearInterval(interval);
                             slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
                             slot.classList.remove('flapping');
                         }
-                    }, 60); // VELOCIDADE MECÂNICA DE 60MS
+                    }, 60);
                 });
             }
 
             window.onload = function() {
                 updateWithEffect('callsign', 'SEARCHING');
-                updateWithEffect('status', 'INIT RADAR');
+                updateWithEffect('status', 'LOADING ATC...');
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     iniciarRadar();
                 }, () => { document.getElementById('search-box').style.display = "flex"; });
                 
+                // LÓGICA DE ALTERNÂNCIA DO RODAPÉ (A cada 4 segundos)
                 setInterval(() => {
                     if(!currentTarget) {
-                        const systemMsgs = ["RADAR ACTIVE", "WAITING DATA"];
-                        updateWithEffect('status', systemMsgs[statusIndex % systemMsgs.length]);
+                        const envMsgs = [
+                            "RADAR SWEEP ACTIVE",
+                            "TEMP: 24C / SKY CLEAR",
+                            "VISIBILITY: 10KM+",
+                            "LOCAL QNH: 1013 HPA"
+                        ];
+                        updateWithEffect('status', envMsgs[statusIndex % envMsgs.length]);
                         statusIndex++;
                     } else {
                         const flightMsgs = [
                             `FLT: ${currentTarget.callsign}`,
-                            `SPD: ${currentTarget.speed}KTS`,
-                            `HEX: ${currentTarget.hex}`
+                            `PATH: ${currentTarget.origin} > ${currentTarget.dest}`,
+                            `SPEED: ${currentTarget.speed} KTS`,
+                            `TYPE: ${currentTarget.type}`,
+                            "VISIBILITY: 10KM+"
                         ];
-                        updateWithEffect('status', flightMsgs[statusIndex % 3]);
+                        updateWithEffect('status', flightMsgs[statusIndex % flightMsgs.length]);
                         statusIndex++;
                     }
-                }, 5000);
+                }, 4000);
             };
 
-            function iniciarRadar() {
-                setInterval(executarBusca, 8000);
-                executarBusca();
-            }
+            function iniciarRadar() { setInterval(executarBusca, 8000); executarBusca(); }
 
             function executarBusca() {
                 if(!latAlvo) return;
@@ -230,7 +189,10 @@ def index():
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        document.getElementById('map-link').href = data.map_url;
+                    } else {
+                        currentTarget = null;
+                        updateWithEffect('callsign', 'SEARCHING');
+                        updateWithEffect('type_id', '----');
                     }
                 });
             }
@@ -254,28 +216,27 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
-    headers = {"User-Agent": "Mozilla/5.0"}
     try:
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        r = requests.get(url, headers=headers, timeout=5).json()
+        r = requests.get(url, timeout=5).json()
         if r.get('ac'):
-            validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
-            if validos:
-                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                return jsonify({
-                    "found": True, 
-                    "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
-                    "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
-                    "alt_ft": int(ac.get('alt_baro', 0)), 
-                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                    "map_url": f"https://globe.adsbexchange.com/?lat={lat_u}&lon={lon_u}&zoom=11&hex={ac.get('hex')}",
-                    "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0), "hex": ac.get('hex', '000000')
-                })
+            ac = sorted(r['ac'], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+            return jsonify({
+                "found": True, 
+                "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
+                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                "alt_ft": int(ac.get('alt_baro', 0)), 
+                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "origin": ac.get('t_from', 'N/A').split(' ')[0],
+                "dest": ac.get('t_to', 'N/A').split(' ')[0],
+                "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0)
+            })
     except: pass
     return jsonify({"found": False})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
