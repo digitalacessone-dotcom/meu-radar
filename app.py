@@ -88,12 +88,31 @@ def index():
 
             #compass { font-size: 2.2em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
             
+            /* ESTILO DO CÓDIGO DE BARRAS */
+            #radar-link { 
+                display: block; 
+                text-decoration: none; 
+                pointer-events: none; /* Desativado por padrão */
+                transition: 0.5s;
+                opacity: 0.2; /* Apagado por padrão */
+            }
+
             .barcode { 
                 width: 150px; height: 50px; 
                 background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); 
-                margin-top: 20px; opacity: 0.6; cursor: pointer; transition: 0.3s;
+                margin-top: 20px; cursor: default;
             }
-            .barcode:hover { opacity: 1; transform: scale(1.05); }
+
+            /* Quando a aeronave é encontrada, essa classe é adicionada via JS */
+            #radar-link.active {
+                pointer-events: auto;
+                opacity: 1;
+            }
+            #radar-link.active .barcode {
+                cursor: pointer;
+            }
+            #radar-link.active:hover { transform: scale(1.05); }
+
         </style>
     </head>
     <body>
@@ -135,7 +154,7 @@ def index():
                         <div class="label" style="margin-top: 20px;">Bearing</div>
                         <div id="compass">↑</div>
                         
-                        <a id="radar-link" href="#" target="_blank">
+                        <a id="radar-link" href="javascript:void(0)" target="_blank">
                             <div class="barcode" title="VER NO RADARBOX"></div>
                         </a>
                     </div>
@@ -191,13 +210,7 @@ def index():
 
                 setInterval(() => {
                     if(!currentTarget) {
-                        const msgs = [
-                            "> SCANNING AIRSPACE", 
-                            "> GPS SIGNAL OK", 
-                            "> TEMP: 24C / SKY: CLEAR",
-                            "> VISIBILITY: 10KM+",
-                            "> WAITING TARGET"
-                        ];
+                        const msgs = ["> SCANNING AIRSPACE", "> GPS SIGNAL OK", "> TEMP: 24C / SKY: CLEAR", "> VISIBILITY: 10KM+", "> WAITING TARGET"];
                         updateWithEffect('status-container', msgs[step % msgs.length]);
                     } else {
                         const info = [
@@ -218,6 +231,8 @@ def index():
                 if(!latAlvo) return;
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
                 .then(res => res.json()).then(data => {
+                    const radarLink = document.getElementById('radar-link');
+                    
                     if(data.found) {
                         currentTarget = data;
                         updateWithEffect('callsign', data.callsign);
@@ -226,8 +241,13 @@ def index():
                         updateWithEffect('dist_body', data.dist + " KM");
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         
-                        // O link foca na sua posição para você ver o avião em relação a você
-                        document.getElementById('radar-link').href = `https://www.radarbox.com/@${data.lat},${data.lon},z11`;
+                        // ATIVA O CLIQUE E O LINK
+                        radarLink.classList.add('active');
+                        radarLink.href = `https://www.radarbox.com/@${data.lat},${data.lon},z11`;
+                    } else {
+                        // DESATIVA CASO PERCA O SINAL
+                        radarLink.classList.remove('active');
+                        radarLink.href = "javascript:void(0)";
                     }
                 });
             }
@@ -261,6 +281,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
