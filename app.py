@@ -30,11 +30,11 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <title>ATC Premium Pass</title>
         <style>
-            :root { --air-blue: #226488; --warning-gold: #FFD700; --bg-dark: #0a192f; }
+            :root { --air-blue: #226488; --warning-gold: #FFD700; --bg-dark: #f0f4f7; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
             body { 
-                background-color: #f0f4f7; margin: 0; padding: 0; 
+                background-color: var(--bg-dark); margin: 0; padding: 0; 
                 display: flex; flex-direction: column; align-items: center; justify-content: center; 
                 min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden;
             }
@@ -71,11 +71,10 @@ def index():
             .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
             .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); min-height: 1.2em; display: flex; }
 
-            /* TERMINAL DE STATUS ATUALIZADO */
             .terminal-footer { 
                 background: #000; padding: 12px 40px; 
                 border-top: 3px solid var(--warning-gold);
-                min-height: 50px; display: flex; align-items: center;
+                min-height: 55px; display: flex; align-items: center;
             }
 
             .letter-slot { 
@@ -87,8 +86,14 @@ def index():
             .flapping { animation: flap 0.07s infinite; }
             @keyframes flap { 50% { transform: scaleY(0.5); opacity: 0.5; } }
 
-            #compass { font-size: 2em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
-            .barcode { width: 150px; height: 50px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 20px; opacity: 0.7; }
+            #compass { font-size: 2.2em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
+            
+            .barcode { 
+                width: 150px; height: 50px; 
+                background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); 
+                margin-top: 20px; opacity: 0.6; cursor: pointer; transition: 0.3s;
+            }
+            .barcode:hover { opacity: 1; transform: scale(1.05); }
         </style>
     </head>
     <body>
@@ -129,7 +134,10 @@ def index():
                         <div id="type_id" class="value">----</div>
                         <div class="label" style="margin-top: 20px;">Bearing</div>
                         <div id="compass">↑</div>
-                        <div class="barcode"></div>
+                        
+                        <a id="radar-link" href="#" target="_blank">
+                            <div class="barcode" title="VER NO RADARBOX"></div>
+                        </a>
                     </div>
                 </div>
 
@@ -174,14 +182,13 @@ def index():
 
             window.onload = function() {
                 updateWithEffect('callsign', 'SEARCHING');
-                updateWithEffect('status-container', '> INITIALIZING SYSTEM...');
+                updateWithEffect('status-container', '> INITIALIZING RADAR...');
                 
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     iniciarRadar();
                 });
 
-                // Ciclo de mensagens giratórias no terminal preto
                 setInterval(() => {
                     if(!currentTarget) {
                         const msgs = [
@@ -218,6 +225,9 @@ def index():
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
+                        
+                        // O link foca na sua posição para você ver o avião em relação a você
+                        document.getElementById('radar-link').href = `https://www.radarbox.com/@${data.lat},${data.lon},z11`;
                     }
                 });
             }
@@ -251,6 +261,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
