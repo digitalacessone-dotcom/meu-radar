@@ -29,68 +29,64 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>Radar Boarding Pass - iPhone 15 Pro</title>
+        <title>Radar Boarding Pass - Pro</title>
         <style>
-            :root { 
-                --air-blue: #1A237E; 
-                --warning-gold: #FFD700; 
-                --bg-dark: #0a192f; 
-            }
-            
+            :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
             body { 
                 background-color: var(--bg-dark); 
-                margin: 0; 
-                padding: 0; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
+                margin: 0; padding: 0; 
+                display: flex; flex-direction: column;
+                align-items: center; justify-content: center; 
                 min-height: 100vh;
                 font-family: 'Courier New', monospace;
-                overflow: hidden; /* Impede rolagem no iPhone */
+                overflow-x: hidden;
             }
 
-            /* Container que força o ticket a caber na largura do iPhone */
+            /* CAIXA DE BUSCA - Reativada e Estilizada */
+            #search-box { 
+                display: none; 
+                width: 90%; max-width: 500px;
+                background: rgba(255,255,255,0.1);
+                padding: 10px;
+                border-radius: 12px;
+                margin-bottom: 20px;
+                border: 1px solid var(--warning-gold);
+                gap: 8px;
+                z-index: 100;
+            }
+            #search-box input { 
+                flex: 1; background: #000; border: 1px solid #444; 
+                padding: 10px; color: white; border-radius: 6px; outline: none;
+            }
+            #search-box button { 
+                background: var(--warning-gold); color: #000; border: none; 
+                padding: 10px 15px; font-weight: 900; border-radius: 6px; cursor: pointer;
+            }
+
             .main-wrapper {
                 width: 100%;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                padding: 10px;
+                display: flex; justify-content: center; align-items: center;
             }
 
             .card { 
                 background: var(--air-blue); 
-                width: 100%;
-                max-width: 600px; /* Reduzi levemente para o iPhone 15 Pro */
-                border-radius: 20px; 
-                position: relative; 
+                width: 100%; max-width: 600px;
+                border-radius: 20px; position: relative; 
                 box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
                 overflow: hidden;
-            }
-
-            /* Ajuste de escala para telas pequenas (iPhone em modo retrato) */
-            @media (max-width: 600px) {
-                .card {
-                    transform: scale(0.9); /* Ajuste manual para iPhone */
-                }
+                transform: scale(0.95); /* Ajuste para iPhone 15 Pro */
             }
 
             .notch { position: absolute; width: 40px; height: 40px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
-            .notch-left { left: -20px; } 
-            .notch-right { right: -20px; }
+            .notch-left { left: -20px; } .notch-right { right: -20px; }
 
             .header { padding: 15px 0; text-align: center; color: white; font-weight: 900; letter-spacing: 3px; font-size: 1.1em; }
 
             .white-area { 
-                background: #fdfdfd; 
-                margin: 0 10px; 
-                position: relative; 
-                display: flex; 
-                padding: 20px; 
-                min-height: 220px; 
-                border-radius: 4px; 
+                background: #fdfdfd; margin: 0 10px; position: relative; 
+                display: flex; padding: 20px; min-height: 220px; border-radius: 4px; 
             }
 
             .stamp { 
@@ -109,14 +105,8 @@ def index():
             .label { color: #888; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
             .value { font-size: 1.3em; font-weight: 900; color: var(--air-blue); margin-bottom: 10px; }
             
-            #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.2em; }
-            
-            .barcode-link { text-decoration: none; width: 100%; cursor: pointer; }
-            .barcode { 
-                height: 50px; 
-                background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); 
-                width: 100%; margin: 8px 0; 
-            }
+            #compass { display: inline-block; transition: transform 0.6s ease; color: var(--warning-gold); font-size: 1.2em; }
+            .barcode { height: 50px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 8px 0; border: 1px solid #eee; }
             
             .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 15px; }
@@ -125,6 +115,11 @@ def index():
     </head>
     <body>
         
+        <div id="search-box">
+            <input type="text" id="endereco" placeholder="DIGITE CIDADE OU CEP...">
+            <button onclick="buscarEndereco()">ATIVAR</button>
+        </div>
+
         <div class="main-wrapper">
             <div class="card">
                 <div class="notch notch-left"></div>
@@ -140,15 +135,15 @@ def index():
                     <div class="col-right">
                         <div class="label">RANGE/BEARING</div>
                         <div class="value"><span id="dist">0.0 KM</span> <span id="compass">↑</span></div>
-                        <a id="map-link" class="barcode-link" target="_blank">
+                        <a id="map-link" style="text-decoration:none; width:100%;" target="_blank">
                             <div class="barcode"></div>
                         </a>
-                        <div class="label" style="font-size: 7px;">CLICK FOR LIVE MAP</div>
+                        <div class="label" style="font-size: 7px;">CLICK PARA O MAPA</div>
                     </div>
                 </div>
                 <div class="footer">
                     <div class="yellow-lines"></div>
-                    <div id="status" class="status-msg">SCANNING AIRSPACE...</div>
+                    <div id="status" class="status-msg">INICIANDO RADAR...</div>
                 </div>
             </div>
         </div>
@@ -159,10 +154,17 @@ def index():
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    setInterval(executarBusca, 8000);
-                    executarBusca();
+                    iniciarRadar();
+                }, () => {
+                    // Mostra a barra de busca se o GPS falhar
+                    document.getElementById('search-box').style.display = "flex";
                 });
             };
+
+            function iniciarRadar() {
+                setInterval(executarBusca, 8000);
+                executarBusca();
+            }
 
             function executarBusca() {
                 if(!latAlvo) return;
@@ -175,12 +177,24 @@ def index():
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
                         document.getElementById('carimbo').classList.add('visible');
-                        document.getElementById('status').innerText = "TARGET LOCKED";
+                        document.getElementById('status').innerText = "ALVO LOCALIZADO";
                     } else {
                         document.getElementById('carimbo').classList.remove('visible');
-                        document.getElementById('status').innerText = "SCANNING LIVE AIRSPACE...";
+                        document.getElementById('status').innerText = "VARRENDO ESPAÇO AÉREO...";
                     }
                 });
+            }
+
+            async function buscarEndereco() {
+                const query = document.getElementById('endereco').value;
+                if(!query) return;
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+                const data = await res.json();
+                if(data.length > 0) {
+                    latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
+                    document.getElementById('search-box').style.display = "none";
+                    iniciarRadar();
+                }
             }
         </script>
     </body>
