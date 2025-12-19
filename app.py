@@ -41,25 +41,32 @@ def index():
             }
             html { height: -webkit-fill-available; }
 
-            /* EFEITO VISUAL DAS PALHETAS */
+            /* CAMPO DE PESQUISA RESTAURADO */
+            #search-box { 
+                display: none; width: 90%; max-width: 500px; background: rgba(255,255,255,0.1);
+                padding: 10px; border-radius: 12px; margin-bottom: 20px; 
+                border: 1px solid var(--warning-gold); gap: 8px; z-index: 100;
+            }
+            #search-box input { flex: 1; background: #000; border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; outline: none; }
+            #search-box button { background: var(--warning-gold); color: #000; border: none; padding: 10px 15px; font-weight: 900; border-radius: 6px; cursor: pointer; }
+
+            /* LETRAS AMARELAS SEM FUNDO BRANCO */
             .letter-slot { 
                 display: inline-block; 
                 min-width: 0.65em; 
                 text-align: center; 
                 position: relative;
-                background: #eee;
-                color: var(--air-blue);
-                margin: 0 0.5px;
-                border-radius: 2px;
-                box-shadow: inset 0 0 2px rgba(0,0,0,0.2);
+                color: var(--warning-gold); /* Letra amarela */
+                background: transparent;    /* Sem fundo branco */
+                margin: 0 0.2px;
+                text-shadow: 0 0 2px rgba(255, 215, 0, 0.3);
             }
-            .flapping { 
-                animation: flip 0.05s infinite;
-            }
+            
+            .flapping { animation: flip 0.06s infinite; }
             @keyframes flip {
-                0% { transform: rotateX(0deg); filter: brightness(1); }
-                50% { transform: rotateX(90deg); filter: brightness(0.8); }
-                100% { transform: rotateX(0deg); filter: brightness(1); }
+                0% { transform: scaleY(1); opacity: 1; }
+                50% { transform: scaleY(0); opacity: 0.5; }
+                100% { transform: scaleY(1); opacity: 1; }
             }
 
             .card { 
@@ -71,11 +78,7 @@ def index():
             .notch { position: absolute; width: 30px; height: 30px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -15px; } .notch-right { right: -15px; }
 
-            .header { 
-                padding: 10px 0; text-align: center; color: white; font-weight: 900; 
-                font-size: 0.9em; display: flex; align-items: center; justify-content: center; 
-                gap: 12px; letter-spacing: 1px;
-            }
+            .header { padding: 12px 0; text-align: center; color: white; font-weight: 900; font-size: 0.9em; display: flex; align-items: center; justify-content: center; gap: 12px; letter-spacing: 2px; }
 
             .white-area { 
                 background: #fdfdfd; margin: 0 8px; position: relative; 
@@ -85,17 +88,28 @@ def index():
             .col-left { flex: 1; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
             .col-right { width: 140px; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #888; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
-            .value { font-size: 1.25em; font-weight: 900; color: var(--air-blue); margin-bottom: 10px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
+            .label { color: #888; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; }
+            /* Valores agora usam o azul do card como fundo visual ou apenas a cor */
+            .value { font-size: 1.25em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
             
+            /* Ajuste específico para as letras amarelas aparecerem bem na área branca */
+            .white-area .letter-slot { color: var(--air-blue); } 
+            /* Se quiser que as letras sejam amarelas MESMO na parte branca, mude acima para var(--warning-gold) e adicione um fundo escuro nos slots */
+
             #compass { display: inline-block; transition: transform 0.6s; color: var(--warning-gold); font-size: 1.1em; }
-            .barcode { height: 40px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 5px 0; border: 1px solid #eee; }
+            .barcode { height: 40px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 8px 0; border: 1px solid #eee; }
             .footer { padding: 0 0 12px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
-            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 6px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.68em; font-weight: bold; text-transform: uppercase; text-align: center; padding: 0 10px; min-height: 1.1em; letter-spacing: 0.5px; }
+            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 8px; }
+            .status-msg { color: var(--warning-gold); font-size: 0.75em; font-weight: bold; text-transform: uppercase; text-align: center; padding: 0 10px; min-height: 1.1em; }
         </style>
     </head>
     <body>
+        
+        <div id="search-box">
+            <input type="text" id="endereco" placeholder="CITY OR ZIP CODE...">
+            <button onclick="buscarEndereco()">SEARCH</button>
+        </div>
+
         <div class="card" onclick="enableAudio()">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
@@ -132,8 +146,8 @@ def index():
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'square';
-                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.01);
             }
@@ -150,7 +164,6 @@ def index():
                 osc.start(); osc.stop(audioCtx.currentTime + 0.5);
             }
 
-            // LÓGICA SEQUENCIAL (A BOA ANTIGA)
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
                 const newText = String(newValue).toUpperCase();
@@ -184,18 +197,34 @@ def index():
                             clearInterval(interval);
                             slot.classList.remove('flapping');
                         }
-                    }, 30);
+                    }, 25);
                 });
             }
 
             window.onload = function() {
                 updateWithEffect('callsign', 'SEARCHING');
-                updateWithEffect('status', 'INITIALIZING...');
+                updateWithEffect('status', 'WAITING GPS...');
+                
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     iniciarRadar();
+                }, err => {
+                    document.getElementById('search-box').style.display = "flex";
+                    updateWithEffect('status', 'ENTER LOCATION ABOVE');
                 });
             };
+
+            async function buscarEndereco() {
+                const query = document.getElementById('endereco').value;
+                if(!query) return;
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+                const data = await res.json();
+                if(data.length > 0) {
+                    latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
+                    document.getElementById('search-box').style.display = "none";
+                    iniciarRadar();
+                }
+            }
 
             function iniciarRadar() { setInterval(executarBusca, 8000); executarBusca(); }
 
@@ -228,4 +257,5 @@ def index():
     </body>
     </html>
     ''')
-# ... (Manter o código Python/Flask do backend igual ao anterior)
+
+# O backend Python permanece o mesmo
