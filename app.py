@@ -45,22 +45,25 @@ def index():
                 min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden;
             }
 
-            /* CAMPO SUPERIOR PARA ENDEREÇO OU CEP */
-            .manual-gps {
-                background: #fff; padding: 12px 20px; border-radius: 12px;
+            /* BARRA DE PESQUISA COM TRANSIÇÃO */
+            #search-section {
+                background: #fff; padding: 15px 25px; border-radius: 12px;
                 margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-                display: flex; gap: 12px; align-items: center; border: 1px solid #ddd;
-                width: 95%; max-width: 850px;
+                display: flex; gap: 10px; align-items: center; border: 1px solid #ddd;
+                width: 95%; max-width: 850px; z-index: 100;
+                transition: all 0.5s ease;
+                opacity: 1; transform: translateY(0);
             }
-            .manual-gps input {
-                border: 1px solid #ccc; padding: 8px 12px; border-radius: 6px; flex: 1; font-size: 0.9em;
-                outline: none; transition: 0.3s;
+            #search-section.hidden {
+                opacity: 0; transform: translateY(-20px); pointer-events: none; margin-bottom: -60px;
             }
-            .manual-gps input:focus { border-color: var(--air-blue); }
-            .manual-gps button {
-                background: var(--air-blue); color: white; border: none; padding: 8px 18px;
-                border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85em;
-                white-space: nowrap;
+
+            #search-section input { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; font-size: 0.9em; outline: none; }
+            #search-section button { background: var(--air-blue); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+            /* BOTÃO RE-CONFIG DISCRETO */
+            #reconfig-btn {
+                position: absolute; top: 10px; right: 10px; font-size: 0.6em; color: #aaa; cursor: pointer; text-decoration: underline; z-index: 50;
             }
 
             .card { 
@@ -68,6 +71,7 @@ def index():
                 border-radius: 20px; position: relative; 
                 box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
                 display: flex; overflow: hidden; border: 1px solid #ddd;
+                transition: transform 0.5s ease;
             }
 
             .left-stub {
@@ -79,53 +83,45 @@ def index():
             .left-stub .seat-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; }
 
             .main-ticket { flex: 1; display: flex; flex-direction: column; }
-            .header-bar { 
-                background: var(--air-blue); height: 80px; display: flex; 
-                align-items: center; justify-content: space-between; padding: 0 40px; color: white;
-            }
+            .header-bar { background: var(--air-blue); height: 80px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; color: white; }
             .header-bar h1 { font-size: 1.5em; letter-spacing: 5px; margin: 0; }
             
             .content-area { padding: 30px 50px; display: flex; flex: 1; background: white; }
-            .col-data { flex: 2; border-right: 1px solid #eee; }
+            .col-data { flex: 2; border-right: 1px solid #eee; display: flex; flex-direction: column; justify-content: space-between; }
             .col-side { flex: 1; padding-left: 30px; align-items: center; display: flex; flex-direction: column; justify-content: space-around; }
 
             .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
             .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); min-height: 1.2em; display: flex; }
 
-            .terminal-footer { 
-                background: #000; padding: 12px 40px; 
-                border-top: 3px solid var(--warning-gold);
-                min-height: 55px; display: flex; align-items: center;
-            }
-
-            .letter-slot { 
-                display: inline-block; color: var(--warning-gold); 
-                font-family: 'Courier New', monospace; font-weight: 900;
-                min-width: 0.65em; text-align: center;
-            }
+            .terminal-footer { background: #000; padding: 12px 40px; border-top: 3px solid var(--warning-gold); min-height: 55px; display: flex; align-items: center; }
+            .letter-slot { display: inline-block; color: var(--warning-gold); font-family: 'Courier New', monospace; font-weight: 900; min-width: 0.65em; text-align: center; }
             
             .flapping { animation: flap 0.07s infinite; }
             @keyframes flap { 50% { transform: scaleY(0.5); opacity: 0.5; } }
 
-            #compass { font-size: 2.2em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
-            #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.5s; opacity: 0.1; }
-            .barcode { width: 150px; height: 50px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 20px; }
-            #radar-link.active { pointer-events: auto; opacity: 1; transform: scale(1.05); }
+            #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
+            
+            #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s all ease; opacity: 0.1; }
+            .barcode { width: 150px; height: 55px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 10px; }
+            
+            #radar-link.active { pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important; }
+            #radar-link.active:hover { transform: scale(1.1); }
         </style>
     </head>
     <body>
 
-        <div class="manual-gps">
-            <span style="font-size: 0.75em; font-weight: 900; color: var(--air-blue);">ORIGEM:</span>
-            <input type="text" id="address-input" placeholder="Digite Endereço, Cidade ou CEP...">
-            <button onclick="geocodeAddress()">ATUALIZAR RADAR</button>
+        <div id="search-section">
+            <input type="text" id="address-input" placeholder="Digite endereço, cidade ou CEP para iniciar...">
+            <button onclick="geocodeAddress()">CONECTAR</button>
         </div>
+
+        <div id="reconfig-btn" onclick="toggleSearch()">[ CHANGE LOCATION ]</div>
 
         <div class="card">
             <div class="left-stub">
                 <div class="label" style="color: rgba(255,255,255,0.7)">Radar Base</div>
-                <div class="seat-label">Mode:</div>
-                <div class="seat-num" id="point-id">--</div>
+                <div class="seat-label">Seat:</div>
+                <div class="seat-num">19 A</div>
                 <div class="seat-label" style="margin-top: auto;">Secure Tunnel</div>
             </div>
 
@@ -137,14 +133,19 @@ def index():
                 <div class="content-area">
                     <div class="col-data">
                         <div><div class="label">Ident / Callsign</div><div id="callsign" class="value"></div></div>
-                        <div style="margin-top:20px"><div class="label">Aircraft Distance</div><div id="dist_body" class="value"></div></div>
-                        <div style="margin-top:20px"><div class="label">Altitude (MSL)</div><div id="alt" class="value"></div></div>
+                        <div><div class="label">Aircraft Distance</div><div id="dist_body" class="value"></div></div>
+                        <div><div class="label">Altitude (MSL)</div><div id="alt" class="value"></div></div>
                     </div>
 
                     <div class="col-side">
-                        <div class="label">Type</div><div id="type_id" class="value">----</div>
-                        <div class="label">Bearing</div><div id="compass">↑</div>
-                        <a id="radar-link" href="#" target="_blank"><div class="barcode"></div></a>
+                        <div style="text-align: center;">
+                            <div class="label">Type</div>
+                            <div id="type_id" class="value">----</div>
+                        </div>
+                        <div id="compass">↑</div>
+                        <a id="radar-link" href="#" target="_blank">
+                            <div class="barcode"></div>
+                        </a>
                     </div>
                 </div>
 
@@ -158,29 +159,30 @@ def index():
             let latAlvo = null, lonAlvo = null, currentTarget = null, step = 0;
             const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->";
 
-            // Função para converter Endereço/CEP em Coordenadas
+            function toggleSearch() {
+                document.getElementById('search-section').classList.remove('hidden');
+            }
+
             async function geocodeAddress() {
                 const query = document.getElementById('address-input').value;
                 if(!query) return;
-                
-                updateWithEffect('status-container', '> GEO-SEARCHING: ' + query);
-                
+                updateWithEffect('status-container', '> GEO-SEARCHING...');
                 try {
                     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
                     const data = await response.json();
-                    
                     if(data.length > 0) {
                         latAlvo = parseFloat(data[0].lat);
                         lonAlvo = parseFloat(data[0].lon);
-                        document.getElementById('point-id').innerText = "FIX";
-                        updateWithEffect('status-container', '> TARGET POINT UPDATED');
+                        
+                        // ESCONDE A BARRA AO CONECTAR
+                        document.getElementById('search-section').classList.add('hidden');
+                        
+                        updateWithEffect('status-container', '> LOCATION LOCKED');
                         executarBusca();
-                    } else {
-                        updateWithEffect('status-container', '> ERROR: ADDRESS NOT FOUND');
+                        // Inicia o loop de busca se ainda não começou
+                        if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 12000);
                     }
-                } catch(e) {
-                    updateWithEffect('status-container', '> GEO-SERVER ERROR');
-                }
+                } catch(e) { updateWithEffect('status-container', '> GEO-ERROR'); }
             }
 
             function updateWithEffect(id, newValue) {
@@ -204,26 +206,28 @@ def index():
                             slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
                             slot.classList.remove('flapping');
                         }
-                    }, 50);
+                    }, 45);
                 });
             }
 
             window.onload = function() {
-                updateWithEffect('status-container', '> WAITING FOR GPS OR ADDRESS...');
+                updateWithEffect('callsign', 'SEARCHING');
+                updateWithEffect('status-container', '> WAITING CONNECTION...');
+                
+                // Se o navegador já tiver GPS permitido, esconde a barra automaticamente
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    document.getElementById('point-id').innerText = "GPS";
-                    setInterval(executarBusca, 12000); executarBusca();
-                }, err => {
-                    updateWithEffect('status-container', '> GPS OFF. INPUT ADDRESS ABOVE.');
+                    document.getElementById('search-section').classList.add('hidden');
+                    executarBusca();
+                    window.searchLoop = setInterval(executarBusca, 12000);
                 });
 
                 setInterval(() => {
                     if(!currentTarget) {
-                        const msgs = ["> ENCRYPTED SCAN...", "> NETWORK CLOAKED", "> WAITING TARGET"];
+                        const msgs = ["> SCANNING AIRSPACE", "> NETWORK SECURE", "> WAITING TARGET"];
                         updateWithEffect('status-container', msgs[step % msgs.length]);
                     } else {
-                        const info = [`> TARGET: ${currentTarget.callsign}`, `> SPD: ${currentTarget.speed} KT`, `> POS LOCKED` ];
+                        const info = [`> TARGET: ${currentTarget.callsign}`, `> SPD: ${currentTarget.speed} KT`, `> ALT: ${currentTarget.alt_ft} FT` ];
                         updateWithEffect('status-container', info[step % info.length]);
                     }
                     step++;
@@ -242,11 +246,12 @@ def index():
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
+                        radarLink.href = `https://www.radarbox.com/@${data.lat},${data.lon},z12`;
                         radarLink.classList.add('active');
-                        radarLink.href = `https://www.radarbox.com/@${data.lat},${data.lon},z11`;
                     } else {
                         currentTarget = null;
                         radarLink.classList.remove('active');
+                        updateWithEffect('callsign', 'SEARCHING');
                     }
                 });
             }
@@ -281,6 +286,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
 
 
