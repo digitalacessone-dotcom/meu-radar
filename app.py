@@ -26,25 +26,27 @@ def index():
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; }
             body { background-color: #0a192f; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; }
             
-            .search-container { display: none; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid var(--warning-gold); width: 90%; max-width: 500px; gap: 10px; }
-            input { flex: 1; background: #000; border: 1px solid var(--air-blue); padding: 12px; color: var(--warning-gold); font-weight: bold; }
+            .search-container { display: none; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid var(--warning-gold); width: 90%; max-width: 500px; }
+            input { flex: 1; background: #000; border: 1px solid var(--air-blue); padding: 12px; color: var(--warning-gold); font-weight: bold; width: 70%; }
             button { background: var(--warning-gold); color: #000; border: none; padding: 12px 20px; font-weight: 900; cursor: pointer; }
 
             .card { background: #fdfdfd; color: #1a1a1a; width: 95%; max-width: 600px; border-radius: 4px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.8); overflow: hidden; border-left: 15px solid var(--air-blue); }
             
-            /* Cabeçalho com apenas um avião de cada lado */
-            .header { background: var(--air-blue); color: white; padding: 15px; text-align: center; font-weight: 900; letter-spacing: 3px; font-size: 1.1em; border-bottom: 2px dashed #ccc; display: flex; justify-content: center; align-items: center; gap: 20px; }
-            
+            /* Cabeçalho com Aviões Maiores */
+            .header { background: var(--air-blue); color: white; padding: 20px; text-align: center; font-weight: 900; letter-spacing: 2px; font-size: 1.2em; border-bottom: 2px dashed #ccc; display: flex; justify-content: center; align-items: center; gap: 25px; }
+            .header span { font-size: 1.8em; } /* Aumenta o tamanho do avião */
+
             .main-content { display: flex; padding: 25px; min-height: 200px; }
             .data-section { flex: 2; border-right: 2px dashed #ddd; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-between; }
             .side-section { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
             
-            .label { color: #777; font-size: 0.65em; font-weight: bold; margin-bottom: 5px; }
+            .label { color: #777; font-size: 0.65em; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
             .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); }
             
             .barcode { height: 50px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin-top: 15px; }
             
-            .footer { background: #111; color: var(--warning-gold); padding: 15px; text-align: center; font-size: 0.9em; font-weight: bold; border-top: 4px solid var(--air-blue); min-height: 35px; letter-spacing: 2px; text-transform: uppercase; }
+            /* Rodapé Azul com Letras Amarelas Girando */
+            .footer { background: var(--air-blue); color: var(--warning-gold); padding: 15px; text-align: center; font-size: 0.9em; font-weight: bold; border-top: 2px solid rgba(255,215,0,0.3); min-height: 40px; letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
             
             @media (max-width: 480px) {
                 .main-content { flex-direction: column; }
@@ -56,7 +58,7 @@ def index():
     <body onclick="ativarAlertas()">
         <div id="busca" class="search-container">
             <input type="text" id="endereco" placeholder="DIGITE LOCAL...">
-            <button onclick="buscarEndereco()">ATIVAR</button>
+            <button onclick="buscarEndereco()">VIGIAR</button>
         </div>
 
         <div class="card">
@@ -93,12 +95,13 @@ def index():
             let latAlvo = null, lonAlvo = null;
             let targetLock = false;
             let systemTime = "--:--:--";
-            let frasesVigia = ["RADAR ACTIVE", "SCANNING AREA", "SECTOR SECURED"];
-            let frasesTarget = ["TARGET LOCKED", "TRACKING DATA", "SIGNAL STABLE"];
+            let frasesVigia = ["RADAR ACTIVE", "SCANNING AIRSPACE", "SECTOR SECURED"];
+            let frasesTarget = ["TARGET LOCKED", "TRACKING FLIGHT", "SIGNAL STABLE"];
             let indiceFrase = 0;
 
             function ativarAlertas() { audioAlerta.play().then(() => audioAlerta.pause()); }
 
+            // Efeito Split-Flap de letras girando
             function splitFlapEffect(finalText) {
                 const elem = document.getElementById('status');
                 let iterations = 0;
@@ -155,6 +158,9 @@ def index():
                     } else {
                         targetLock = false;
                         document.getElementById('callsign').innerText = "SEARCHING";
+                        document.getElementById('route').innerText = "--- / ---";
+                        document.getElementById('alt').innerText = "--- FT";
+                        document.getElementById('dist').innerText = "--- KM";
                     }
                 });
             }
@@ -188,6 +194,7 @@ def get_data():
                     return jsonify({"found": True, "callsign": p.get('callsign'), "dep": f.get('departure', 'UNK'), "arr": f.get('arrival', 'UNK'), "dist": round(d, 1), "alt": p.get('altitude', 0)})
     except: pass
     return jsonify({"found": False})
+
 
 
 
