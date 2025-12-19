@@ -216,6 +216,11 @@ def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
     
+    # Cabeçalho para fingir ser um navegador real (Evita bloqueios)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+
     weather = {"temp": "--", "vis": "--", "desc": "N/A"}
     try:
         w_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat_u}&longitude={lon_u}&current=temperature_2m,visibility,weather_code"
@@ -227,25 +232,50 @@ def get_data():
             weather['desc'] = "CLEAR" if code == 0 else "PARTLY CLOUDY" if code < 4 else "OVERCAST" if code < 50 else "RAINY"
     except: pass
 
+    # TENTA API 1 (ADSB.LOL)
     try:
-        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        r = requests.get(url, timeout=3).json()
+        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/150"
+        r = requests.get(url, headers=headers, timeout=5).json()
         if r.get('ac'):
-            ac = sorted(r['ac'], key=lambda x: haversine(lat_u, lon_u, x.get('lat',0), x.get('lon',0)))[0]
-            d = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
-            return jsonify({
-                "found": True, "callsign": ac.get('flight', 'UNKN').strip(), 
-                "dist": round(d, 1), "alt": ac.get('alt_baro', 0) / 3.28, 
-                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                "speed": round(ac.get('gs', 0) * 1.852), "origin": ac.get('db_origin', 'N/A'),
-                "dest": ac.get('db_dest', 'N/A'), "weather": weather
-            })
+            return processar_aviao(r['ac'], lat_u, lon_u, weather)
+    except:
+        # SE FALHAR, TENTA API 2 (ADSB.ONE)
+        try:
+            url_backup = f"https://api.adsb.one/v2/lat/{lat_u}/lon/{lon_u}/dist/150"
+            r = requests.get(url_backup, headers=headers, timeout=5).json()
+            if r.get('ac'):
+                return processar_aviao(r['ac'], lat_u, lon_u, weather)
+        except: pass
+
+    return jsonify({"found": False, "weather": weather})
+
+def processar_aviao(lista_ac, lat_u, lon_u, weather):
+    # Filtra apenas quem tem latitude e longitude válida
+    validos = [a for a in lista_ac if a.get('lat') and a.get('lon')]
+    if not validos:
+        return jsonify({"found": False, "weather": weather})
+        
+    ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+    d = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
+    
+    return jsonify({
+        "found": True, 
+        "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
+        "dist": round(d, 1), 
+        "alt": ac.get('alt_baro', ac.get('alt', 0)) / 3.28, 
+        "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+        "speed": round(ac.get('gs', 0) * 1.852), 
+        "origin": ac.get('db_origin', 'N/A'),
+        "dest": ac.get('db_dest', 'N/A'), 
+        "weather": weather
+    })
     except: pass
 
     return jsonify({"found": False, "weather": weather})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
