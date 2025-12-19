@@ -4,7 +4,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-RAIO_KM = 25.0 
+RAIO_KM = 50.0 
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -236,6 +236,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
