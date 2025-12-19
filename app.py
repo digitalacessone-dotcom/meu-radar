@@ -5,7 +5,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 app = Flask(__name__)
 
 # Configurações de Radar
-RAIO_KM = 150.0 # Aumentei um pouco para captar aeronaves como a do seu print (148km)
+RAIO_KM = 150.0 
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -29,7 +29,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Visual Radar Pro - Boarding Pass</title>
+        <title>Radar Boarding Pass Pro</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
@@ -59,10 +59,10 @@ def index():
             
             #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.2em; color: var(--warning-gold); }
             
-            /* CÓDIGO DE BARRAS INTERATIVO */
-            .barcode-link { text-decoration: none; width: 100%; display: block; cursor: pointer; transition: opacity 0.2s; }
-            .barcode-link:hover { opacity: 0.7; }
-            .barcode { height: 65px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
+            /* CÓDIGO DE BARRAS CLICÁVEL */
+            .barcode-link { text-decoration: none; width: 100%; display: block; cursor: pointer; transition: transform 0.2s; }
+            .barcode-link:active { transform: scale(0.95); }
+            .barcode { height: 65px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; border: 1px solid #eee; }
             
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 10px; border-top: 2.5px solid var(--warning-gold); border-bottom: 2.5px solid var(--warning-gold); margin-bottom: 20px; }
@@ -106,19 +106,18 @@ def index():
         </div>
 
         <script>
-            const audioAlerta = new Audio('https://www.soundjay.com/buttons/beep-07a.mp3');
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
             let latAlvo = null, lonAlvo = null, targetLock = false, flightData = null;
-            let weatherData = { temp: "--", vis: "--", desc: "SCANNING" };
+            let weatherData = { temp: "--", vis: "--" };
             let currentMsgIndex = 0;
 
             function splitFlap(text) {
                 const el = document.getElementById('status');
                 let i = 0;
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
                 const inter = setInterval(() => {
                     el.innerText = text.split('').map((c, idx) => i > idx ? c : chars[Math.floor(Math.random()*chars.length)]).join('');
                     if(i++ > text.length) clearInterval(inter);
-                }, 25);
+                }, 20);
             }
 
             window.onload = function() {
@@ -133,8 +132,8 @@ def index():
                 setInterval(executarBusca, 10000);
                 setInterval(() => {
                     const searchMsgs = !targetLock ? 
-                        ["SCANNING LIVE AIRSPACE", "RADAR SYSTEM ACTIVE", `TEMPERATURE: ${weatherData.temp} CELSIUS`, `VISIBILITY: ${weatherData.vis} KILOMETERS`] :
-                        ["TARGET LOCKED", `CALLSIGN: ${flightData.callsign}`, "CLICK BARCODE FOR MAP", "VISUAL CONTACT ACTIVE"];
+                        ["SCANNING AIRSPACE", "RADAR ACTIVE", `TEMP: ${weatherData.temp} C`, `VISIBILITY: ${weatherData.vis} KM`] :
+                        ["TARGET LOCKED", `CALLSIGN: ${flightData.callsign}`, "TAP BARCODE FOR LIVE MAP", "VISUAL CONTACT ACTIVE"];
                     currentMsgIndex = (currentMsgIndex + 1) % searchMsgs.length;
                     splitFlap(searchMsgs[currentMsgIndex]);
                 }, 4500);
@@ -151,29 +150,15 @@ def index():
                         document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
                         document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        
-                        // ATUALIZA O LINK DO MAPA
                         document.getElementById('map-link').href = data.map_url;
-                        
                         document.getElementById('carimbo').classList.add('visible');
                         targetLock = true;
                     } else {
                         targetLock = false;
-                        document.getElementById('map-link').removeAttribute('href');
                         document.getElementById('carimbo').classList.remove('visible');
+                        document.getElementById('callsign').innerText = "SEARCHING";
                     }
                 });
-            }
-
-            async function buscarEndereco() {
-                const query = document.getElementById('endereco').value;
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
-                const data = await res.json();
-                if(data.length > 0) {
-                    latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
-                    document.getElementById('search-box').style.display = "none";
-                    iniciarRadar();
-                }
             }
         </script>
     </body>
@@ -194,36 +179,36 @@ def get_data():
             weather['vis'] = round(wr['current']['visibility'] / 1000, 1)
     except: pass
 
-    endpoints = ["https://api.adsb.lol/v2/lat/{}/lon/{}/dist/{}".format(lat_u, lon_u, RAIO_KM)]
-
-    for url in endpoints:
-        try:
-            r = requests.get(url, headers=headers, timeout=4).json()
-            if r.get('ac'):
-                validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
-                if validos:
-                    ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                    dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
-                    
-                    # GERA A URL DO GOOGLE MAPS COM A POSIÇÃO DA AERONAVE
-                    map_url = f"https://www.google.com/maps/search/?api=1&query={ac['lat']},{ac['lon']}"
-                    
-                    return jsonify({
-                        "found": True, 
-                        "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
-                        "dist": round(dist_km, 1), 
-                        "alt": (ac.get('alt_baro') or ac.get('alt_geom') or 0) / 3.28, 
-                        "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                        "speed": round(ac.get('gs', 0) * 1.852), 
-                        "map_url": map_url,
-                        "weather": weather
-                    })
-        except: continue
+    # Tenta obter dados do radar
+    url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
+    try:
+        r = requests.get(url, headers=headers, timeout=5).json()
+        if r.get('ac'):
+            validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
+            if validos:
+                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+                dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
+                
+                # LINK ADS-B EXCHANGE: Foca na aeronave (hex) e mostra sua base (SiteLat/Lon)
+                icao_hex = ac.get('hex', '')
+                map_url = f"https://globe.adsbexchange.com/?lat={lat_u}&lon={lon_u}&zoom=9&hex={icao_hex}&SiteLat={lat_u}&SiteLon={lon_u}"
+                
+                return jsonify({
+                    "found": True, 
+                    "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
+                    "dist": round(dist_km, 1), 
+                    "alt": (ac.get('alt_baro') or ac.get('alt_geom') or 0) / 3.28, 
+                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                    "map_url": map_url,
+                    "weather": weather
+                })
+    except: pass
 
     return jsonify({"found": False, "weather": weather})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
