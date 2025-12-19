@@ -122,7 +122,7 @@ def index():
                     });
                 }, (err) => {
                     document.getElementById('status').innerText = "ERRO: ATIVE O GPS NO SAFARI";
-                }, { enableHighAccuracy: true });
+                }, { enableHighAccuracy: false, timeout: 5000, maximumAge: 0 });
             }
 
             setInterval(update, 20000);
@@ -152,4 +152,5 @@ def get_data():
                     })
     except: pass
     return jsonify({"found": False})
+
 
