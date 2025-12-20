@@ -5,7 +5,6 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# --- CONFIGURAÇÕES ---
 RAIO_KM = 80.0
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -32,12 +31,7 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <title>ATC Premium Pass</title>
         <style>
-            :root { 
-                --air-blue: #226488; 
-                --warning-gold: #FFD700; 
-                --bg-dark: #f0f4f7; 
-            }
-
+            :root { --air-blue: #226488; --warning-gold: #FFD700; --bg-dark: #f0f4f7; }
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
             body { 
@@ -66,7 +60,6 @@ def index():
                 display: flex; overflow: hidden; border: 1px solid #ddd;
             }
 
-            /* LADO ESQUERDO COM ESCALA ABAIXO */
             .left-stub {
                 width: 25%; background: var(--air-blue); color: white;
                 padding: 20px; display: flex; flex-direction: column;
@@ -75,20 +68,17 @@ def index():
 
             .seat-num { font-size: 4em; font-weight: 900; margin-top: 10px; line-height: 1; }
             
-            /* ESCALA DE QUADRADOS BRANCOS */
+            /* ESCALA DE QUADRADOS BRANCOS ABAIXO DO 19A */
             .proximity-scale {
                 display: flex; gap: 4px; margin-top: 15px;
                 width: 100%; justify-content: flex-start;
             }
             .scale-step {
                 width: 12px; height: 12px;
-                background: rgba(255,255,255,0.15); /* Inativo: Branco bem transparente */
+                background: rgba(255,255,255,0.2); 
                 border-radius: 2px; transition: all 0.4s ease;
             }
-            .scale-step.active { 
-                background: #ffffff; /* Ativo: Branco Sólido */
-                box-shadow: 0 0 5px rgba(255,255,255,0.8);
-            }
+            .scale-step.active { background: #ffffff; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
 
             .main-ticket { flex: 1; display: flex; flex-direction: column; }
             .header-bar { 
@@ -118,6 +108,7 @@ def index():
             @keyframes flap { 50% { transform: scaleY(0.1); opacity: 0.3; } }
 
             #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
+            
             #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s; opacity: 0.1; }
             #radar-link.active { pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important; }
             .barcode { width: 150px; height: 55px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 10px; }
@@ -135,13 +126,11 @@ def index():
                 <div class="label" style="color: rgba(255,255,255,0.7)">Radar Base</div>
                 <div class="seat-label">Seat:</div>
                 <div class="seat-num">19 A</div>
-                
                 <div class="proximity-scale" id="p-scale">
                     <div class="scale-step"></div><div class="scale-step"></div><div class="scale-step"></div>
                     <div class="scale-step"></div><div class="scale-step"></div><div class="scale-step"></div>
                     <div class="scale-step"></div><div class="scale-step"></div>
                 </div>
-
                 <div class="seat-label" style="margin-top: auto;">ATC Secure</div>
             </div>
 
@@ -172,13 +161,12 @@ def index():
 
         <script>
             let latAlvo = null, lonAlvo = null, currentTarget = null, step = 0;
+            let weather = { temp: '--', sky: 'SCANNING' };
             const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->°%";
 
             function updateProximityScale(dist) {
                 const steps = document.querySelectorAll('.scale-step');
-                // 8 quadrados. Se dist <= 5km acende todos. Se dist >= 80km acende 1.
                 const activeCount = Math.max(1, Math.min(8, Math.ceil(8 - (dist / 10))));
-                
                 steps.forEach((s, i) => {
                     if (i < activeCount) s.classList.add('active');
                     else s.classList.remove('active');
@@ -223,10 +211,21 @@ def index():
                     if(data.length > 0) {
                         latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
                         document.getElementById('search-section').classList.add('hidden');
+                        getWeather();
                         if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 12000);
                         executarBusca();
                     }
                 } catch(e) { }
+            }
+
+            async function getWeather() {
+                if(!latAlvo) return;
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latAlvo}&longitude=${lonAlvo}&current_weather=true`);
+                    const data = await res.json();
+                    weather.temp = Math.round(data.current_weather.temperature) + "°C";
+                    weather.sky = data.current_weather.weathercode < 3 ? "CLEAR SKY" : "CLOUDY";
+                } catch(e) {}
             }
 
             function executarBusca() {
@@ -257,9 +256,23 @@ def index():
 
             window.onload = function() {
                 updateWithEffect('callsign', 'READY');
+                
+                // RESTAURAÇÃO DAS FRASES NA FAIXA PRETA
+                setInterval(() => {
+                    if(!currentTarget) {
+                        const msgs = [`> CONNECTING SERVER...`,`> LOCAL TEMP: ${weather.temp}`,`> SKY: ${weather.sky}`];
+                        updateWithEffect('status-container', msgs[step % msgs.length]);
+                    } else {
+                        const info = [`> TARGET LOCKED: ${currentTarget.callsign}`,`> SPEED: ${currentTarget.speed} KT`,`> POSITION: STABLE` ];
+                        updateWithEffect('status-container', info[step % info.length]);
+                    }
+                    step++;
+                }, 5000);
+
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     document.getElementById('search-section').classList.add('hidden');
+                    getWeather();
                     window.searchLoop = setInterval(executarBusca, 12000);
                     executarBusca();
                 });
@@ -292,6 +305,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
 
 
