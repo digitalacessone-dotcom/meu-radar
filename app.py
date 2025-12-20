@@ -5,6 +5,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
+# --- CONFIGURAÇÕES ---
 RAIO_KM = 80.0
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -68,7 +69,6 @@ def index():
 
             .seat-num { font-size: 4em; font-weight: 900; margin-top: 10px; line-height: 1; }
             
-            /* ESCALA DE QUADRADOS BRANCOS ABAIXO DO 19A */
             .proximity-scale {
                 display: flex; gap: 4px; margin-top: 15px;
                 width: 100%; justify-content: flex-start;
@@ -108,7 +108,6 @@ def index():
             @keyframes flap { 50% { transform: scaleY(0.1); opacity: 0.3; } }
 
             #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
-            
             #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s; opacity: 0.1; }
             #radar-link.active { pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important; }
             .barcode { width: 150px; height: 55px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 10px; }
@@ -257,13 +256,12 @@ def index():
             window.onload = function() {
                 updateWithEffect('callsign', 'READY');
                 
-                // RESTAURAÇÃO DAS FRASES NA FAIXA PRETA
                 setInterval(() => {
                     if(!currentTarget) {
-                        const msgs = [`> CONNECTING SERVER...`,`> LOCAL TEMP: ${weather.temp}`,`> SKY: ${weather.sky}`];
+                        const msgs = [`> CONNECTING SERVER...`,`> LOCAL TEMP: ${weather.temp}`,`> SKY: ${weather.sky}`,`> SCANNING AIRSPACE...` ];
                         updateWithEffect('status-container', msgs[step % msgs.length]);
                     } else {
-                        const info = [`> TARGET LOCKED: ${currentTarget.callsign}`,`> SPEED: ${currentTarget.speed} KT`,`> POSITION: STABLE` ];
+                        const info = [`> TARGET LOCKED: ${currentTarget.callsign}`,`> SPEED: ${currentTarget.speed} KT`,`> ROUTE: ${currentTarget.origin} -> ${currentTarget.dest}`,`> POSITION: STABLE` ];
                         updateWithEffect('status-container', info[step % info.length]);
                     }
                     step++;
@@ -298,7 +296,8 @@ def get_data():
                 "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
                 "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
                 "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
-                "lat": ac['lat'], "lon": ac['lon']
+                "lat": ac['lat'], "lon": ac['lon'],
+                "origin": ac.get('origin', 'N/A'), "dest": ac.get('destination', 'N/A')
             })
     except: pass
     return jsonify({"found": False})
