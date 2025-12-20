@@ -5,11 +5,9 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# Configurações de Raio e Disfarce
 RAIO_KM = 80.0
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 ]
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -19,11 +17,8 @@ def haversine(lat1, lon1, lat2, lon2):
     return 2 * R * atan2(sqrt(a), sqrt(1-a))
 
 def calculate_bearing(lat1, lon1, lat2, lon2):
-    start_lat, start_lon = radians(lat1), radians(lon1)
-    end_lat, end_lon = radians(lat2), radians(lon2)
-    d_lon = end_lon - start_lon
-    y = sin(d_lon) * cos(end_lat)
-    x = cos(start_lat) * sin(end_lat) - sin(start_lat) * cos(end_lat) * cos(d_lon)
+    y = sin(radians(lon2-lon1)) * cos(radians(lat2))
+    x = cos(radians(lat1)) * sin(radians(lat2)) - sin(radians(lat1)) * cos(radians(lat2)) * cos(radians(lon2-lon1))
     return (degrees(atan2(y, x)) + 360) % 360
 
 @app.route('/')
@@ -36,227 +31,80 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <title>ATC Premium Pass</title>
         <style>
-            :root { 
-                --air-blue: #226488; 
-                --warning-gold: #FFD700; 
-                --bg-dark: #f0f4f7; 
-            }
-            
-            * { 
-                box-sizing: border-box; 
-                -webkit-tap-highlight-color: transparent; 
-            }
+            :root { --air-blue: #226488; --warning-gold: #FFD700; --bg-dark: #f0f4f7; }
+            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
             body { 
-                background-color: var(--bg-dark); 
-                margin: 0; 
-                padding: 0; 
-                display: flex; 
-                flex-direction: column; 
-                align-items: center; 
-                justify-content: center; 
-                min-height: 100vh; 
-                font-family: 'Helvetica Neue', Arial, sans-serif; 
-                overflow: hidden;
+                background-color: var(--bg-dark); margin: 0; padding: 0; 
+                display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden;
             }
 
+            /* BARRA DE PESQUISA COM SUMIÇO SUAVE */
             #search-section {
-                background: #fff; 
-                padding: 15px 25px; 
-                border-radius: 12px;
+                background: #fff; padding: 15px 25px; border-radius: 12px;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-                display: flex; 
-                gap: 10px; 
-                align-items: center; 
-                border: 1px solid #ddd;
-                width: 95%; 
-                max-width: 850px; 
-                z-index: 100;
-                max-height: 200px; 
-                opacity: 1; 
-                margin-bottom: 20px; 
-                overflow: hidden;
+                display: flex; gap: 10px; align-items: center; border: 1px solid #ddd;
+                width: 95%; max-width: 850px; z-index: 100;
+                max-height: 200px; opacity: 1; margin-bottom: 20px; overflow: hidden;
                 transition: max-height 0.8s ease, opacity 0.8s ease, margin-bottom 0.8s ease, padding 0.8s ease;
             }
 
             #search-section.hidden { 
-                max-height: 0; 
-                opacity: 0; 
-                margin-bottom: 0; 
-                padding-top: 0; 
-                padding-bottom: 0;
-                border: 0px solid transparent; 
-                pointer-events: none;
+                max-height: 0; opacity: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0;
+                border: 0px solid transparent; pointer-events: none;
             }
 
-            #search-section input { 
-                border: 1px solid #ccc; 
-                padding: 10px; 
-                border-radius: 6px; 
-                flex: 1; 
-                outline: none; 
-            }
-            
-            #search-section button { 
-                background: var(--air-blue); 
-                color: white; 
-                border: none; 
-                padding: 10px 20px; 
-                border-radius: 6px; 
-                cursor: pointer; 
-                font-weight: bold; 
-            }
+            #search-section input { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
+            #search-section button { background: var(--air-blue); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
             .card { 
-                background: white; 
-                width: 95%; 
-                max-width: 850px;
-                border-radius: 20px; 
-                position: relative; 
+                background: white; width: 95%; max-width: 850px;
+                border-radius: 20px; position: relative; 
                 box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
-                display: flex; 
-                overflow: hidden; 
-                border: 1px solid #ddd;
+                display: flex; overflow: hidden; border: 1px solid #ddd;
             }
 
             .left-stub {
-                width: 25%; 
-                background: var(--air-blue); 
-                color: white;
-                padding: 20px; 
-                display: flex; 
-                flex-direction: column;
+                width: 25%; background: var(--air-blue); color: white;
+                padding: 20px; display: flex; flex-direction: column;
                 border-right: 2px dashed rgba(255,255,255,0.3);
             }
-            
-            .left-stub .seat-num { 
-                font-size: 4em; 
-                font-weight: 900; 
-                margin-top: 20px; 
-                line-height: 1; 
-            }
-            
-            .left-stub .seat-label { 
-                font-size: 0.8em; 
-                text-transform: uppercase; 
-                letter-spacing: 1px; 
-            }
+            .left-stub .seat-num { font-size: 4em; font-weight: 900; margin-top: 20px; line-height: 1; }
+            .left-stub .seat-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; }
 
-            .main-ticket { 
-                flex: 1; 
-                display: flex; 
-                flex-direction: column; 
-            }
-            
+            .main-ticket { flex: 1; display: flex; flex-direction: column; }
             .header-bar { 
-                background: var(--air-blue); 
-                height: 80px; 
-                display: flex; 
-                align-items: center; 
-                justify-content: space-between; 
-                padding: 0 40px; 
-                color: white;
+                background: var(--air-blue); height: 80px; display: flex; 
+                align-items: center; justify-content: space-between; padding: 0 40px; color: white;
             }
-            
-            .header-bar h1 { 
-                font-size: 1.5em; 
-                letter-spacing: 5px; 
-                margin: 0; 
-            }
+            .header-bar h1 { font-size: 1.5em; letter-spacing: 5px; margin: 0; }
 
-            .content-area { 
-                padding: 30px 50px; 
-                display: flex; 
-                flex: 1; 
-                background: white; 
-            }
-            
-            .col-data { 
-                flex: 2; 
-                border-right: 1px solid #eee; 
-                display: flex; 
-                flex-direction: column; 
-                justify-content: space-between; 
-            }
-            
-            .col-side { 
-                flex: 1; 
-                padding-left: 30px; 
-                align-items: center; 
-                display: flex; 
-                flex-direction: column; 
-                justify-content: space-around; 
-            }
+            .content-area { padding: 30px 50px; display: flex; flex: 1; background: white; }
+            .col-data { flex: 2; border-right: 1px solid #eee; display: flex; flex-direction: column; justify-content: space-between; }
+            .col-side { flex: 1; padding-left: 30px; align-items: center; display: flex; flex-direction: column; justify-content: space-around; }
 
-            .label { 
-                color: #888; 
-                font-size: 0.7em; 
-                font-weight: bold; 
-                text-transform: uppercase; 
-                margin-bottom: 5px; 
-            }
-            
-            .value { 
-                font-size: 1.5em; 
-                font-weight: 900; 
-                color: var(--air-blue); 
-                min-height: 1.2em; 
-                display: flex; 
-            }
+            .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+            .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); min-height: 1.2em; display: flex; }
 
             .terminal-footer { 
-                background: #000; 
-                padding: 12px 40px; 
-                border-top: 3px solid var(--warning-gold);
-                min-height: 55px; 
-                display: flex; 
-                align-items: center;
+                background: #000; padding: 12px 40px; border-top: 3px solid var(--warning-gold);
+                min-height: 55px; display: flex; align-items: center;
             }
 
             .letter-slot { 
-                display: inline-block; 
-                color: var(--warning-gold); 
-                font-family: 'Courier New', monospace; 
-                font-weight: 900; 
-                min-width: 0.65em; 
-                text-align: center;
+                display: inline-block; color: var(--warning-gold); 
+                font-family: 'Courier New', monospace; font-weight: 900; 
+                min-width: 0.65em; text-align: center;
             }
-            
-            .flapping { 
-                animation: flap 0.08s infinite; 
-            }
-            
-            @keyframes flap { 
-                50% { transform: scaleY(0.1); opacity: 0.3; } 
-            }
+            .flapping { animation: flap 0.08s infinite; }
+            @keyframes flap { 50% { transform: scaleY(0.1); opacity: 0.3; } }
 
-            #compass { 
-                font-size: 2.5em; 
-                transition: transform 0.8s ease; 
-                display: inline-block; 
-                color: #ff8c00; 
-            }
+            #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
             
-            #radar-link { 
-                display: block; 
-                text-decoration: none; 
-                pointer-events: none; 
-                transition: 0.4s; 
-                opacity: 0.1; 
-            }
-            
-            .barcode { 
-                width: 150px; 
-                height: 55px; 
-                background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); 
-                margin-top: 10px; 
-            }
-            
-            #radar-link.active { 
-                pointer-events: auto !important; 
-                opacity: 1 !important; 
-                cursor: pointer !important; 
-            }
+            #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s; opacity: 0.1; }
+            #radar-link.active { pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important; }
+            .barcode { width: 150px; height: 55px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 10px; }
 
         </style>
     </head>
@@ -277,36 +125,20 @@ def index():
 
             <div class="main-ticket">
                 <div class="header-bar">
-                    <span>✈</span>
-                    <h1>BOARDING BOARD</h1>
-                    <span>✈</span>
+                    <span>✈</span><h1>BOARDING BOARD</h1><span>✈</span>
                 </div>
 
                 <div class="content-area">
                     <div class="col-data">
-                        <div>
-                            <div class="label">Ident / Callsign</div>
-                            <div id="callsign" class="value"></div>
-                        </div>
-                        <div>
-                            <div class="label">Aircraft Distance</div>
-                            <div id="dist_body" class="value"></div>
-                        </div>
-                        <div>
-                            <div class="label">Altitude (MSL)</div>
-                            <div id="alt" class="value"></div>
-                        </div>
+                        <div><div class="label">Ident / Callsign</div><div id="callsign" class="value"></div></div>
+                        <div><div class="label">Aircraft Distance</div><div id="dist_body" class="value"></div></div>
+                        <div><div class="label">Altitude (MSL)</div><div id="alt" class="value"></div></div>
                     </div>
 
                     <div class="col-side">
-                        <div style="text-align: center;">
-                            <div class="label">Type</div>
-                            <div id="type_id" class="value">----</div>
-                        </div>
+                        <div style="text-align: center;"><div class="label">Type</div><div id="type_id" class="value">----</div></div>
                         <div id="compass">↑</div>
-                        <a id="radar-link" href="#" target="_blank">
-                            <div class="barcode"></div>
-                        </a>
+                        <a id="radar-link" href="#" target="_blank"><div class="barcode"></div></a>
                     </div>
                 </div>
 
@@ -317,10 +149,7 @@ def index():
         </div>
 
         <script>
-            let latAlvo = null;
-            let lonAlvo = null;
-            let currentTarget = null;
-            let step = 0;
+            let latAlvo = null, lonAlvo = null, currentTarget = null, step = 0;
             let weather = { temp: '--', sky: 'SCANNING', vis: '--' };
             const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->°%";
 
@@ -331,8 +160,7 @@ def index():
                     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
                     const data = await res.json();
                     if(data.length > 0) {
-                        latAlvo = parseFloat(data[0].lat);
-                        lonAlvo = parseFloat(data[0].lon);
+                        latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
                         document.getElementById('search-section').classList.add('hidden');
                         getWeather();
                         if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 12000);
@@ -359,14 +187,9 @@ def index():
                 const newText = String(newValue || "").toUpperCase();
                 
                 while (container.childNodes.length < newText.length) {
-                    const s = document.createElement("span"); 
-                    s.className = "letter-slot"; 
-                    s.innerHTML = "&nbsp;"; 
-                    container.appendChild(s);
+                    const s = document.createElement("span"); s.className = "letter-slot"; s.innerHTML = "&nbsp;"; container.appendChild(s);
                 }
-                while (container.childNodes.length > newText.length) { 
-                    container.removeChild(container.lastChild); 
-                }
+                while (container.childNodes.length > newText.length) { container.removeChild(container.lastChild); }
                 
                 const slots = container.querySelectorAll('.letter-slot');
                 
@@ -382,7 +205,6 @@ def index():
                         const interval = setInterval(() => {
                             slot.innerText = chars[Math.floor(Math.random() * chars.length)];
                             slot.classList.add('flapping');
-                            
                             if (++cycles >= randomDuration) {
                                 clearInterval(interval);
                                 slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
@@ -399,8 +221,7 @@ def index():
                 updateWithEffect('alt', '---');
                 
                 navigator.geolocation.getCurrentPosition(pos => {
-                    latAlvo = pos.coords.latitude; 
-                    lonAlvo = pos.coords.longitude;
+                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     document.getElementById('search-section').classList.add('hidden');
                     getWeather();
                     window.searchLoop = setInterval(executarBusca, 12000);
@@ -409,22 +230,10 @@ def index():
 
                 setInterval(() => {
                     if(!currentTarget) {
-                        const msgs = [
-                            `> CONNECTING SERVER...`,
-                            `> LOCAL TEMP: ${weather.temp}`, 
-                            `> SKY: ${weather.sky}`, 
-                            `> VISIB: ${weather.vis}`,
-                            `> TUNNEL: ACTIVE`,
-                            `> SCANNING...`
-                        ];
+                        const msgs = [`> CONNECTING SERVER...`,`> LOCAL TEMP: ${weather.temp}`,`> SKY: ${weather.sky}`,`> TUNNEL: ACTIVE` ];
                         updateWithEffect('status-container', msgs[step % msgs.length]);
                     } else {
-                        const info = [
-                            `> TARGET LOCKED: ${currentTarget.callsign}`,
-                            `> SPEED: ${currentTarget.speed} KT`,
-                            `> ROUTE: ${currentTarget.origin} -> ${currentTarget.dest}`,
-                            `> POSITION: STABLE`
-                        ];
+                        const info = [`> TARGET LOCKED: ${currentTarget.callsign}`,`> SPEED: ${currentTarget.speed} KT`,`> ROUTE: ${currentTarget.origin} -> ${currentTarget.dest}`,`> POSITION: STABLE` ];
                         updateWithEffect('status-container', info[step % info.length]);
                     }
                     step++;
@@ -483,6 +292,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
 
 
