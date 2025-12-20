@@ -28,212 +28,112 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Radar Boarding Pass</title>
+        <title>Boarding Board Radar</title>
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
         <style>
-            :root {
-                --blue-main: #2A6E91;
-                --text-gray: #888;
-                --yellow-status: #FFD700;
+            :root { --main-blue: #2A6E91; --text-gray: #777; --warning-yellow: #FFD700; }
+            body { background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }
+            
+            /* Barra de busca superior */
+            .search-box {
+                background: white; width: 90%; max-width: 850px; padding: 10px 20px;
+                border-radius: 12px; display: flex; align-items: center; gap: 10px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 25px;
             }
-            body { 
-                background: #eef1f4; 
-                margin: 0; 
-                display: flex; 
-                flex-direction: column;
-                align-items: center; 
-                justify-content: center; 
-                min-height: 100vh; 
-                font-family: 'Helvetica Neue', Arial, sans-serif;
-            }
-
-            /* Container do Input superior */
-            .search-container {
-                width: 90%;
-                max-width: 800px;
-                background: white;
-                padding: 10px 20px;
-                border-radius: 12px;
-                display: flex;
-                gap: 10px;
-                margin-bottom: 20px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            }
-            .search-container input {
-                flex: 1;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-                padding: 10px;
-                font-size: 14px;
-            }
-            .search-container button {
-                background: var(--blue-main);
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                font-weight: bold;
-                cursor: pointer;
-            }
+            .search-box input { flex: 1; border: 1px solid #ddd; padding: 12px; border-radius: 8px; outline: none; }
+            .search-box button { background: var(--main-blue); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
             /* Cartão de Embarque */
             .boarding-pass {
-                width: 90%;
-                max-width: 850px;
-                background: white;
-                border-radius: 25px;
-                overflow: hidden;
-                display: flex;
-                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-                position: relative;
+                background: white; width: 90%; max-width: 850px; height: 420px;
+                border-radius: 25px; display: flex; overflow: hidden;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1); position: relative;
             }
 
-            /* Parte Esquerda (Canhoto Azul) */
-            .left-stub {
-                background: var(--blue-main);
-                width: 28%;
-                padding: 30px 20px;
-                color: white;
-                border-right: 2px dashed rgba(255,255,255,0.3);
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            }
-            .stub-label { font-size: 10px; opacity: 0.8; text-transform: uppercase; font-weight: bold; }
-            .seat-number { font-size: 70px; font-weight: bold; margin: 10px 0; }
-            .dots { display: flex; gap: 5px; margin-bottom: 20px; }
-            .dot { width: 12px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+            /* Lateral Esquerda (Canhoto Azul) */
+            .side-panel { background: var(--main-blue); width: 250px; color: white; padding: 30px 25px; display: flex; flex-direction: column; border-right: 2px dashed rgba(255,255,255,0.3); }
+            .side-label { font-size: 0.7em; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; font-weight: bold; }
+            .seat-num { font-size: 5.5em; font-weight: bold; margin: 15px 0; line-height: 1; }
+            .dots { display: flex; gap: 4px; margin-bottom: auto; }
+            .dot { width: 10px; height: 10px; background: rgba(255,255,255,0.2); border-radius: 2px; }
 
-            /* Parte Direita (Corpo Branco) */
-            .right-main {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-            }
-            .header-strip {
-                background: var(--blue-main);
-                color: white;
-                padding: 15px 40px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .header-strip h1 { 
-                margin: 0; 
-                font-size: 24px; 
-                letter-spacing: 6px; 
-                font-weight: normal; 
-                text-transform: uppercase;
-            }
+            /* Lado Direito (Conteúdo) */
+            .main-content { flex: 1; display: flex; flex-direction: column; }
+            .top-bar { background: var(--main-blue); color: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; }
+            .top-bar h1 { margin: 0; font-size: 1.6em; letter-spacing: 8px; font-weight: normal; }
 
-            .info-grid {
-                padding: 30px 45px;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 20px;
-                flex: 1;
-            }
-            .data-block { margin-bottom: 20px; }
-            .label { color: var(--text-gray); font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
-            .value { 
-                font-size: 26px; 
-                font-weight: bold; 
-                color: var(--yellow-status); 
-                font-family: 'Courier New', monospace;
-            }
-            .value-dark { color: #333; font-size: 20px; }
+            .info-grid { padding: 30px 45px; display: grid; grid-template-columns: 1.5fr 1fr; flex: 1; position: relative; }
+            .data-label { color: var(--text-gray); font-size: 0.75em; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+            .data-value { font-size: 1.9em; font-weight: bold; color: var(--warning-yellow); margin-bottom: 25px; font-family: 'Courier New', monospace; }
+            .data-value.dark { color: #333; font-size: 1.4em; }
+
+            /* Divider Vertical */
+            .divider { border-left: 1px solid #eee; height: 70%; position: absolute; left: 60%; top: 15%; }
 
             /* Bússola e Barcode */
-            .visual-section {
-                border-left: 1px solid #eee;
-                padding-left: 30px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-            }
-            #compass { font-size: 40px; color: #f39c12; transition: transform 0.8s ease; margin-bottom: 15px; }
-            #barcode { width: 180px; height: 60px; }
+            .right-visuals { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+            #compass { font-size: 2.5em; transition: transform 0.8s ease; color: #ff8c00; margin-bottom: 15px; }
+            #barcode { width: 150px; height: 60px; }
 
-            /* Footer Preto */
-            .footer-status {
-                background: #000;
-                height: 65px;
-                border-top: 4px solid var(--yellow-status);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .status-msg {
-                color: var(--yellow-status);
-                font-family: 'Courier New', monospace;
-                font-weight: bold;
-                font-size: 18px;
-                text-transform: uppercase;
-            }
-
-            @media (max-width: 600px) {
-                .boarding-pass { flex-direction: column; }
-                .left-stub { width: auto; height: 150px; border-right: none; border-bottom: 2px dashed #ccc; }
+            /* Rodapé Preto */
+            .footer-black { background: #000; height: 60px; display: flex; align-items: center; justify-content: center; border-top: 4px solid var(--warning-yellow); }
+            .status-msg { color: var(--warning-yellow); font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.1em; text-transform: uppercase; }
+            
+            @media (max-width: 700px) {
+                .boarding-pass { height: auto; flex-direction: column; }
+                .side-panel { width: 100%; height: auto; border-right: none; border-bottom: 2px dashed #ccc; }
+                .divider { display: none; }
                 .info-grid { grid-template-columns: 1fr; }
             }
         </style>
     </head>
     <body>
-
-        <div class="search-container">
+        <div class="search-box">
             <input type="text" placeholder="Enter City or Location...">
             <button>CONNECT RADAR</button>
         </div>
 
         <div class="boarding-pass">
-            <div class="left-stub">
-                <div>
-                    <div class="stub-label">Radar Base</div>
-                    <div class="stub-label">Seat:</div>
-                    <div class="seat-number">19 A</div>
-                    <div class="dots">
-                        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                    </div>
+            <div class="side-panel">
+                <div class="side-label">Radar Base</div>
+                <div class="side-label" style="margin-top:10px">Seat:</div>
+                <div class="seat-num">19 A</div>
+                <div class="dots">
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                    <div class="dot"></div><div class="dot"></div>
                 </div>
-                <div class="stub-label">ATC Secure</div>
+                <div class="side-label" style="margin-top: auto;">ATC Secure</div>
             </div>
 
-            <div class="right-main">
-                <div class="header-strip">
-                    <span>✈</span>
-                    <h1>Boarding Board</h1>
-                    <span>✈</span>
+            <div class="main-content">
+                <div class="top-bar">
+                    <span>✈</span><h1>BOARDING BOARD</h1><span>✈</span>
                 </div>
 
                 <div class="info-grid">
-                    <div class="data-container">
-                        <div class="data-block">
-                            <div class="label">Ident / Callsign</div>
-                            <div id="callsign" class="value">READY</div>
-                        </div>
-                        <div class="data-block">
-                            <div class="label">Aircraft Distance</div>
-                            <div id="dist_body" class="value value-dark">--- KM</div>
-                        </div>
-                        <div class="data-block">
-                            <div class="label">Altitude (MSL)</div>
-                            <div id="alt" class="value value-dark">--- FT</div>
-                        </div>
+                    <div class="left-data">
+                        <div class="data-label">IDENT / CALLSIGN</div>
+                        <div id="callsign" class="data-value">READY</div>
+
+                        <div class="data-label">AIRCRAFT DISTANCE</div>
+                        <div id="dist_body" class="data-value dark">--- KM</div>
+
+                        <div class="data-label">ALTITUDE (MSL)</div>
+                        <div id="alt" class="data-value dark">--- FT</div>
                     </div>
 
-                    <div class="visual-section">
-                        <div class="data-block" style="text-align: center;">
-                            <div class="label">Type</div>
-                            <div id="type" class="value value-dark">----</div>
-                        </div>
+                    <div class="divider"></div>
+
+                    <div class="right-visuals">
+                        <div class="data-label">TYPE</div>
+                        <div id="type" class="data-value dark" style="margin-bottom:10px">----</div>
                         <div id="compass">↑</div>
                         <svg id="barcode"></svg>
                     </div>
                 </div>
 
-                <div class="footer-status">
+                <div class="footer-black">
                     <div id="status" class="status-msg">INITIALIZING RADAR...</div>
                 </div>
             </div>
@@ -241,7 +141,6 @@ def index():
 
         <script>
             let latAlvo, lonAlvo;
-
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
@@ -262,12 +161,8 @@ def index():
                         document.getElementById('alt').textContent = data.alt_ft.toLocaleString() + " FT";
                         document.getElementById('type').textContent = data.type;
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        
                         statusElem.textContent = "TARGET ACQUIRED: " + data.callsign;
-
-                        JsBarcode("#barcode", data.callsign, {
-                            format: "CODE128", width: 1.2, height: 40, displayValue: false, lineColor: "#2A6E91"
-                        });
+                        JsBarcode("#barcode", data.callsign, { format: "CODE128", width: 1.2, height: 40, displayValue: false, lineColor: "#2A6E91" });
                     } else {
                         statusElem.textContent = "SCANNING AIRSPACE...";
                         document.getElementById('callsign').textContent = "READY";
