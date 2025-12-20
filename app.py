@@ -4,6 +4,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
+# Configuração do raio de alcance do radar
 RAIO_KM = 25.0 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -81,14 +82,31 @@ def index():
             
             #compass { display: inline-block; transition: transform 0.6s ease; color: var(--warning-gold); font-size: 1.2em; }
             
-            .barcode-container { width: 100%; margin: 8px 0; cursor: pointer; }
-            #barcode { width: 100%; height: 50px; }
+            .barcode-container { 
+                width: 100%; margin: 8px 0; cursor: pointer; 
+                display: flex; justify-content: center;
+            }
+            #barcode { width: 100%; max-width: 150px; height: 50px; }
 
             .signal-area { width: 100%; text-align: center; }
             #signal-bars { color: var(--air-blue); font-weight: 900; font-size: 12px; letter-spacing: 2px; }
             
-            .footer { padding: 10px 0 20px 0; display: flex; flex-direction: column; align-items: center; background: #000; min-height: 80px; border-top: 4px solid var(--warning-gold); }
-            .status-msg { color: var(--warning-gold); font-size: 0.9em; font-weight: bold; text-transform: uppercase; text-align: center; margin-top: 10px; }
+            .footer { 
+                padding: 10px 0 20px 0; 
+                display: flex; flex-direction: column; 
+                align-items: center; 
+                background: #000 !important; /* Fundo preto total */
+                min-height: 80px; 
+                border-top: 4px solid var(--warning-gold); 
+            }
+            .status-msg { 
+                color: #FFD700 !important; /* Amarelo ouro para máxima visibilidade */
+                font-size: 0.85em; 
+                font-weight: bold; 
+                text-transform: uppercase; 
+                text-align: center; 
+                margin-top: 10px; 
+            }
         </style>
     </head>
     <body>
@@ -147,8 +165,9 @@ def index():
                 }, () => { document.getElementById('search-box').style.display = "flex"; });
                 
                 setInterval(() => {
-                    if(!document.getElementById('status').innerText.includes("TARGET ACQUIRED")) {
-                        document.getElementById('status').innerText = statusMsgs[statusIndex];
+                    const statusElem = document.getElementById('status');
+                    if(!statusElem.innerText.includes("TARGET ACQUIRED")) {
+                        statusElem.innerText = statusMsgs[statusIndex];
                         statusIndex = (statusIndex + 1) % statusMsgs.length;
                     }
                 }, 3000);
@@ -163,6 +182,7 @@ def index():
                 if(!latAlvo) return;
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
                 .then(res => res.json()).then(data => {
+                    const statusElem = document.getElementById('status');
                     if(data.found) {
                         document.getElementById('callsign').innerText = data.callsign;
                         document.getElementById('route').innerText = data.origin + " / " + data.dest;
@@ -172,14 +192,15 @@ def index():
                         
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-                        document.getElementById('status').innerText = "TARGET ACQUIRED: " + data.callsign;
+                        statusElem.innerText = "TARGET ACQUIRED: " + data.callsign;
 
-                        // Gerar Código de Barras Real
+                        // Gerar Código de Barras Real com o Ident do voo
                         JsBarcode("#barcode", data.callsign, {
                             format: "CODE128",
                             width: 1.5,
                             height: 40,
-                            displayValue: false
+                            displayValue: false,
+                            lineColor: "#1A237E"
                         });
 
                         let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
@@ -225,12 +246,14 @@ def get_data():
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
                 dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
                 
+                # Dados dinâmicos do voo
                 origin = ac.get('t_from', 'N/A').split(' ')[0]
                 dest = ac.get('t_to', 'N/A').split(' ')[0]
                 type_ac = ac.get('t', 'UNKN')
                 speed_kts = ac.get('gs', 0)
                 alt_ft = int((ac.get('alt_baro') or ac.get('alt_geom') or 0))
 
+                # URL do mapa que mostra a sua posição (SiteLat/Lon) e a do avião
                 map_url = (f"https://globe.adsbexchange.com/?"
                            f"lat={ac['lat']}&lon={ac['lon']}&zoom=11"
                            f"&hex={ac.get('hex', '')}"
