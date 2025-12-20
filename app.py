@@ -4,8 +4,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# Configurações de Radar
-RAIO_KM = 150.0 
+RAIO_KM = 50.0 
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -29,7 +28,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Radar Boarding Pass Pro</title>
+        <title>Visual Radar Pro + Weather</title>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
             body { background-color: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Courier New', monospace; overflow: hidden; }
@@ -42,13 +41,15 @@ def index():
             .notch { position: absolute; width: 44px; height: 44px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
             .notch-left { left: -22px; } .notch-right { right: -22px; }
 
+            /* AJUSTE: Aviões maiores como solicitado */
             .header { padding: 25px 0; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 20px; font-weight: 900; letter-spacing: 5px; font-size: 1.2em; }
             .header span { font-size: 3.5em; line-height: 0; }
 
             .white-area { background: #fdfdfd; margin: 0 12px; position: relative; display: flex; padding: 30px; min-height: 260px; border-radius: 2px; }
             .white-area::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px; background-image: linear-gradient(to right, #ccc 40%, transparent 40%); background-size: 14px 100%; }
 
-            .stamp { position: absolute; top: 50%; left: 45%; transform: translate(-50%, -50%) rotate(-12deg) scale(5); border: 4px double #d32f2f; color: #d32f2f; padding: 10px 20px; font-weight: 900; font-size: 2.2em; opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; pointer-events: none; text-align: center; line-height: 1; }
+            /* AJUSTE: Adicionado estilo do carimbo */
+            .stamp { position: absolute; top: 50%; left: 45%; transform: translate(-50%, -50%) rotate(-12deg) scale(5); border: 4px double #d32f2f; color: #d32f2f; padding: 10px 20px; font-weight: 900; font-size: 2.5em; opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10; pointer-events: none; }
             .stamp.visible { opacity: 0.25; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
 
             .col-left { flex: 1.8; border-right: 2px dashed #eee; padding-right: 20px; display: flex; flex-direction: column; justify-content: space-around; }
@@ -57,19 +58,20 @@ def index():
             .label { color: #999; font-size: 0.65em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
             .value { font-size: 1.65em; font-weight: 900; color: var(--air-blue); margin-bottom: 12px; }
             
-            #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.2em; color: var(--warning-gold); }
-            
-            /* CÓDIGO DE BARRAS CLICÁVEL */
-            .barcode-link { text-decoration: none; width: 100%; display: block; cursor: pointer; transition: transform 0.2s; }
-            .barcode-link:active { transform: scale(0.95); }
-            .barcode { height: 65px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; border: 1px solid #eee; }
+            #compass { display: inline-block; transition: transform 0.5s ease; font-size: 1.5em; color: var(--warning-gold); }
+            .barcode { height: 65px; background: repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px, #000 3px, #000 4px); width: 100%; margin: 10px 0; }
             
             .footer { padding: 10px 0 25px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
             .yellow-lines { width: 100%; height: 10px; border-top: 2.5px solid var(--warning-gold); border-bottom: 2.5px solid var(--warning-gold); margin-bottom: 20px; }
-            .status-msg { color: var(--warning-gold); font-size: 0.80em; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; text-align: center; min-height: 20px; padding: 0 10px; }
+            .status-msg { color: var(--warning-gold); font-size: 0.85em; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; min-height: 20px; padding: 0 10px; }
+
+            @media (max-height: 500px) and (orientation: landscape) {
+                .card { transform: scale(0.7); margin-top: -60px; }
+                .white-area { min-height: 180px; padding: 15px 30px; }
+            }
         </style>
     </head>
-    <body>
+    <body onclick="audioAlerta.play().catch(()=>{})">
         
         <div id="search-box">
             <input type="text" id="endereco" placeholder="ENTER ZIP CODE OR CITY...">
@@ -79,7 +81,7 @@ def index():
         <div class="card">
             <div class="notch notch-left"></div>
             <div class="notch notch-right"></div>
-            <div class="header"><span>✈</span> BOARDING PASS <span>✈</span></div>
+            <div class="header"><span>✈</span> FLIGHT MANIFEST / PASS <span>✈</span></div>
             <div class="white-area">
                 <div class="stamp" id="carimbo">VISUAL CONTACT</div>
                 <div class="col-left">
@@ -90,11 +92,7 @@ def index():
                 <div class="col-right">
                     <div class="label">RANGE & BEARING</div>
                     <div class="value"><span id="dist">0.0 KM</span> <span id="compass">↑</span></div>
-                    
-                    <a id="map-link" class="barcode-link" target="_blank">
-                        <div class="barcode"></div>
-                    </a>
-                    
+                    <div class="barcode"></div>
                     <div class="label" style="font-size: 8px;">SIGNAL INTENSITY</div>
                     <div id="signal" style="color:var(--air-blue); font-weight:bold;">[ ▯▯▯▯▯ ]</div>
                 </div>
@@ -106,18 +104,30 @@ def index():
         </div>
 
         <script>
-            let latAlvo = null, lonAlvo = null, targetLock = false, flightData = null;
-            let weatherData = { temp: "--", vis: "--" };
+            const audioAlerta = new Audio('https://www.soundjay.com/buttons/beep-07a.mp3');
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
+            let latAlvo = null, lonAlvo = null;
+            let targetLock = false;
+            let flightData = null;
+            let weatherData = { temp: "--", vis: "--", desc: "SCANNING" };
             let currentMsgIndex = 0;
 
             function splitFlap(text) {
                 const el = document.getElementById('status');
                 let i = 0;
-                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
                 const inter = setInterval(() => {
                     el.innerText = text.split('').map((c, idx) => i > idx ? c : chars[Math.floor(Math.random()*chars.length)]).join('');
                     if(i++ > text.length) clearInterval(inter);
-                }, 20);
+                }, 30);
+            }
+
+            function alertBeepFiveTimes() {
+                let count = 0;
+                const interval = setInterval(() => {
+                    audioAlerta.play().catch(() => {});
+                    count++;
+                    if (count >= 5) clearInterval(interval);
+                }, 1000);
             }
 
             window.onload = function() {
@@ -130,13 +140,30 @@ def index():
             function iniciarRadar() {
                 executarBusca();
                 setInterval(executarBusca, 10000);
+                
                 setInterval(() => {
-                    const searchMsgs = !targetLock ? 
-                        ["SCANNING AIRSPACE", "RADAR ACTIVE", `TEMP: ${weatherData.temp} C`, `VISIBILITY: ${weatherData.vis} KM`] :
-                        ["TARGET LOCKED", `CALLSIGN: ${flightData.callsign}`, "TAP BARCODE FOR LIVE MAP", "VISUAL CONTACT ACTIVE"];
-                    currentMsgIndex = (currentMsgIndex + 1) % searchMsgs.length;
-                    splitFlap(searchMsgs[currentMsgIndex]);
-                }, 4500);
+                    if(!targetLock) {
+                        const searchMsgs = [
+                            "SCANNING LIVE AIRSPACE",
+                            "RADAR ACTIVE",
+                            `TEMP: ${weatherData.temp}°C | SKY: ${weatherData.desc}`,
+                            `VISIBILITY: ${weatherData.vis} KM`
+                        ];
+                        currentMsgIndex = (currentMsgIndex + 1) % searchMsgs.length;
+                        splitFlap(searchMsgs[currentMsgIndex]);
+                    } else if(flightData) {
+                        const infoCycle = [
+                            "TARGET LOCKED",
+                            `FLIGHT: ${flightData.callsign}`,
+                            `SPEED: ${flightData.speed} KM/H`,
+                            `FROM: ${flightData.origin}`,
+                            `TO: ${flightData.dest}`,
+                            `VISIBILITY: ${weatherData.vis} KM`
+                        ];
+                        currentMsgIndex = (currentMsgIndex + 1) % infoCycle.length;
+                        splitFlap(infoCycle[currentMsgIndex]);
+                    }
+                }, 4000);
             }
 
             function executarBusca() {
@@ -150,15 +177,34 @@ def index():
                         document.getElementById('alt').innerText = Math.round(data.alt * 3.28).toLocaleString() + " FT";
                         document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        document.getElementById('map-link').href = data.map_url;
+                        let bars = Math.ceil((50 - data.dist) / 10);
+                        document.getElementById('signal').innerText = "[" + "▮".repeat(bars) + "▯".repeat(5-bars) + "]";
+                        let eta = data.speed > 0 ? Math.round((data.dist / data.speed) * 60) : "--";
+                        document.getElementById('eta').innerText = eta + " MIN";
+                        
+                        // AJUSTE: Ativa o carimbo quando acha
                         document.getElementById('carimbo').classList.add('visible');
+                        
+                        if (!targetLock) { alertBeepFiveTimes(); }
                         targetLock = true;
                     } else {
-                        targetLock = false;
-                        document.getElementById('carimbo').classList.remove('visible');
+                        targetLock = false; flightData = null;
                         document.getElementById('callsign').innerText = "SEARCHING";
+                        // AJUSTE: Remove o carimbo se perder o sinal
+                        document.getElementById('carimbo').classList.remove('visible');
                     }
                 });
+            }
+
+            async function buscarEndereco() {
+                const query = document.getElementById('endereco').value;
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+                const data = await res.json();
+                if(data.length > 0) {
+                    latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
+                    document.getElementById('search-box').style.display = "none";
+                    iniciarRadar();
+                }
             }
         </script>
     </body>
@@ -169,39 +215,31 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"}
-
-    weather = {"temp": "--", "vis": "--"}
+    
+    weather = {"temp": "--", "vis": "--", "desc": "N/A"}
     try:
-        wr = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat_u}&longitude={lon_u}&current=temperature_2m,visibility", timeout=2).json()
+        w_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat_u}&longitude={lon_u}&current=temperature_2m,visibility,weather_code"
+        wr = requests.get(w_url, timeout=2).json()
         if 'current' in wr:
             weather['temp'] = round(wr['current']['temperature_2m'])
             weather['vis'] = round(wr['current']['visibility'] / 1000, 1)
+            code = wr['current']['weather_code']
+            weather['desc'] = "CLEAR" if code == 0 else "PARTLY CLOUDY" if code < 4 else "OVERCAST" if code < 50 else "RAINY"
     except: pass
 
-    # Tenta obter dados do radar
-    url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
     try:
-        r = requests.get(url, headers=headers, timeout=5).json()
+        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
+        r = requests.get(url, timeout=3).json()
         if r.get('ac'):
-            validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
-            if validos:
-                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
-                
-                # LINK ADS-B EXCHANGE: Foca na aeronave (hex) e mostra sua base (SiteLat/Lon)
-                icao_hex = ac.get('hex', '')
-                map_url = f"https://globe.adsbexchange.com/?lat={lat_u}&lon={lon_u}&zoom=9&hex={icao_hex}&SiteLat={lat_u}&SiteLon={lon_u}"
-                
-                return jsonify({
-                    "found": True, 
-                    "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
-                    "dist": round(dist_km, 1), 
-                    "alt": (ac.get('alt_baro') or ac.get('alt_geom') or 0) / 3.28, 
-                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                    "map_url": map_url,
-                    "weather": weather
-                })
+            ac = sorted(r['ac'], key=lambda x: haversine(lat_u, lon_u, x.get('lat',0), x.get('lon',0)))[0]
+            d = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
+            return jsonify({
+                "found": True, "callsign": ac.get('flight', 'UNKN').strip(), 
+                "dist": round(d, 1), "alt": ac.get('alt_baro', 0) / 3.28, 
+                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "speed": round(ac.get('gs', 0) * 1.852), "origin": ac.get('db_origin', 'N/A'),
+                "dest": ac.get('db_dest', 'N/A'), "weather": weather
+            })
     except: pass
 
     return jsonify({"found": False, "weather": weather})
