@@ -26,93 +26,103 @@ def index():
     <html lang="pt">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Boarding Pass Radar</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+        <title>Radar Boarding Pass</title>
         <style>
-            body { background: #d0e4f2; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; font-family: Arial, sans-serif; }
+            :root { --blue: #4ba8cc; --dark-blue: #1e5d7b; --warning: #FFD700; }
+            body { background: #d0e4f2; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; font-family: Arial, sans-serif; overflow: hidden; }
             
             .ticket {
-                background: white; width: 750px; height: 300px;
-                border-radius: 20px; display: flex; overflow: hidden;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+                background: white; width: 90%; max-width: 700px;
+                border-radius: 15px; display: flex; flex-direction: column;
+                box-shadow: 0 15px 35px rgba(0,0,0,0.2); overflow: hidden;
             }
 
-            /* Lateral Esquerda */
-            .left-side { width: 220px; background: #4ba8cc; padding: 20px; color: white; border-right: 2px dashed #ddd; display: flex; flex-direction: column; justify-content: space-between; }
-            .seat-num { font-size: 5em; font-weight: bold; margin-top: 10px; }
-            .flight-info-left { font-size: 0.9em; margin-bottom: 5px; }
+            .ticket-top { display: flex; min-height: 280px; }
 
-            /* Lado Direito Principal */
-            .right-side { flex: 1; display: flex; flex-direction: column; }
-            .top-bar { background: #4ba8cc; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; color: white; font-weight: bold; letter-spacing: 2px; }
-            .top-bar img { height: 25px; filter: brightness(0) invert(1); }
+            /* Lado Esquerdo (Canhoto) */
+            .stub { width: 30%; background: var(--dark-blue); color: white; padding: 20px; border-right: 2px dashed #ddd; display: flex; flex-direction: column; justify-content: space-between; }
+            .seat { font-size: 4em; font-weight: bold; line-height: 1; margin: 10px 0; }
 
-            .main-content { padding: 25px 35px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; flex: 1; position: relative; }
-            .label { color: #4ba8cc; font-size: 0.75em; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
-            .value { color: #333; font-size: 1.3em; font-weight: bold; margin-bottom: 15px; }
+            /* Lado Direito (Principal) */
+            .main { flex: 1; display: flex; flex-direction: column; }
+            .header-strip { background: var(--blue); color: white; padding: 12px 25px; display: flex; justify-content: space-between; font-weight: bold; letter-spacing: 1px; }
+            
+            .content { padding: 20px 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex-grow: 1; }
+            .label { color: var(--blue); font-size: 0.7em; font-weight: bold; text-transform: uppercase; }
+            .value { color: #333; font-size: 1.2em; font-weight: bold; margin-bottom: 8px; }
 
-            .barcode-section { display: flex; justify-content: flex-end; align-items: flex-end; padding-right: 35px; padding-bottom: 20px; }
-            .barcode-line { height: 60px; width: 180px; background: repeating-linear-gradient(90deg, #333, #333 1px, transparent 1px, transparent 4px, #333 4px, #333 5px); }
+            /* Faixa Preta Inferior Estilo Radar */
+            .footer-black { 
+                background: #000; padding: 15px; 
+                border-top: 3px solid var(--warning);
+                display: flex; align-items: center; justify-content: center;
+                min-height: 60px;
+            }
+            .status-text { 
+                color: var(--warning) !important; 
+                font-family: 'Courier New', monospace; 
+                font-weight: bold; 
+                font-size: 1em; 
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                text-align: center;
+                animation: blink 1.5s infinite;
+            }
 
-            #status-bar { background: #000; color: #FFD700; text-align: center; font-size: 0.7em; padding: 4px; font-family: monospace; }
-            #compass { display: inline-block; transition: transform 0.6s ease; font-size: 1.5em; color: #f39c12; }
+            @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+            #compass { display: inline-block; transition: transform 0.6s ease; font-size: 1.2em; color: #f39c12; }
+            
+            .barcode-area { border-top: 1px solid #eee; padding: 10px 25px; display: flex; justify-content: flex-end; }
+            .barcode { height: 40px; width: 150px; background: repeating-linear-gradient(90deg, #333, #333 2px, transparent 2px, transparent 5px); }
 
             @media (max-width: 600px) {
-                .ticket { width: 95%; height: auto; flex-direction: column; border-radius: 10px; }
-                .left-side { width: auto; height: 150px; border-right: none; border-bottom: 2px dashed #ddd; }
+                .ticket-top { flex-direction: column; }
+                .stub { width: auto; border-right: none; border-bottom: 2px dashed #ddd; }
             }
         </style>
     </head>
     <body>
         <div class="ticket">
-            <div class="left-side">
-                <div>
-                    <div style="font-size: 0.7em; opacity: 0.8;">RADAR BASE</div>
-                    <div class="seat-num">19 A</div>
-                </div>
-                <div class="flight-info-left">
-                    <div>SCANNING: 25KM</div>
-                    <div id="signal">▯▯▯▯▯</div>
-                </div>
-            </div>
-
-            <div class="right-side">
-                <div class="top-bar">
-                    <span>✈ AIR RADAR</span>
-                    <span style="font-size: 1.2em;">BOARDING PASS</span>
-                    <span>✈</span>
-                </div>
-
-                <div class="main-content">
+            <div class="ticket-top">
+                <div class="stub">
                     <div>
-                        <div class="label">IDENT / CALLSIGN</div>
-                        <div id="callsign" class="value" style="font-size: 1.8em; color: #4ba8cc;">SEARCHING</div>
-                        
-                        <div class="label">AIRCRAFT DISTANCE</div>
-                        <div id="dist" class="value">--- KM</div>
-
-                        <div class="label">ALTITUDE (MSL)</div>
-                        <div id="alt" class="value">--- FT</div>
+                        <div class="label" style="color:rgba(255,255,255,0.7)">RADAR BASE</div>
+                        <div class="seat">19 A</div>
                     </div>
-                    <div>
-                        <div class="label">TYPE</div>
-                        <div id="type" class="value">----</div>
-
-                        <div class="label">BEARING</div>
-                        <div class="value"><span id="compass">↑</span></div>
-                        
-                        <div class="label">SPEED</div>
-                        <div id="speed" class="value">--- KTS</div>
+                    <div style="font-size: 0.8em;">
+                        <div id="sig">▯▯▯▯▯</div>
+                        <div style="margin-top:5px; opacity:0.6">ATC SECURE</div>
                     </div>
                 </div>
 
-                <div class="barcode-section">
-                    <a id="map-link" target="_blank" style="text-decoration: none;">
-                        <div class="barcode-line"></div>
-                        <div style="font-size: 0.6em; color: #999; text-align: center; margin-top: 5px;">VIEW LIVE MAP</div>
+                <div class="main">
+                    <div class="header-strip">
+                        <span>✈ BOARDING PASS</span>
+                        <span>AIR RADAR</span>
+                    </div>
+                    <div class="content">
+                        <div>
+                            <div class="label">Callsign</div>
+                            <div id="callsign" class="value" style="color:var(--blue); font-size:1.5em;">SEARCHING</div>
+                            <div class="label">Distance</div>
+                            <div id="dist" class="value">--- KM</div>
+                        </div>
+                        <div>
+                            <div class="label">Altitude</div>
+                            <div id="alt" class="value">--- FT</div>
+                            <div class="label">Bearing</div>
+                            <div class="value"><span id="compass">↑</span></div>
+                        </div>
+                    </div>
+                    <a id="map-link" target="_blank" style="text-decoration:none" class="barcode-area">
+                        <div class="barcode"></div>
                     </a>
                 </div>
-                <div id="status-bar">SYSTEM INITIALIZING...</div>
+            </div>
+            
+            <div class="footer-black">
+                <div id="status" class="status-text">INITIALIZING SCANNER...</div>
             </div>
         </div>
 
@@ -121,11 +131,11 @@ def index():
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
                     latU = pos.coords.latitude; lonU = pos.coords.longitude;
-                    setInterval(update, 8000); update();
-                });
+                    setInterval(fetchData, 8000); fetchData();
+                }, () => { document.getElementById('status').innerText = "ERROR: GPS REQUIRED"; });
             };
 
-            function update() {
+            function fetchData() {
                 if(!latU) return;
                 fetch(`/api/data?lat=${latU}&lon=${lonU}&t=${Date.now()}`)
                 .then(r => r.json()).then(data => {
@@ -133,14 +143,16 @@ def index():
                         document.getElementById('callsign').innerText = data.callsign;
                         document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('alt').innerText = data.alt_ft.toLocaleString() + " FT";
-                        document.getElementById('type').innerText = data.type;
-                        document.getElementById('speed').innerText = data.speed + " KTS";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-                        document.getElementById('status-bar').innerText = "RADAR: TARGET LOCKED " + data.callsign;
+                        
+                        // Atualiza texto amarelo na parte preta
+                        document.getElementById('status').innerText = "> TARGET LOCKED: " + data.callsign;
                         
                         let b = Math.max(1, Math.ceil((25-data.dist)/5));
-                        document.getElementById('signal').innerText = "▮".repeat(b) + "▯".repeat(5-b);
+                        document.getElementById('sig').innerText = "▮".repeat(b) + "▯".repeat(5-b);
+                    } else {
+                        document.getElementById('status').innerText = "SCANNING AIRSPACE...";
                     }
                 });
             }
@@ -164,8 +176,6 @@ def get_data():
                 "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
                 "alt_ft": int(ac.get('alt_baro', 0)), 
                 "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                "type": ac.get('t', 'UNKN'), 
-                "speed": ac.get('gs', 0),
                 "map_url": f"https://globe.adsbexchange.com/?lat={ac['lat']}&lon={ac['lon']}&zoom=11"
             })
     except: pass
