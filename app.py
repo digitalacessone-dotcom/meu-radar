@@ -27,35 +27,75 @@ def index():
     <html lang="pt">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <title>Radar Boarding Pass Pro</title>
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
         <style>
             :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
-            body { background: var(--bg-dark); margin:0; display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:'Courier New', monospace; }
-            .card { background: var(--air-blue); width:95%; max-width:620px; border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,0.8); overflow:hidden; }
+            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+            
+            body { 
+                background: var(--bg-dark); 
+                margin:0; padding:0;
+                display:flex; align-items:center; justify-content:center; 
+                min-height:100vh; font-family:'Courier New', monospace; 
+                overflow: hidden;
+            }
+
+            .card { 
+                background: var(--air-blue); 
+                width:95%; max-width:620px; 
+                border-radius:20px; 
+                box-shadow:0 20px 50px rgba(0,0,0,0.8); 
+                overflow:hidden; 
+                position: relative;
+            }
+
             .header { padding:15px 0; text-align:center; color:white; font-weight:900; letter-spacing:3px; }
-            .white-area { background:#fff; margin:0 10px; display:flex; padding:20px 15px; min-height:250px; border-radius:4px; }
+            
+            .white-area { 
+                background:#fff; margin:0 10px; 
+                display:flex; padding:20px 15px; 
+                min-height:250px; border-radius:4px; 
+                position: relative; z-index: 1;
+            }
+
             .col-left { flex:1.6; border-right:1px dashed #ddd; padding-right:15px; }
             .col-right { flex:1; padding-left:15px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:space-around; }
+            
             .label { color:#888; font-size:0.65em; font-weight:800; text-transform:uppercase; }
             .value { font-size:1.1em; font-weight:900; color:var(--air-blue); margin-bottom:10px; }
+            
             #compass { display:inline-block; transition:transform 0.6s ease; color:#ff8c00; font-size:1.5em; }
             
-            /* Ajuste do Código de Barras */
-            .barcode-container { width:100%; display:flex; justify-content:center; cursor:pointer; text-decoration:none; -webkit-tap-highlight-color: transparent; }
+            .barcode-container { width:100%; display:flex; justify-content:center; cursor:pointer; text-decoration:none; }
             #barcode { width:100%; max-width:150px; height:50px; display:block; }
             
-            /* Texto na parte preta (Footer) */
-            .footer { background:#000; padding:15px; min-height:80px; display:flex; align-items:center; justify-content:center; border-top:4px solid var(--warning-gold); }
+            /* Ajuste crítico para o texto no iOS */
+            .footer { 
+                background:#000; 
+                padding:15px 5px; 
+                min-height:70px; 
+                display:flex; 
+                align-items:center; 
+                justify-content:center; 
+                border-top:4px solid var(--warning-gold);
+                position: relative;
+                z-index: 2;
+            }
+
             .status-msg { 
-                color:#FFD700 !important; 
-                font-weight:900; 
-                font-size:1.1em; 
-                text-transform:uppercase; 
-                text-align:center; 
-                text-shadow: 1px 1px 2px rgba(0,0,0,0.8); 
-                display: block !important; /* Força a exibição no iPhone */
+                color: var(--warning-gold) !important; 
+                font-weight: 900; 
+                font-size: 0.9em; 
+                text-transform: uppercase; 
+                text-align: center; 
+                width: 100%;
+                letter-spacing: 1px;
+                /* Garante visibilidade no Safari */
+                display: block !important;
+                opacity: 1 !important;
+                text-shadow: 0 0 2px rgba(0,0,0,1);
             }
         </style>
     </head>
@@ -77,30 +117,52 @@ def index():
                     </a>
                 </div>
             </div>
-            <div class="footer"><div id="status" class="status-msg">INITIALIZING RADAR...</div></div>
+            <div class="footer">
+                <div id="status" class="status-msg">INITIALIZING RADAR...</div>
+            </div>
         </div>
 
         <script>
             let latAlvo, lonAlvo;
             let currentMapUrl = null;
+            let msgIndex = 0;
+            const msgs = ["SCANNING AIRSPACE...", "ATC LINK ACTIVE", "VISIBILITY: GOOD", "WIND: CALM"];
 
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
-                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    setInterval(executarBusca, 8000); executarBusca();
+                    latAlvo = pos.coords.latitude; 
+                    lonAlvo = pos.coords.longitude;
+                    setInterval(executarBusca, 8000); 
+                    executarBusca();
                 }, () => { 
-                    document.getElementById('status').textContent = "ERRO: ATIVE O GPS"; 
+                    updateStatus("ERROR: ENABLE GPS"); 
                 });
+
+                // Ciclo de mensagens rotativas se nenhum alvo estiver ativo
+                setInterval(() => {
+                    const status = document.getElementById('status').textContent;
+                    if (!status.includes("TARGET")) {
+                        updateStatus(msgs[msgIndex]);
+                        msgIndex = (msgIndex + 1) % msgs.length;
+                    }
+                }, 4000);
             };
+
+            function updateStatus(txt) {
+                const el = document.getElementById('status');
+                el.textContent = txt;
+                // Força o Safari a redesenhar o elemento
+                el.style.display = 'none';
+                el.offsetHeight; 
+                el.style.display = 'block';
+            }
 
             function executarBusca() {
                 if(!latAlvo) return;
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=` + Date.now())
                 .then(res => res.json())
                 .then(data => {
-                    const statusElem = document.getElementById('status');
                     if(data.found) {
-                        // Atualiza os textos (compatível com Safari)
                         document.getElementById('callsign').textContent = data.callsign;
                         document.getElementById('route').textContent = data.origin + " / " + data.dest;
                         document.getElementById('type_speed').textContent = data.type + " / " + data.speed + " KTS";
@@ -108,26 +170,23 @@ def index():
                         document.getElementById('dist_body').textContent = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         
-                        // Torna o link clicável
                         currentMapUrl = data.map_url;
                         document.getElementById('map-link').href = currentMapUrl;
                         
-                        statusElem.textContent = "ALVO ADQUIRIDO: " + data.callsign;
+                        updateStatus("TARGET ACQUIRED: " + data.callsign);
 
-                        // Gera o código de barras
                         document.getElementById('barcode').innerHTML = "";
                         JsBarcode("#barcode", data.callsign, {
                             format: "CODE128", width: 1.5, height: 40, displayValue: false, lineColor: "#1A237E"
                         });
                     } else {
-                        statusElem.textContent = "ESCANEANDO ESPAÇO AÉREO...";
                         document.getElementById('callsign').textContent = "SEARCHING";
                         document.getElementById('barcode').innerHTML = "";
                         document.getElementById('map-link').removeAttribute('href');
                     }
                 })
                 .catch(err => {
-                    document.getElementById('status').textContent = "ERRO DE CONEXÃO";
+                    updateStatus("DATA LINK ERROR");
                 });
             }
         </script>
@@ -146,7 +205,6 @@ def get_data():
             validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
             if validos:
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                
                 map_url = (f"https://globe.adsbexchange.com/?"
                            f"lat={ac['lat']}&lon={ac['lon']}&zoom=11"
                            f"&hex={ac.get('hex', '')}&sel={ac.get('hex', '')}")
@@ -167,4 +225,5 @@ def get_data():
     return jsonify({"found": False})
 
 if __name__ == '__main__':
+    # host='0.0.0.0' é necessário para que o iPhone acesse pelo IP do PC
     app.run(debug=True, host='0.0.0.0', port=5000)
