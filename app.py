@@ -27,148 +27,215 @@ def index():
     <html lang="pt">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <title>First Class Radar Pass</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Radar Boarding Pass</title>
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
         <style>
-            :root { 
-                --airline-blue: #1e4d6b; 
-                --accent-gold: #c5a059; 
-                --text-dark: #2c3e50;
-                --bg-light: #e0e4e8;
+            :root {
+                --blue-main: #2A6E91;
+                --text-gray: #888;
+                --yellow-status: #FFD700;
             }
-            
             body { 
-                background: var(--bg-light); margin: 0; 
-                display: flex; align-items: center; justify-content: center; 
-                min-height: 100vh; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                background: #eef1f4; 
+                margin: 0; 
+                display: flex; 
+                flex-direction: column;
+                align-items: center; 
+                justify-content: center; 
+                min-height: 100vh; 
+                font-family: 'Helvetica Neue', Arial, sans-serif;
             }
 
-            /* Container Principal Estilo Cartão */
-            .ticket {
-                background: white; width: 95%; max-width: 750px;
-                border-radius: 15px; display: flex; flex-direction: column;
-                box-shadow: 0 15px 35px rgba(0,0,0,0.15); overflow: hidden;
+            /* Container do Input superior */
+            .search-container {
+                width: 90%;
+                max-width: 800px;
+                background: white;
+                padding: 10px 20px;
+                border-radius: 12px;
+                display: flex;
+                gap: 10px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            }
+            .search-container input {
+                flex: 1;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                padding: 10px;
+                font-size: 14px;
+            }
+            .search-container button {
+                background: var(--blue-main);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-weight: bold;
+                cursor: pointer;
             }
 
-            /* Faixa Superior Azul */
-            .ticket-header {
-                background: var(--airline-blue); color: white;
-                padding: 15px 30px; display: flex; justify-content: space-between; align-items: center;
+            /* Cartão de Embarque */
+            .boarding-pass {
+                width: 90%;
+                max-width: 850px;
+                background: white;
+                border-radius: 25px;
+                overflow: hidden;
+                display: flex;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                position: relative;
             }
-            .ticket-header h2 { margin: 0; font-weight: 300; letter-spacing: 4px; font-size: 1.2em; }
-            .class-label { font-size: 0.8em; border: 1px solid white; padding: 2px 10px; border-radius: 20px; }
 
-            /* Área Central Branca */
-            .ticket-body { display: flex; min-height: 280px; }
-
-            /* Stub Lateral (Canhoto) */
-            .ticket-stub {
-                width: 25%; background: #f9f9f9; padding: 25px;
-                border-right: 2px dashed #ddd; display: flex; flex-direction: column; justify-content: center;
+            /* Parte Esquerda (Canhoto Azul) */
+            .left-stub {
+                background: var(--blue-main);
+                width: 28%;
+                padding: 30px 20px;
+                color: white;
+                border-right: 2px dashed rgba(255,255,255,0.3);
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
             }
-            .stub-info { margin-bottom: 20px; }
-            .stub-label { font-size: 0.6em; color: #999; text-transform: uppercase; font-weight: bold; }
-            .stub-value { font-size: 1.5em; font-weight: bold; color: var(--airline-blue); }
+            .stub-label { font-size: 10px; opacity: 0.8; text-transform: uppercase; font-weight: bold; }
+            .seat-number { font-size: 70px; font-weight: bold; margin: 10px 0; }
+            .dots { display: flex; gap: 5px; margin-bottom: 20px; }
+            .dot { width: 12px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 2px; }
 
-            /* Conteúdo Principal */
-            .ticket-main { flex: 1; padding: 25px 40px; position: relative; }
-            
-            .flight-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
-            .info-box { display: flex; flex-direction: column; }
-            .label { font-size: 0.65em; color: #888; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
-            .value { font-size: 1.2em; font-weight: 700; color: var(--text-dark); }
-            .value-alt { color: var(--accent-gold); font-family: 'Courier New', Courier, monospace; font-size: 1.4em; }
-
-            /* Bússola e Elementos Visuais */
-            .visuals { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-            #compass { font-size: 2.5em; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); color: var(--accent-gold); }
-            #barcode { width: 160px; height: 50px; }
-
-            /* Rodapé Preto com Letras Amarelas (Elegante) */
-            .ticket-footer {
-                background: #111; padding: 12px; 
-                border-top: 4px solid var(--accent-gold);
-                display: flex; align-items: center; justify-content: center;
+            /* Parte Direita (Corpo Branco) */
+            .right-main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
             }
-            .status-msg { 
-                color: #FFD700; font-family: 'Courier New', monospace; 
-                font-weight: bold; letter-spacing: 1px; font-size: 0.95em;
+            .header-strip {
+                background: var(--blue-main);
+                color: white;
+                padding: 15px 40px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .header-strip h1 { 
+                margin: 0; 
+                font-size: 24px; 
+                letter-spacing: 6px; 
+                font-weight: normal; 
                 text-transform: uppercase;
             }
 
-            /* Decoração do Avião no Fundo */
-            .airplane-bg {
-                position: absolute; right: 10%; top: 40%; 
-                font-size: 8em; color: rgba(0,0,0,0.03); transform: rotate(-45deg); pointer-events: none;
+            .info-grid {
+                padding: 30px 45px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                flex: 1;
+            }
+            .data-block { margin-bottom: 20px; }
+            .label { color: var(--text-gray); font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+            .value { 
+                font-size: 26px; 
+                font-weight: bold; 
+                color: var(--yellow-status); 
+                font-family: 'Courier New', monospace;
+            }
+            .value-dark { color: #333; font-size: 20px; }
+
+            /* Bússola e Barcode */
+            .visual-section {
+                border-left: 1px solid #eee;
+                padding-left: 30px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+            #compass { font-size: 40px; color: #f39c12; transition: transform 0.8s ease; margin-bottom: 15px; }
+            #barcode { width: 180px; height: 60px; }
+
+            /* Footer Preto */
+            .footer-status {
+                background: #000;
+                height: 65px;
+                border-top: 4px solid var(--yellow-status);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .status-msg {
+                color: var(--yellow-status);
+                font-family: 'Courier New', monospace;
+                font-weight: bold;
+                font-size: 18px;
+                text-transform: uppercase;
             }
 
-            @media (max-width: 650px) {
-                .ticket-body { flex-direction: column; }
-                .ticket-stub { width: 100%; border-right: none; border-bottom: 2px dashed #ddd; padding: 15px 25px; }
-                .airplane-bg { display: none; }
+            @media (max-width: 600px) {
+                .boarding-pass { flex-direction: column; }
+                .left-stub { width: auto; height: 150px; border-right: none; border-bottom: 2px dashed #ccc; }
+                .info-grid { grid-template-columns: 1fr; }
             }
         </style>
     </head>
     <body>
-        <div class="ticket">
-            <div class="ticket-header">
-                <h2>RADAR BOARDING PASS</h2>
-                <span class="class-label">FIRST CLASS</span>
+
+        <div class="search-container">
+            <input type="text" placeholder="Enter City or Location...">
+            <button>CONNECT RADAR</button>
+        </div>
+
+        <div class="boarding-pass">
+            <div class="left-stub">
+                <div>
+                    <div class="stub-label">Radar Base</div>
+                    <div class="stub-label">Seat:</div>
+                    <div class="seat-number">19 A</div>
+                    <div class="dots">
+                        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                    </div>
+                </div>
+                <div class="stub-label">ATC Secure</div>
             </div>
 
-            <div class="ticket-body">
-                <div class="ticket-stub">
-                    <div class="stub-info">
-                        <div class="stub-label">Radar Base</div>
-                        <div class="stub-value">19 A</div>
+            <div class="right-main">
+                <div class="header-strip">
+                    <span>✈</span>
+                    <h1>Boarding Board</h1>
+                    <span>✈</span>
+                </div>
+
+                <div class="info-grid">
+                    <div class="data-container">
+                        <div class="data-block">
+                            <div class="label">Ident / Callsign</div>
+                            <div id="callsign" class="value">READY</div>
+                        </div>
+                        <div class="data-block">
+                            <div class="label">Aircraft Distance</div>
+                            <div id="dist_body" class="value value-dark">--- KM</div>
+                        </div>
+                        <div class="data-block">
+                            <div class="label">Altitude (MSL)</div>
+                            <div id="alt" class="value value-dark">--- FT</div>
+                        </div>
                     </div>
-                    <div class="stub-info">
-                        <div class="stub-label">System</div>
-                        <div class="stub-value" style="font-size: 1em;">SKY-SCAN v2</div>
+
+                    <div class="visual-section">
+                        <div class="data-block" style="text-align: center;">
+                            <div class="label">Type</div>
+                            <div id="type" class="value value-dark">----</div>
+                        </div>
+                        <div id="compass">↑</div>
+                        <svg id="barcode"></svg>
                     </div>
                 </div>
 
-                <div class="ticket-main">
-                    <div class="airplane-bg">✈</div>
-                    
-                    <div class="flight-info">
-                        <div class="info-box">
-                            <span class="label">Identification / Flight</span>
-                            <span id="callsign" class="value-alt">SEARCHING</span>
-                        </div>
-                        <div class="info-box" style="text-align: right;">
-                            <span class="label">Aircraft Type</span>
-                            <span id="type" class="value">----</span>
-                        </div>
-                    </div>
-
-                    <div class="flight-info">
-                        <div class="info-box">
-                            <span class="label">Distance</span>
-                            <span id="dist_body" class="value">-- KM</span>
-                        </div>
-                        <div class="info-box">
-                            <span class="label">Altitude</span>
-                            <span id="alt" class="value">00000 FT</span>
-                        </div>
-                        <div class="info-box" style="text-align: right;">
-                            <span class="label">Direction</span>
-                            <div id="compass">↑</div>
-                        </div>
-                    </div>
-
-                    <div class="visuals">
-                        <div class="info-box">
-                            <span class="label">Secure Auth</span>
-                            <svg id="barcode"></svg>
-                        </div>
-                    </div>
+                <div class="footer-status">
+                    <div id="status" class="status-msg">INITIALIZING RADAR...</div>
                 </div>
-            </div>
-
-            <div class="ticket-footer">
-                <div id="status" class="status-msg">INITIALIZING RADAR...</div>
             </div>
         </div>
 
@@ -180,7 +247,7 @@ def index():
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     setInterval(executarBusca, 8000); executarBusca();
                 }, () => { 
-                    document.getElementById('status').textContent = "SYSTEM ERROR: GPS REQUIRED"; 
+                    document.getElementById('status').textContent = "ERROR: ENABLE GPS"; 
                 });
             };
 
@@ -199,12 +266,11 @@ def index():
                         statusElem.textContent = "TARGET ACQUIRED: " + data.callsign;
 
                         JsBarcode("#barcode", data.callsign, {
-                            format: "CODE128", width: 1.2, height: 40, displayValue: false, lineColor: "#1e4d6b"
+                            format: "CODE128", width: 1.2, height: 40, displayValue: false, lineColor: "#2A6E91"
                         });
                     } else {
-                        statusElem.textContent = "SCANNING LOCAL AIRSPACE...";
-                        document.getElementById('callsign').textContent = "SEARCHING";
-                        document.getElementById('barcode').innerHTML = "";
+                        statusElem.textContent = "SCANNING AIRSPACE...";
+                        document.getElementById('callsign').textContent = "READY";
                     }
                 });
             }
