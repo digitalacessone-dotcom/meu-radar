@@ -5,11 +5,12 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
+# Configurações de Raio e Disfarce
 RAIO_KM = 80.0
-
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 ]
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -30,7 +31,7 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 def index():
     return render_template_string('''
     <!DOCTYPE html>
-    <html lang="pt-pt">
+    <html lang="pt-br">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -45,33 +46,26 @@ def index():
                 min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden;
             }
 
-            /* BARRA DE PESQUISA COM TRANSIÇÃO */
+            /* BARRA DE PESQUISA SUPERIOR */
             #search-section {
                 background: #fff; padding: 15px 25px; border-radius: 12px;
                 margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
                 display: flex; gap: 10px; align-items: center; border: 1px solid #ddd;
                 width: 95%; max-width: 850px; z-index: 100;
                 transition: all 0.5s ease;
-                opacity: 1; transform: translateY(0);
             }
-            #search-section.hidden {
-                opacity: 0; transform: translateY(-20px); pointer-events: none; margin-bottom: -60px;
-            }
-
-            #search-section input { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; font-size: 0.9em; outline: none; }
+            #search-section.hidden { opacity: 0; transform: translateY(-20px); pointer-events: none; margin-bottom: -60px; }
+            #search-section input { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
             #search-section button { background: var(--air-blue); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
-            /* BOTÃO RE-CONFIG DISCRETO */
-            #reconfig-btn {
-                position: absolute; top: 10px; right: 10px; font-size: 0.6em; color: #aaa; cursor: pointer; text-decoration: underline; z-index: 50;
-            }
+            #reconfig-btn { position: absolute; top: 10px; right: 10px; font-size: 0.7em; color: #888; cursor: pointer; text-decoration: underline; z-index: 50; }
 
+            /* CARD PRINCIPAL - LAYOUT INTEGRAL MANTIDO */
             .card { 
                 background: white; width: 95%; max-width: 850px;
                 border-radius: 20px; position: relative; 
                 box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
                 display: flex; overflow: hidden; border: 1px solid #ddd;
-                transition: transform 0.5s ease;
             }
 
             .left-stub {
@@ -83,9 +77,12 @@ def index():
             .left-stub .seat-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; }
 
             .main-ticket { flex: 1; display: flex; flex-direction: column; }
-            .header-bar { background: var(--air-blue); height: 80px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; color: white; }
+            .header-bar { 
+                background: var(--air-blue); height: 80px; display: flex; 
+                align-items: center; justify-content: space-between; padding: 0 40px; color: white;
+            }
             .header-bar h1 { font-size: 1.5em; letter-spacing: 5px; margin: 0; }
-            
+
             .content-area { padding: 30px 50px; display: flex; flex: 1; background: white; }
             .col-data { flex: 2; border-right: 1px solid #eee; display: flex; flex-direction: column; justify-content: space-between; }
             .col-side { flex: 1; padding-left: 30px; align-items: center; display: flex; flex-direction: column; justify-content: space-around; }
@@ -93,41 +90,51 @@ def index():
             .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
             .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); min-height: 1.2em; display: flex; }
 
-            .terminal-footer { background: #000; padding: 12px 40px; border-top: 3px solid var(--warning-gold); min-height: 55px; display: flex; align-items: center; }
-            .letter-slot { display: inline-block; color: var(--warning-gold); font-family: 'Courier New', monospace; font-weight: 900; min-width: 0.65em; text-align: center; }
+            .terminal-footer { 
+                background: #000; padding: 12px 40px; 
+                border-top: 3px solid var(--warning-gold);
+                min-height: 55px; display: flex; align-items: center;
+            }
+
+            .letter-slot { 
+                display: inline-block; color: var(--warning-gold); 
+                font-family: 'Courier New', monospace; font-weight: 900;
+                min-width: 0.65em; text-align: center;
+            }
             
             .flapping { animation: flap 0.07s infinite; }
             @keyframes flap { 50% { transform: scaleY(0.5); opacity: 0.5; } }
 
             #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
             
-            #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s all ease; opacity: 0.1; }
+            #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s; opacity: 0.1; }
             .barcode { width: 150px; height: 55px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 10px; }
-            
-            #radar-link.active { pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important; }
-            #radar-link.active:hover { transform: scale(1.1); }
+            #radar-link.active { pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important; transform: scale(1.05); }
+
         </style>
     </head>
     <body>
 
         <div id="search-section">
-            <input type="text" id="address-input" placeholder="Digite endereço, cidade ou CEP para iniciar...">
-            <button onclick="geocodeAddress()">CONECTAR</button>
+            <input type="text" id="address-input" placeholder="Endereço, Cidade ou CEP...">
+            <button onclick="geocodeAddress()">CONECTAR RADAR</button>
         </div>
 
-        <div id="reconfig-btn" onclick="toggleSearch()">[ CHANGE LOCATION ]</div>
+        <div id="reconfig-btn" onclick="toggleSearch()">[ MUDAR LOCAL ]</div>
 
         <div class="card">
             <div class="left-stub">
-                <div class="label" style="color: rgba(255,255,255,0.7)">Radar Base</div>
-                <div class="seat-label">Seat:</div>
+                <div class="label" style="color: rgba(255,255,255,0.7)">Radar System</div>
+                <div class="seat-label">Seat Number:</div>
                 <div class="seat-num">19 A</div>
-                <div class="seat-label" style="margin-top: auto;">Secure Tunnel</div>
+                <div class="seat-label" style="margin-top: auto;">ATC First Class</div>
             </div>
 
             <div class="main-ticket">
                 <div class="header-bar">
-                    <span>✈</span><h1>BOARDING BOARD</h1><span>✈</span>
+                    <span style="font-size: 1.8em;">✈</span>
+                    <h1>BOARDING BOARD</h1>
+                    <span style="font-size: 1.8em;">✈</span>
                 </div>
 
                 <div class="content-area">
@@ -157,32 +164,38 @@ def index():
 
         <script>
             let latAlvo = null, lonAlvo = null, currentTarget = null, step = 0;
-            const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->";
+            let weather = { temp: '--', sky: 'SCANNING', vis: '--' };
+            const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->°";
 
-            function toggleSearch() {
-                document.getElementById('search-section').classList.remove('hidden');
-            }
+            function toggleSearch() { document.getElementById('search-section').classList.remove('hidden'); }
 
             async function geocodeAddress() {
                 const query = document.getElementById('address-input').value;
                 if(!query) return;
                 updateWithEffect('status-container', '> GEO-SEARCHING...');
                 try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-                    const data = await response.json();
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                    const data = await res.json();
                     if(data.length > 0) {
-                        latAlvo = parseFloat(data[0].lat);
-                        lonAlvo = parseFloat(data[0].lon);
-                        
-                        // ESCONDE A BARRA AO CONECTAR
+                        latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
                         document.getElementById('search-section').classList.add('hidden');
-                        
-                        updateWithEffect('status-container', '> LOCATION LOCKED');
-                        executarBusca();
-                        // Inicia o loop de busca se ainda não começou
+                        getWeather();
                         if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 12000);
+                        executarBusca();
                     }
                 } catch(e) { updateWithEffect('status-container', '> GEO-ERROR'); }
+            }
+
+            async function getWeather() {
+                if(!latAlvo) return;
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latAlvo}&longitude=${lonAlvo}&current_weather=true&hourly=visibility`);
+                    const data = await res.json();
+                    weather.temp = Math.round(data.current_weather.temperature) + "°C";
+                    const code = data.current_weather.weathercode;
+                    weather.sky = code < 3 ? "CEU LIMPO" : code < 50 ? "NUVENS" : "PREV CHUVA";
+                    weather.vis = (data.hourly.visibility[0] / 1000).toFixed(1) + "KM VIS";
+                } catch(e) {}
             }
 
             function updateWithEffect(id, newValue) {
@@ -201,37 +214,48 @@ def index():
                     const interval = setInterval(() => {
                         slot.innerText = chars[Math.floor(Math.random() * chars.length)];
                         slot.classList.add('flapping');
-                        if (++cycles >= 10 + i) {
+                        if (++cycles >= 8 + i) {
                             clearInterval(interval);
                             slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
                             slot.classList.remove('flapping');
                         }
-                    }, 45);
+                    }, 40);
                 });
             }
 
             window.onload = function() {
                 updateWithEffect('callsign', 'SEARCHING');
-                updateWithEffect('status-container', '> WAITING CONNECTION...');
+                updateWithEffect('status-container', '> WAITING GPS...');
                 
-                // Se o navegador já tiver GPS permitido, esconde a barra automaticamente
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     document.getElementById('search-section').classList.add('hidden');
-                    executarBusca();
+                    getWeather();
                     window.searchLoop = setInterval(executarBusca, 12000);
+                    executarBusca();
                 });
 
+                // LOOP DA BARRA PRETA (TERMINAL)
                 setInterval(() => {
                     if(!currentTarget) {
-                        const msgs = ["> SCANNING AIRSPACE", "> NETWORK SECURE", "> WAITING TARGET"];
+                        const msgs = [
+                            `> TEMP: ${weather.temp}`, 
+                            `> CEU: ${weather.sky}`, 
+                            `> VISIB: ${weather.vis}`,
+                            `> SCANNING SPACE...`
+                        ];
                         updateWithEffect('status-container', msgs[step % msgs.length]);
                     } else {
-                        const info = [`> TARGET: ${currentTarget.callsign}`, `> SPD: ${currentTarget.speed} KT`, `> ALT: ${currentTarget.alt_ft} FT` ];
+                        const info = [
+                            `> TARGET: ${currentTarget.callsign}`,
+                            `> SPEED: ${currentTarget.speed} KT`,
+                            `> ROTA: ${currentTarget.origin} -> ${currentTarget.dest}`,
+                            `> POSITION LOCKED`
+                        ];
                         updateWithEffect('status-container', info[step % info.length]);
                     }
                     step++;
-                }, 6000);
+                }, 5000);
             };
 
             function executarBusca() {
@@ -252,6 +276,7 @@ def index():
                         currentTarget = null;
                         radarLink.classList.remove('active');
                         updateWithEffect('callsign', 'SEARCHING');
+                        getWeather();
                     }
                 });
             }
@@ -264,7 +289,7 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
-    headers = {'User-Agent': random.choice(USER_AGENTS), 'Accept': 'application/json', 'Referer': 'https://adsb.lol/'}
+    headers = {'User-Agent': random.choice(USER_AGENTS), 'Referer': 'https://adsb.lol/'}
     try:
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, headers=headers, timeout=10).json()
@@ -279,7 +304,8 @@ def get_data():
                     "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
                     "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
                     "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
-                    "lat": ac['lat'], "lon": ac['lon']
+                    "lat": ac['lat'], "lon": ac['lon'],
+                    "origin": ac.get('origin', 'N/A'), "dest": ac.get('destination', 'N/A')
                 })
     except: pass
     return jsonify({"found": False})
