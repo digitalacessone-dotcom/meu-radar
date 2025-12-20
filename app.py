@@ -9,8 +9,7 @@ app = Flask(__name__)
 RAIO_KM = 80.0
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
 ]
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -31,7 +30,7 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 def index():
     return render_template_string('''
     <!DOCTYPE html>
-    <html lang="pt-br">
+    <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -46,21 +45,16 @@ def index():
                 min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden;
             }
 
-            /* BARRA DE PESQUISA SUPERIOR */
             #search-section {
                 background: #fff; padding: 15px 25px; border-radius: 12px;
                 margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
                 display: flex; gap: 10px; align-items: center; border: 1px solid #ddd;
-                width: 95%; max-width: 850px; z-index: 100;
-                transition: all 0.5s ease;
+                width: 95%; max-width: 850px; z-index: 100; transition: all 0.5s ease;
             }
             #search-section.hidden { opacity: 0; transform: translateY(-20px); pointer-events: none; margin-bottom: -60px; }
             #search-section input { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
             #search-section button { background: var(--air-blue); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
-            #reconfig-btn { position: absolute; top: 10px; right: 10px; font-size: 0.7em; color: #888; cursor: pointer; text-decoration: underline; z-index: 50; }
-
-            /* CARD PRINCIPAL - LAYOUT INTEGRAL MANTIDO */
             .card { 
                 background: white; width: 95%; max-width: 850px;
                 border-radius: 20px; position: relative; 
@@ -91,50 +85,39 @@ def index():
             .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); min-height: 1.2em; display: flex; }
 
             .terminal-footer { 
-                background: #000; padding: 12px 40px; 
-                border-top: 3px solid var(--warning-gold);
+                background: #000; padding: 12px 40px; border-top: 3px solid var(--warning-gold);
                 min-height: 55px; display: flex; align-items: center;
             }
 
-            .letter-slot { 
-                display: inline-block; color: var(--warning-gold); 
-                font-family: 'Courier New', monospace; font-weight: 900;
-                min-width: 0.65em; text-align: center;
-            }
-            
+            .letter-slot { display: inline-block; color: var(--warning-gold); font-family: 'Courier New', monospace; font-weight: 900; min-width: 0.65em; text-align: center; }
             .flapping { animation: flap 0.07s infinite; }
             @keyframes flap { 50% { transform: scaleY(0.5); opacity: 0.5; } }
 
             #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
-            
             #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s; opacity: 0.1; }
             .barcode { width: 150px; height: 55px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 10px; }
-            #radar-link.active { pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important; transform: scale(1.05); }
+            #radar-link.active { pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important; }
 
         </style>
     </head>
     <body>
 
         <div id="search-section">
-            <input type="text" id="address-input" placeholder="Endereço, Cidade ou CEP...">
-            <button onclick="geocodeAddress()">CONECTAR RADAR</button>
+            <input type="text" id="address-input" placeholder="Enter City or Location...">
+            <button onclick="geocodeAddress()">CONNECT RADAR</button>
         </div>
-
-        <div id="reconfig-btn" onclick="toggleSearch()">[ MUDAR LOCAL ]</div>
 
         <div class="card">
             <div class="left-stub">
-                <div class="label" style="color: rgba(255,255,255,0.7)">Radar System</div>
-                <div class="seat-label">Seat Number:</div>
+                <div class="label" style="color: rgba(255,255,255,0.7)">Radar Base</div>
+                <div class="seat-label">Seat:</div>
                 <div class="seat-num">19 A</div>
-                <div class="seat-label" style="margin-top: auto;">ATC First Class</div>
+                <div class="seat-label" style="margin-top: auto;">ATC Secure</div>
             </div>
 
             <div class="main-ticket">
                 <div class="header-bar">
-                    <span style="font-size: 1.8em;">✈</span>
-                    <h1>BOARDING BOARD</h1>
-                    <span style="font-size: 1.8em;">✈</span>
+                    <span>✈</span><h1>BOARDING BOARD</h1><span>✈</span>
                 </div>
 
                 <div class="content-area">
@@ -145,14 +128,9 @@ def index():
                     </div>
 
                     <div class="col-side">
-                        <div style="text-align: center;">
-                            <div class="label">Type</div>
-                            <div id="type_id" class="value">----</div>
-                        </div>
+                        <div style="text-align: center;"><div class="label">Type</div><div id="type_id" class="value">----</div></div>
                         <div id="compass">↑</div>
-                        <a id="radar-link" href="#" target="_blank">
-                            <div class="barcode"></div>
-                        </a>
+                        <a id="radar-link" href="#" target="_blank"><div class="barcode"></div></a>
                     </div>
                 </div>
 
@@ -165,14 +143,11 @@ def index():
         <script>
             let latAlvo = null, lonAlvo = null, currentTarget = null, step = 0;
             let weather = { temp: '--', sky: 'SCANNING', vis: '--' };
-            const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->°";
-
-            function toggleSearch() { document.getElementById('search-section').classList.remove('hidden'); }
+            const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->°%";
 
             async function geocodeAddress() {
                 const query = document.getElementById('address-input').value;
                 if(!query) return;
-                updateWithEffect('status-container', '> GEO-SEARCHING...');
                 try {
                     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
                     const data = await res.json();
@@ -183,7 +158,7 @@ def index():
                         if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 12000);
                         executarBusca();
                     }
-                } catch(e) { updateWithEffect('status-container', '> GEO-ERROR'); }
+                } catch(e) { }
             }
 
             async function getWeather() {
@@ -193,8 +168,8 @@ def index():
                     const data = await res.json();
                     weather.temp = Math.round(data.current_weather.temperature) + "°C";
                     const code = data.current_weather.weathercode;
-                    weather.sky = code < 3 ? "CEU LIMPO" : code < 50 ? "NUVENS" : "PREV CHUVA";
-                    weather.vis = (data.hourly.visibility[0] / 1000).toFixed(1) + "KM VIS";
+                    weather.sky = code < 3 ? "CLEAR SKY" : code < 50 ? "CLOUDY" : "RAIN EXPECTED";
+                    weather.vis = (data.hourly.visibility[0] / 1000).toFixed(1) + "KM";
                 } catch(e) {}
             }
 
@@ -225,7 +200,6 @@ def index():
 
             window.onload = function() {
                 updateWithEffect('callsign', 'SEARCHING');
-                updateWithEffect('status-container', '> WAITING GPS...');
                 
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
@@ -235,27 +209,28 @@ def index():
                     executarBusca();
                 });
 
-                // LOOP DA BARRA PRETA (TERMINAL)
                 setInterval(() => {
                     if(!currentTarget) {
                         const msgs = [
-                            `> TEMP: ${weather.temp}`, 
-                            `> CEU: ${weather.sky}`, 
-                            `> VISIB: ${weather.vis}`,
-                            `> SCANNING SPACE...`
+                            `> CONNECTING TO SERVER...`,
+                            `> LOCAL TEMP: ${weather.temp}`, 
+                            `> SKY CONDITIONS: ${weather.sky}`, 
+                            `> VISIBILITY: ${weather.vis}`,
+                            `> SECURE TUNNEL: ACTIVE`,
+                            `> SCANNING AIRSPACE...`
                         ];
                         updateWithEffect('status-container', msgs[step % msgs.length]);
                     } else {
                         const info = [
-                            `> TARGET: ${currentTarget.callsign}`,
-                            `> SPEED: ${currentTarget.speed} KT`,
-                            `> ROTA: ${currentTarget.origin} -> ${currentTarget.dest}`,
-                            `> POSITION LOCKED`
+                            `> TARGET LOCKED: ${currentTarget.callsign}`,
+                            `> GROUND SPEED: ${currentTarget.speed} KT`,
+                            `> ROUTE: ${currentTarget.origin} -> ${currentTarget.dest}`,
+                            `> POSITION TRACKING: STABLE`
                         ];
                         updateWithEffect('status-container', info[step % info.length]);
                     }
                     step++;
-                }, 5000);
+                }, 4000); 
             };
 
             function executarBusca() {
@@ -276,7 +251,6 @@ def index():
                         currentTarget = null;
                         radarLink.classList.remove('active');
                         updateWithEffect('callsign', 'SEARCHING');
-                        getWeather();
                     }
                 });
             }
@@ -312,6 +286,7 @@ def get_data():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
 
 
