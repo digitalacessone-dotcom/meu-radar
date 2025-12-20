@@ -27,132 +27,158 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <title>Radar Boarding Pass</title>
+        <title>Boarding Board Radar</title>
         <style>
-            :root { --blue: #4ba8cc; --dark-blue: #1e5d7b; --warning: #FFD700; }
-            body { background: #d0e4f2; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; font-family: Arial, sans-serif; overflow: hidden; }
+            :root { --blue-bg: #2B6B8F; --text-gray: #888; --gold: #FFD700; }
+            body { background: #E0E5EC; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }
             
-            .ticket {
-                background: white; width: 90%; max-width: 700px;
-                border-radius: 15px; display: flex; flex-direction: column;
-                box-shadow: 0 15px 35px rgba(0,0,0,0.2); overflow: hidden;
+            .boarding-pass {
+                background: white; width: 95%; max-width: 800px;
+                border-radius: 20px; overflow: hidden;
+                box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+                display: flex; flex-direction: column;
             }
 
-            .ticket-top { display: flex; min-height: 280px; }
+            .main-ticket { display: flex; flex: 1; min-height: 320px; }
 
-            /* Lado Esquerdo (Canhoto) */
-            .stub { width: 30%; background: var(--dark-blue); color: white; padding: 20px; border-right: 2px dashed #ddd; display: flex; flex-direction: column; justify-content: space-between; }
-            .seat { font-size: 4em; font-weight: bold; line-height: 1; margin: 10px 0; }
-
-            /* Lado Direito (Principal) */
-            .main { flex: 1; display: flex; flex-direction: column; }
-            .header-strip { background: var(--blue); color: white; padding: 12px 25px; display: flex; justify-content: space-between; font-weight: bold; letter-spacing: 1px; }
-            
-            .content { padding: 20px 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex-grow: 1; }
-            .label { color: var(--blue); font-size: 0.7em; font-weight: bold; text-transform: uppercase; }
-            .value { color: #333; font-size: 1.2em; font-weight: bold; margin-bottom: 8px; }
-
-            /* Faixa Preta Inferior Estilo Radar */
-            .footer-black { 
-                background: #000; padding: 15px; 
-                border-top: 3px solid var(--warning);
-                display: flex; align-items: center; justify-content: center;
-                min-height: 60px;
+            /* Canhoto Esquerdo (Stub) */
+            .stub { 
+                background: var(--blue-bg); width: 30%; color: white; padding: 25px;
+                border-right: 2px dashed rgba(255,255,255,0.3);
+                display: flex; flex-direction: column; justify-content: space-between;
             }
-            .status-text { 
-                color: var(--warning) !important; 
-                font-family: 'Courier New', monospace; 
-                font-weight: bold; 
-                font-size: 1em; 
-                text-transform: uppercase;
-                letter-spacing: 2px;
-                text-align: center;
-                animation: blink 1.5s infinite;
-            }
-
-            @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-            #compass { display: inline-block; transition: transform 0.6s ease; font-size: 1.2em; color: #f39c12; }
+            .seat-label { font-size: 0.8em; opacity: 0.8; }
+            .seat-num { font-size: 5em; font-weight: bold; margin: 10px 0; }
             
-            .barcode-area { border-top: 1px solid #eee; padding: 10px 25px; display: flex; justify-content: flex-end; }
-            .barcode { height: 40px; width: 150px; background: repeating-linear-gradient(90deg, #333, #333 2px, transparent 2px, transparent 5px); }
+            /* Quadradinhos de Proximidade */
+            .proximity-bars { display: flex; gap: 4px; margin-top: 10px; }
+            .bar { width: 12px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+            .bar.active { background: white; box-shadow: 0 0 8px white; }
+
+            /* Parte Principal */
+            .info-area { flex: 1; display: flex; flex-direction: column; }
+            .blue-header { background: var(--blue-bg); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+            .blue-header h2 { margin: 0; font-size: 1.2em; letter-spacing: 5px; font-weight: normal; }
+
+            .white-content { padding: 30px; flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; position: relative; }
+            .field { margin-bottom: 20px; }
+            .label { color: var(--text-gray); font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+            .value { color: #222; font-size: 1.4em; font-weight: bold; }
+            .value.highlight { color: #E6B100; font-size: 1.8em; }
+
+            #compass { display: inline-block; transition: transform 0.6s ease; font-size: 1.5em; color: #E67E22; }
+
+            /* Faixa Preta Inferior */
+            .black-footer { 
+                background: #000; padding: 12px 30px; 
+                border-top: 4px solid var(--gold);
+                min-height: 50px; display: flex; align-items: center;
+            }
+            .status-msg { 
+                color: var(--gold) !important; font-family: monospace; 
+                font-weight: bold; text-transform: uppercase; letter-spacing: 2px;
+                display: block !important;
+            }
 
             @media (max-width: 600px) {
-                .ticket-top { flex-direction: column; }
-                .stub { width: auto; border-right: none; border-bottom: 2px dashed #ddd; }
+                .main-ticket { flex-direction: column; }
+                .stub { width: auto; border-right: none; border-bottom: 2px dashed #ccc; }
+                .white-content { grid-template-columns: 1fr; }
             }
         </style>
     </head>
     <body>
-        <div class="ticket">
-            <div class="ticket-top">
+        <div class="boarding-pass">
+            <div class="main-ticket">
                 <div class="stub">
                     <div>
-                        <div class="label" style="color:rgba(255,255,255,0.7)">RADAR BASE</div>
-                        <div class="seat">19 A</div>
+                        <div class="seat-label">RADAR BASE<br>Seat:</div>
+                        <div class="seat-num">19 A</div>
+                        <div class="proximity-bars" id="proximity">
+                            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                            <div class="bar"></div><div class="bar"></div>
+                        </div>
                     </div>
-                    <div style="font-size: 0.8em;">
-                        <div id="sig">▯▯▯▯▯</div>
-                        <div style="margin-top:5px; opacity:0.6">ATC SECURE</div>
-                    </div>
+                    <div style="font-size: 0.8em; opacity: 0.7;">ATC Secure</div>
                 </div>
 
-                <div class="main">
-                    <div class="header-strip">
-                        <span>✈ BOARDING PASS</span>
-                        <span>AIR RADAR</span>
+                <div class="info-area">
+                    <div class="blue-header">
+                        <span>✈</span>
+                        <h2>BOARDING BOARD</h2>
+                        <span>✈</span>
                     </div>
-                    <div class="content">
+                    <div class="white-content">
                         <div>
-                            <div class="label">Callsign</div>
-                            <div id="callsign" class="value" style="color:var(--blue); font-size:1.5em;">SEARCHING</div>
-                            <div class="label">Distance</div>
-                            <div id="dist" class="value">--- KM</div>
+                            <div class="field">
+                                <div class="label">Ident / Callsign</div>
+                                <div id="callsign" class="value highlight">READY</div>
+                            </div>
+                            <div class="field">
+                                <div class="label">Aircraft Distance</div>
+                                <div id="dist" class="value">---</div>
+                            </div>
+                            <div class="field">
+                                <div class="label">Altitude (MSL)</div>
+                                <div id="alt" class="value">---</div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="label">Altitude</div>
-                            <div id="alt" class="value">--- FT</div>
-                            <div class="label">Bearing</div>
-                            <div class="value"><span id="compass">↑</span></div>
+                        <div style="text-align: right;">
+                            <div class="field">
+                                <div class="label">Type</div>
+                                <div id="type" class="value">----</div>
+                            </div>
+                            <div class="field">
+                                <div id="compass" class="value">↑</div>
+                            </div>
+                            <a id="map-link" target="_blank" style="display:inline-block; margin-top:10px; opacity:0.3;">
+                                <svg id="barcode" style="width:120px; height:60px;"></svg>
+                            </a>
                         </div>
                     </div>
-                    <a id="map-link" target="_blank" style="text-decoration:none" class="barcode-area">
-                        <div class="barcode"></div>
-                    </a>
                 </div>
             </div>
-            
-            <div class="footer-black">
-                <div id="status" class="status-text">INITIALIZING SCANNER...</div>
+            <div class="black-footer">
+                <div id="status" class="status-msg">INITIALIZING RADAR SYSTEM...</div>
             </div>
         </div>
 
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
         <script>
             let latU, lonU;
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
                     latU = pos.coords.latitude; lonU = pos.coords.longitude;
-                    setInterval(fetchData, 8000); fetchData();
-                }, () => { document.getElementById('status').innerText = "ERROR: GPS REQUIRED"; });
+                    setInterval(update, 8000); update();
+                }, () => { document.getElementById('status').innerText = "ERROR: GPS DENIED"; });
             };
 
-            function fetchData() {
+            function update() {
                 if(!latU) return;
                 fetch(`/api/data?lat=${latU}&lon=${lonU}&t=${Date.now()}`)
                 .then(r => r.json()).then(data => {
+                    const status = document.getElementById('status');
                     if(data.found) {
                         document.getElementById('callsign').innerText = data.callsign;
                         document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('alt').innerText = data.alt_ft.toLocaleString() + " FT";
+                        document.getElementById('type').innerText = data.type;
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-                        
-                        // Atualiza texto amarelo na parte preta
-                        document.getElementById('status').innerText = "> TARGET LOCKED: " + data.callsign;
-                        
-                        let b = Math.max(1, Math.ceil((25-data.dist)/5));
-                        document.getElementById('sig').innerText = "▮".repeat(b) + "▯".repeat(5-b);
+                        status.innerText = "> TARGET ACQUIRED: " + data.callsign;
+
+                        // Lógica dos quadradinhos (8 barras)
+                        // Quanto menor a distância, mais barras acendem
+                        let barsToLight = Math.max(1, Math.ceil((25 - data.dist) / 3.1));
+                        const bars = document.querySelectorAll('.bar');
+                        bars.forEach((b, i) => {
+                            b.classList.toggle('active', i < barsToLight);
+                        });
+
+                        JsBarcode("#barcode", data.callsign, { format: "CODE128", displayValue: false, lineColor: "#222" });
                     } else {
-                        document.getElementById('status').innerText = "SCANNING AIRSPACE...";
+                        status.innerText = "SCANNING AIRSPACE...";
                     }
                 });
             }
@@ -176,6 +202,7 @@ def get_data():
                 "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
                 "alt_ft": int(ac.get('alt_baro', 0)), 
                 "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "type": ac.get('t', 'UNKN'), 
                 "map_url": f"https://globe.adsbexchange.com/?lat={ac['lat']}&lon={ac['lon']}&zoom=11"
             })
     except: pass
