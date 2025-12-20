@@ -7,8 +7,7 @@ app = Flask(__name__)
 
 RAIO_KM = 80.0
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 ]
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -18,11 +17,8 @@ def haversine(lat1, lon1, lat2, lon2):
     return 2 * R * atan2(sqrt(a), sqrt(1-a))
 
 def calculate_bearing(lat1, lon1, lat2, lon2):
-    start_lat, start_lon = radians(lat1), radians(lon1)
-    end_lat, end_lon = radians(lat2), radians(lon2)
-    d_lon = end_lon - start_lon
-    y = sin(d_lon) * cos(end_lat)
-    x = cos(start_lat) * sin(end_lat) - sin(start_lat) * cos(end_lat) * cos(d_lon)
+    y = sin(radians(lon2-lon1)) * cos(radians(lat2))
+    x = cos(radians(lat1)) * sin(radians(lat2)) - sin(radians(lat1)) * cos(radians(lat2)) * cos(radians(lon2-lon1))
     return (degrees(atan2(y, x)) + 360) % 360
 
 @app.route('/')
@@ -46,11 +42,28 @@ def index():
 
             #search-section {
                 background: #fff; padding: 15px 25px; border-radius: 12px;
-                margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.08);
                 display: flex; gap: 10px; align-items: center; border: 1px solid #ddd;
-                width: 95%; max-width: 850px; z-index: 100; transition: all 0.5s ease;
+                width: 95%; max-width: 850px; z-index: 100;
+                
+                /* Transição Suave */
+                max-height: 200px;
+                opacity: 1;
+                margin-bottom: 20px;
+                overflow: hidden;
+                transition: max-height 0.8s ease, opacity 0.8s ease, margin-bottom 0.8s ease, padding 0.8s ease;
             }
-            #search-section.hidden { opacity: 0; transform: translateY(-20px); pointer-events: none; margin-bottom: -60px; }
+
+            #search-section.hidden { 
+                max-height: 0;
+                opacity: 0;
+                margin-bottom: 0;
+                padding-top: 0;
+                padding-bottom: 0;
+                border: 0px solid transparent;
+                pointer-events: none;
+            }
+
             #search-section input { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
             #search-section button { background: var(--air-blue); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
@@ -92,7 +105,6 @@ def index():
                 display: inline-block; color: var(--warning-gold); 
                 font-family: 'Courier New', monospace; font-weight: 900; 
                 min-width: 0.65em; text-align: center;
-                transition: transform 0.1s;
             }
             .flapping { animation: flap 0.08s infinite; }
             @keyframes flap { 50% { transform: scaleY(0.1); opacity: 0.3; } }
@@ -182,7 +194,6 @@ def index():
                 if (!container) return;
                 const newText = String(newValue || "").toUpperCase();
                 
-                // Sincroniza número de slots
                 while (container.childNodes.length < newText.length) {
                     const s = document.createElement("span"); s.className = "letter-slot"; s.innerHTML = "&nbsp;"; container.appendChild(s);
                 }
@@ -194,7 +205,6 @@ def index():
                     const slot = slots[i];
                     if (slot.innerText === targetChar && targetChar !== " ") return;
 
-                    // EFEITO INDEPENDENTE: Cada letra tem um atraso e duração aleatória
                     const randomDelay = Math.floor(Math.random() * 200); 
                     const randomDuration = 10 + Math.floor(Math.random() * 15);
 
@@ -279,29 +289,27 @@ def index():
 def get_data():
     lat_u = float(request.args.get('lat', 0))
     lon_u = float(request.args.get('lon', 0))
-    headers = {'User-Agent': random.choice(USER_AGENTS), 'Referer': 'https://adsb.lol/'}
     try:
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        r = requests.get(url, headers=headers, timeout=10).json()
+        r = requests.get(url, headers={'User-Agent': random.choice(USER_AGENTS)}, timeout=10).json()
         if r.get('ac'):
-            valid_ac = [a for a in r['ac'] if 'lat' in a and 'lon' in a]
-            if valid_ac:
-                ac = sorted(valid_ac, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                return jsonify({
-                    "found": True, 
-                    "callsign": ac.get('flight', ac.get('call', 'N/A')).strip(), 
-                    "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
-                    "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
-                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                    "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
-                    "lat": ac['lat'], "lon": ac['lon'],
-                    "origin": ac.get('origin', 'N/A'), "dest": ac.get('destination', 'N/A')
-                })
+            ac = sorted([a for a in r['ac'] if 'lat' in a], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+            return jsonify({
+                "found": True, 
+                "callsign": ac.get('flight', ac.get('call', 'N/A')).strip(), 
+                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
+                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
+                "lat": ac['lat'], "lon": ac['lon'],
+                "origin": ac.get('origin', 'N/A'), "dest": ac.get('destination', 'N/A')
+            })
     except: pass
     return jsonify({"found": False})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
 
 
