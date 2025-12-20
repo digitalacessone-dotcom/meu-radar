@@ -37,13 +37,13 @@ def index():
 
         <style>
             :root { --blue: #2A6E91; --yellow: #FFD700; }
-            body { background: #F0F2F5; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }
+            body { background: #F0F2F5; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; overflow: hidden; }
             
             .search-bar { background: white; width: 90%; max-width: 850px; padding: 12px 20px; border-radius: 15px; display: flex; gap: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 30px; }
             .search-bar input { flex: 1; border: 1px solid #E0E0E0; padding: 12px; border-radius: 8px; outline: none; }
             .search-bar button { background: var(--blue); color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-            .ticket { background: white; width: 90%; max-width: 850px; height: 450px; border-radius: 30px; display: flex; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.12); }
+            .ticket { background: white; width: 90%; max-width: 850px; height: 450px; border-radius: 30px; display: flex; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.12); position: relative; }
             
             .stub { background: var(--blue); width: 230px; padding: 35px 25px; color: white; display: flex; flex-direction: column; border-right: 2px dashed rgba(255,255,255,0.3); }
             .seat-num { font-size: 80px; font-weight: 800; margin: 10px 0; line-height: 1; }
@@ -60,8 +60,6 @@ def index():
 
             .label { color: #999; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
             
-            /* Estilo do Placar Split-Flap */
-            .flapper { margin-bottom: 20px; }
             .flapper .digit { 
                 background-color: #111 !important; 
                 color: var(--yellow) !important; 
@@ -72,8 +70,15 @@ def index():
             #compass { font-size: 45px; color: #FF8C00; transition: transform 0.8s ease; }
             #barcode { width: 170px; height: 65px; }
 
-            .footer-black { background: #000; height: 75px; border-top: 5px solid var(--yellow); display: flex; align-items: center; justify-content: center; }
-            .status-msg { color: var(--yellow); font-family: 'Courier New', monospace; font-weight: bold; font-size: 18px; text-transform: uppercase; }
+            /* Footer com Texto Rotativo */
+            .footer-black { background: #000; height: 75px; border-top: 5px solid var(--yellow); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+            .status-wrapper { width: 100%; text-align: center; position: relative; }
+            .status-msg { 
+                color: var(--yellow); font-family: 'Courier New', monospace; font-weight: bold; font-size: 18px; 
+                text-transform: uppercase; position: absolute; width: 100%; left: 0; top: 50%; 
+                transform: translateY(-50%); transition: opacity 1s, transform 1s; opacity: 0;
+            }
+            .status-msg.active { opacity: 1; transform: translateY(-50%) scale(1); }
         </style>
     </head>
     <body>
@@ -104,14 +109,11 @@ def index():
                     <div class="data-col">
                         <div class="label">Ident / Callsign</div>
                         <input id="flap_callsign" class="flap" />
-
                         <div class="label">Aircraft Distance</div>
                         <input id="flap_dist" class="flap" />
-
                         <div class="label">Altitude (MSL)</div>
                         <input id="flap_alt" class="flap" />
                     </div>
-
                     <div class="visual-col">
                         <div style="text-align: center;">
                             <div class="label">Aircraft Type</div>
@@ -123,13 +125,16 @@ def index():
                 </div>
 
                 <div class="footer-black">
-                    <div id="status" class="status-msg">SCANNING AIRSPACE...</div>
+                    <div class="status-wrapper">
+                        <div id="msg1" class="status-msg active">SCANNING AIRSPACE...</div>
+                        <div id="msg2" class="status-msg">TEMP: --°C | VIS: --KM</div>
+                        <div id="msg3" class="status-msg">SKY: LOADING...</div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <script>
-            // Configuração dos placares (Flappers)
             const optCall = { width: 10, chars_preset: 'alphanum' };
             const optDist = { width: 10, chars_preset: 'num' };
             const optAlt = { width: 10, chars_preset: 'num' };
@@ -140,21 +145,50 @@ def index():
             const $fAlt = $('#flap_alt').flapper(optAlt);
             const $fType = $('#flap_type').flapper(optType);
 
-            let lastHex = "";
+            let currentMsg = 1;
+            let weatherData = { temp: "", vis: "", sky: "" };
+            let flightFound = false;
+
+            function rotateStatus() {
+                if (flightFound) {
+                    $('#msg1').addClass('active').siblings().removeClass('active');
+                    return;
+                }
+                $(`#msg${currentMsg}`).removeClass('active');
+                currentMsg = currentMsg === 3 ? 1 : currentMsg + 1;
+                $(`#msg${currentMsg}`).addClass('active');
+            }
+            setInterval(rotateStatus, 4000);
 
             function update() {
                 navigator.geolocation.getCurrentPosition(pos => {
-                    fetch(`/api/data?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&t=` + Date.now())
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+
+                    // Busca Clima
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,visibility,weather_code`)
+                    .then(r => r.json()).then(w => {
+                        const temp = Math.round(w.current.temperature_2m);
+                        const vis = (w.current.visibility / 1000).toFixed(1);
+                        document.getElementById('msg2').textContent = `TEMP: ${temp}°C | VISIB: ${vis}KM`;
+                        document.getElementById('msg3').textContent = `SKY CONDITION: CLEAR OPS`;
+                    });
+
+                    // Busca Voo (Lógica Original)
+                    fetch(`/api/data?lat=${lat}&lon=${lon}&t=` + Date.now())
                     .then(res => res.json()).then(data => {
                         if(data.found) {
+                            flightFound = true;
                             $fCall.val(data.callsign).change();
                             $fDist.val(data.dist + "KM").change();
                             $fAlt.val(data.alt_ft + "FT").change();
                             $fType.val(data.type).change();
-                            
                             document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                            document.getElementById('status').textContent = "TARGET: " + data.callsign;
+                            document.getElementById('msg1').textContent = "TARGET: " + data.callsign;
                             JsBarcode("#barcode", data.callsign, { format: "CODE128", width: 1.3, height: 40, displayValue: false, lineColor: "#2A6E91" });
+                        } else {
+                            flightFound = false;
+                            document.getElementById('msg1').textContent = "SCANNING AIRSPACE...";
                         }
                     });
                 });
