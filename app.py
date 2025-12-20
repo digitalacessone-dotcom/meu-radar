@@ -22,111 +22,7 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 
 @app.route('/')
 def index():
-    return render_template_string('''
-    <!DOCTYPE html>
-    <html lang="pt">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <title>Radar Boarding Pass Pro</title>
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
-        <style>
-            :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
-            body { background: var(--bg-dark); margin:0; display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:'Courier New', monospace; }
-            .card { background: var(--air-blue); width:95%; max-width:620px; border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,0.8); overflow:hidden; }
-            .header { padding:15px 0; text-align:center; color:white; font-weight:900; letter-spacing:3px; }
-            .white-area { background:#fff; margin:0 10px; display:flex; padding:20px 15px; min-height:250px; border-radius:4px; }
-            .col-left { flex:1.6; border-right:1px dashed #ddd; padding-right:15px; }
-            .col-right { flex:1; padding-left:15px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:space-around; }
-            .label { color:#888; font-size:0.65em; font-weight:800; text-transform:uppercase; }
-            .value { font-size:1.1em; font-weight:900; color:var(--air-blue); margin-bottom:10px; }
-            #compass { display:inline-block; transition:transform 0.6s ease; color:#ff8c00; font-size:1.5em; }
-            .barcode-container { width:100%; display:flex; justify-content:center; cursor:pointer; text-decoration:none; }
-            #barcode { width:100%; max-width:150px; height:50px; display:block; pointer-events:auto; }
-            .footer { background:#000; padding:15px; min-height:80px; display:flex; align-items:center; justify-content:center; border-top:4px solid var(--warning-gold); }
-            .status-msg { color:#FFD700; font-weight:900; font-size:1.1em; text-transform:uppercase; text-align:center; text-shadow:1px 1px 2px rgba(0,0,0,0.8); }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="header">✈ ATC BOARDING PASS ✈</div>
-            <div class="white-area">
-                <div class="col-left">
-                    <div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div>
-                    <div class="label">FLIGHT PATH</div><div id="route" class="value">-- / --</div>
-                    <div class="label">TYPE / SPEED</div><div id="type_speed" class="value">-- / -- KTS</div>
-                    <div class="label">DISTANCE</div><div id="dist_body" class="value">-- KM</div>
-                </div>
-                <div class="col-right">
-                    <div class="label">ALTITUDE</div><div id="alt" class="value">00000 FT</div>
-                    <div class="label">BEARING</div><div class="value"><span id="compass">↑</span></div>
-                    <a id="map-link" target="_blank" class="barcode-container">
-                        <svg id="barcode"></svg>
-                    </a>
-                </div>
-            </div>
-            <div class="footer"><div id="status" class="status-msg">INITIALIZING RADAR...</div></div>
-        </div>
-
-        <script>
-            let latAlvo, lonAlvo;
-            let currentMapUrl = null;
-
-            window.onload = function() {
-                navigator.geolocation.getCurrentPosition(pos => {
-                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    setInterval(executarBusca, 8000); executarBusca();
-                }, () => { 
-                    document.getElementById('status').textContent = "LOCATION ERROR: ENABLE GPS"; 
-                });
-            };
-
-            // Listener para clique no código de barras
-            document.getElementById('map-link').addEventListener('click', (e) => {
-                if (!currentMapUrl) { e.preventDefault(); return; }
-                const opened = window.open(currentMapUrl, '_blank');
-                if (!opened) window.location.href = currentMapUrl;
-            });
-
-            function executarBusca() {
-                if(!latAlvo) return;
-                fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=` + Date.now())
-                .then(res => res.json())
-                .then(data => {
-                    const statusElem = document.getElementById('status');
-                    if(data.found) {
-                        document.getElementById('callsign').textContent = data.callsign;
-                        document.getElementById('route').textContent = data.origin + " / " + data.dest;
-                        document.getElementById('type_speed').textContent = data.type + " / " + data.speed + " KTS";
-                        document.getElementById('alt').textContent = data.alt_ft.toLocaleString() + " FT";
-                        document.getElementById('dist_body').textContent = data.dist + " KM";
-                        document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-
-                        currentMapUrl = data.map_url;
-                        document.getElementById('map-link').href = currentMapUrl;
-                        statusElem.textContent = "TARGET ACQUIRED: " + data.callsign;
-
-                        document.getElementById('barcode').innerHTML = "";
-                        JsBarcode("#barcode", data.callsign, {
-                            format: "CODE128", width: 1.5, height: 40, displayValue: false, lineColor: "#1A237E"
-                        });
-                    } else {
-                        statusElem.textContent = "SCANNING AIRSPACE...";
-                        document.getElementById('callsign').textContent = "SEARCHING";
-                        document.getElementById('barcode').innerHTML = "";
-                        currentMapUrl = null;
-                        document.getElementById('map-link').removeAttribute('href');
-                    }
-                })
-                .catch(err => {
-                    document.getElementById('status').textContent = "DATA LINK ERROR";
-                    console.error("Erro:", err);
-                });
-            }
-        </script>
-    </body>
-    </html>
-    ''')
+    return render_template_string(open("template_leaflet.html", encoding="utf-8").read())
 
 @app.route('/api/data')
 def get_data():
@@ -138,4 +34,22 @@ def get_data():
         if r.get('ac'):
             validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
             if validos:
-                ac = sorted(validos, key=lambda x: haversine
+                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+                dist = round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1)
+                bearing = round(calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']), 2)
+                return jsonify({
+                    "found": True,
+                    "callsign": ac.get("flight", "UNKNOWN"),
+                    "origin": ac.get("r", "--"),
+                    "dest": ac.get("d", "--"),
+                    "type": ac.get("t", "--"),
+                    "speed": ac.get("spd", 0),
+                    "alt_ft": ac.get("alt_baro", 0),
+                    "dist": dist,
+                    "bearing": bearing,
+                    "lat": ac['lat'],
+                    "lon": ac['lon']
+                })
+    except Exception as e:
+        print("Erro na API:", e)
+    return jsonify({"found": False})
