@@ -5,7 +5,6 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# Configurações de Raio e Disfarce
 RAIO_KM = 80.0
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -89,9 +88,14 @@ def index():
                 min-height: 55px; display: flex; align-items: center;
             }
 
-            .letter-slot { display: inline-block; color: var(--warning-gold); font-family: 'Courier New', monospace; font-weight: 900; min-width: 0.65em; text-align: center; }
-            .flapping { animation: flap 0.07s infinite; }
-            @keyframes flap { 50% { transform: scaleY(0.5); opacity: 0.5; } }
+            .letter-slot { 
+                display: inline-block; color: var(--warning-gold); 
+                font-family: 'Courier New', monospace; font-weight: 900; 
+                min-width: 0.65em; text-align: center;
+                transition: transform 0.1s;
+            }
+            .flapping { animation: flap 0.08s infinite; }
+            @keyframes flap { 50% { transform: scaleY(0.1); opacity: 0.3; } }
 
             #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
             #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s; opacity: 0.1; }
@@ -177,24 +181,36 @@ def index():
                 const container = document.getElementById(id);
                 if (!container) return;
                 const newText = String(newValue || "").toUpperCase();
+                
+                // Sincroniza número de slots
                 while (container.childNodes.length < newText.length) {
                     const s = document.createElement("span"); s.className = "letter-slot"; s.innerHTML = "&nbsp;"; container.appendChild(s);
                 }
                 while (container.childNodes.length > newText.length) { container.removeChild(container.lastChild); }
+                
                 const slots = container.querySelectorAll('.letter-slot');
+                
                 newText.split('').forEach((targetChar, i) => {
                     const slot = slots[i];
-                    if (slot.innerText === targetChar) return;
-                    let cycles = 0;
-                    const interval = setInterval(() => {
-                        slot.innerText = chars[Math.floor(Math.random() * chars.length)];
-                        slot.classList.add('flapping');
-                        if (++cycles >= 8 + i) {
-                            clearInterval(interval);
-                            slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
-                            slot.classList.remove('flapping');
-                        }
-                    }, 40);
+                    if (slot.innerText === targetChar && targetChar !== " ") return;
+
+                    // EFEITO INDEPENDENTE: Cada letra tem um atraso e duração aleatória
+                    const randomDelay = Math.floor(Math.random() * 200); 
+                    const randomDuration = 10 + Math.floor(Math.random() * 15);
+
+                    setTimeout(() => {
+                        let cycles = 0;
+                        const interval = setInterval(() => {
+                            slot.innerText = chars[Math.floor(Math.random() * chars.length)];
+                            slot.classList.add('flapping');
+                            
+                            if (++cycles >= randomDuration) {
+                                clearInterval(interval);
+                                slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
+                                slot.classList.remove('flapping');
+                            }
+                        }, 50);
+                    }, randomDelay);
                 });
             }
 
@@ -230,7 +246,7 @@ def index():
                         updateWithEffect('status-container', info[step % info.length]);
                     }
                     step++;
-                }, 4000); 
+                }, 5000); 
             };
 
             function executarBusca() {
