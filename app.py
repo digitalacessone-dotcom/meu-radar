@@ -83,6 +83,7 @@ def index():
         <script>
             let latAlvo, lonAlvo;
             window.onload = function() {
+                document.getElementById('status').textContent = "TESTE VISÍVEL NO FOOTER"; // teste inicial
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     setInterval(executarBusca, 8000);
@@ -101,8 +102,10 @@ def index():
             }
             function executarBusca() {
                 if(!latAlvo) return;
+                console.log("Executando busca...");
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=`+Date.now())
                 .then(res => res.json()).then(data => {
+                    console.log("Resposta da API:", data);
                     const statusElem = document.getElementById('status');
                     if(data.found) {
                         document.getElementById('callsign').textContent = data.callsign;
@@ -120,22 +123,12 @@ def index():
                         document.getElementById('callsign').textContent = "SEARCHING";
                         document.getElementById('barcode').innerHTML = "";
                         document.getElementById('map-link').removeAttribute('href');
-                        atualizarProximidade(999); // limpa quadradinhos
+                        atualizarProximidade(999);
                     }
-                }).catch(() => {
+                }).catch(err => {
+                    console.error("Erro na busca:", err);
                     document.getElementById('status').textContent = "DATA LINK ERROR";
                 });
             }
         </script>
-    </body>
-    </html>
-    ''')
-
-@app.route('/api/data')
-def get_data():
-    lat_u = float(request.args.get('lat', 0))
-    lon_u = float(request.args.get('lon', 0))
-    try:
-        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
-        r = requests.get(url, timeout=5).json()
-        if r.get('ac'):
+    </
