@@ -1,23 +1,23 @@
 from flask import Flask, render_template_string, jsonify, request
 import requests
-import random
 from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# Configurações de Busca
-RADIUS = 150.0
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"}
+RAIO_KM = 25.0 
 
-def get_distance(lat1, lon1, lat2, lon2):
+def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
-    dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
-    a = sin(dlat / 2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2)**2
-    return 2 * R * atan2(sqrt(a), sqrt(1 - a))
+    dlat, dlon = radians(lat2-lat1), radians(lon2-lon1)
+    a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
+    return 2 * R * atan2(sqrt(a), sqrt(1-a))
 
-def get_bearing(lat1, lon1, lat2, lon2):
-    y = sin(radians(lon2 - lon1)) * cos(radians(lat2))
-    x = cos(radians(lat1)) * sin(radians(lat2)) - sin(radians(lat1)) * cos(radians(lat2)) * cos(radians(lon2 - lon1))
+def calculate_bearing(lat1, lon1, lat2, lon2):
+    start_lat, start_lon = radians(lat1), radians(lon1)
+    end_lat, end_lon = radians(lat2), radians(lon2)
+    d_lon = end_lon - start_lon
+    y = sin(d_lon) * cos(end_lat)
+    x = cos(start_lat) * sin(end_lat) - sin(start_lat) * cos(end_lat) * cos(d_lon)
     return (degrees(atan2(y, x)) + 360) % 360
 
 @app.route('/')
@@ -27,155 +27,216 @@ def index():
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Flight Radar Ticket</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        <title>ATC Radar Pro</title>
         <style>
-            body { background: #e0e6ed; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif; margin: 0; }
-            
-            #search { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-            input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-            button { background: #226488; color: #fff; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+            :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
+            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-            .ticket { background: #fff; width: 800px; display: flex; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-            
-            .left-side { background: #226488; color: #fff; width: 220px; padding: 25px; border-right: 2px dashed #ccc; }
-            .right-side { flex: 1; display: flex; flex-direction: column; }
-            
-            .header { background: #226488; color: #fff; padding: 15px; text-align: center; font-weight: bold; letter-spacing: 4px; font-size: 1.2em; }
-            .main-content { padding: 25px; display: flex; justify-content: space-between; flex: 1; }
-            
-            .label { color: #888; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 3px; }
-            .data-val { font-size: 28px; font-weight: bold; color: #226488; margin-bottom: 15px; font-family: 'Courier New', monospace; }
-
-            .black-bar { 
-                background: #000; 
-                color: #FFD700; 
-                padding: 12px 25px; 
-                font-family: 'Courier New', monospace; 
-                font-weight: bold; 
-                border-top: 3px solid #FFD700;
-                min-height: 25px;
-                font-size: 1.1em;
+            body { 
+                background-color: var(--bg-dark); margin: 0; padding: 0; 
+                display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            #compass { font-size: 50px; color: #ff8c00; transition: 1s ease; }
-            .dots { display: flex; gap: 4px; margin-top: 15px; }
-            .dot { width: 10px; height: 10px; background: rgba(255,255,255,0.2); border-radius: 2px; }
-            .dot.on { background: #fff; box-shadow: 0 0 5px #fff; }
+            .letter-slot { display: inline-block; min-width: 0.65em; text-align: center; position: relative; vertical-align: bottom; }
+
+            .flapping { animation: flap-anim 0.06s ease-in-out; }
+            @keyframes flap-anim { 0% { transform: scaleY(1); } 50% { transform: scaleY(0.5); opacity: 0.7; } 100% { transform: scaleY(1); } }
+
+            #search-box { 
+                display: none; width: 90%; max-width: 500px; background: rgba(255,255,255,0.1);
+                padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--warning-gold); gap: 8px; z-index: 100;
+            }
+            #search-box input { flex: 1; background: #000; border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; }
+            #search-box button { background: var(--warning-gold); color: #000; border: none; padding: 10px 15px; font-weight: 900; border-radius: 6px; }
+
+            .card { 
+                background: var(--air-blue); width: 95%; max-width: 620px;
+                border-radius: 15px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
+                overflow: hidden; transform: scale(0.96);
+            }
+
+            .notch { position: absolute; width: 30px; height: 30px; background: var(--bg-dark); border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 20; }
+            .notch-left { left: -15px; } .notch-right { right: -15px; }
+
+            .header { padding: 12px 0; text-align: center; color: white; font-weight: 900; font-size: 0.95em; display: flex; align-items: center; justify-content: center; gap: 20px; }
+            .header span { font-size: 2.8em; line-height: 0; position: relative; top: 4px; }
+
+            .white-area { background: #fdfdfd; margin: 0 8px; display: flex; padding: 20px 15px; min-height: 240px; border-radius: 3px; }
+            .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
+            .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+            
+            .label { color: #888; font-size: 0.6em; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+            .value { font-size: 1.25em; font-weight: 900; color: var(--air-blue); margin-bottom: 10px; min-height: 1.2em; display: flex; flex-wrap: wrap; }
+            
+            #compass { display: inline-block; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--warning-gold); font-size: 1.3em; }
+            
+            .footer { padding: 0 0 12px 0; display: flex; flex-direction: column; align-items: center; background: var(--air-blue); }
+            .yellow-lines { width: 100%; height: 6px; border-top: 2px solid var(--warning-gold); border-bottom: 2px solid var(--warning-gold); margin-bottom: 8px; }
+            
+            .status-msg { padding: 2px 10px; min-height: 1.6em; display: flex; justify-content: center; align-items: center; }
+            .status-msg .letter-slot {
+                color: var(--warning-gold); background: #000; margin: 0 1px; padding: 0 3.5px;
+                border-radius: 2px; font-size: 0.75em; font-weight: 900; border: 1px solid #333;
+            }
         </style>
     </head>
     <body>
-
-        <div id="search">
-            <input type="text" id="city" placeholder="City Name...">
-            <button onclick="init()">CONNECT</button>
+        <div id="search-box">
+            <input type="text" id="endereco" placeholder="CIDADE OU CEP...">
+            <button onclick="buscarEndereco()">GO</button>
         </div>
 
-        <div class="ticket">
-            <div class="left-side">
-                <div class="label" style="color:#abd1e6">RADAR BASE</div>
-                <div style="font-size: 60px; font-weight: 900;">19 A</div>
-                <div class="dots">
-                    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="card">
+            <div class="notch notch-left"></div>
+            <div class="notch notch-right"></div>
+            <div class="header">
+                <span>✈</span> BOARDING BOARD <span>✈</span>
+            </div>
+            <div class="white-area">
+                <div class="col-left">
+                    <div><div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value"></div></div>
+                    <div><div class="label">AIRCRAFT DISTANCE</div><div id="dist_body" class="value"></div></div>
+                    <div><div class="label">ALTITUDE (MSL)</div><div id="alt" class="value"></div></div>
+                </div>
+                <div class="col-right">
+                    <div class="label">AIRCRAFT TYPE</div><div id="type_id" class="value">----</div>
+                    <div class="label">BEARING</div><div class="value"><span id="compass">↑</span></div>
+                    <div style="height:35px; width:100%; background:repeating-linear-gradient(90deg, #000, #000 1px, transparent 1px, transparent 3px); border:1px solid #eee;"></div>
                 </div>
             </div>
-            <div class="right-side">
-                <div class="header">BOARDING BOARD</div>
-                <div class="main-content">
-                    <div>
-                        <div class="label">IDENT / CALLSIGN</div><div id="call" class="data-val">SEARCHING</div>
-                        <div class="label">DISTANCE</div><div id="dist" class="data-val">---</div>
-                        <div class="label">ALTITUDE (MSL)</div><div id="alt" class="data-val">---</div>
-                    </div>
-                    <div style="text-align: center; padding-right: 30px;">
-                        <div class="label">BEARING</div>
-                        <div id="compass">↑</div>
-                    </div>
-                </div>
-                <div class="black-bar" id="status-bar">> READY TO SCAN</div>
+            <div class="footer">
+                <div class="yellow-lines"></div>
+                <div id="status" class="status-msg"></div>
             </div>
         </div>
 
         <script>
-            let userLat, userLon;
+            let latAlvo = null, lonAlvo = null;
+            let currentTarget = null;
+            let statusIndex = 0;
+            const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->";
 
-            async function init() {
-                const city = document.getElementById('city').value;
-                if(!city) return;
-                const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${city}&limit=1`);
-                const d = await r.json();
-                if(d.length > 0) {
-                    userLat = d[0].lat; userLon = d[0].lon;
-                    document.getElementById('search').style.display = 'none';
-                    document.getElementById('status-bar').innerText = "> LOCATION SYNCED";
-                    setInterval(fetchData, 7000);
-                    fetchData();
+            function updateWithEffect(id, newValue) {
+                const container = document.getElementById(id);
+                const newText = String(newValue).toUpperCase();
+                while (container.childNodes.length < newText.length) {
+                    const s = document.createElement("span"); s.className = "letter-slot"; s.innerHTML = "&nbsp;"; container.appendChild(s);
                 }
-            }
+                while (container.childNodes.length > newText.length) { container.removeChild(container.lastChild); }
 
-            async function fetchData() {
-                try {
-                    const res = await fetch(`/api/air?lat=${userLat}&lon=${userLon}`);
-                    const data = await res.json();
-                    
-                    if(data.found) {
-                        document.getElementById('call').innerText = data.callsign;
-                        document.getElementById('dist').innerText = data.distance.toFixed(1) + " KM";
-                        document.getElementById('alt').innerText = data.altitude.toLocaleString() + " FT";
-                        document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        document.getElementById('status-bar').innerText = `> LOCKED: ${data.callsign} | SPD: ${data.speed} KTS`;
-                        
-                        const dots = document.querySelectorAll('.dot');
-                        const active = Math.max(1, Math.min(8, Math.ceil(8 - (data.distance/20))));
-                        dots.forEach((dot, i) => i < active ? dot.classList.add('on') : dot.classList.remove('on'));
-                    } else {
-                        document.getElementById('status-bar').innerText = "> SCANNING AIRSPACE...";
-                    }
-                } catch(e) {
-                    document.getElementById('status-bar').innerText = "> DATA LINK ERROR";
-                }
-            }
-
-            window.onload = () => {
-                navigator.geolocation.getCurrentPosition(p => {
-                    userLat = p.coords.latitude; userLon = p.coords.longitude;
-                    document.getElementById('search').style.display = 'none';
-                    document.getElementById('status-bar').innerText = "> GPS CONNECTED";
-                    setInterval(fetchData, 7000);
-                    fetchData();
-                }, () => {
-                    document.getElementById('status-bar').innerText = "> WAITING FOR INPUT";
+                const slots = container.querySelectorAll('.letter-slot');
+                newText.split('').forEach((targetChar, i) => {
+                    const slot = slots[i];
+                    if (slot.innerText === targetChar) return;
+                    let cycles = 0;
+                    const interval = setInterval(() => {
+                        slot.innerText = chars[Math.floor(Math.random() * chars.length)];
+                        slot.classList.add('flapping');
+                        if (++cycles >= 10 + i) {
+                            clearInterval(interval);
+                            slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
+                            slot.classList.remove('flapping');
+                        }
+                    }, 60);
                 });
+            }
+
+            window.onload = function() {
+                updateWithEffect('callsign', 'SEARCHING');
+                updateWithEffect('status', 'LOADING ATC...');
+                navigator.geolocation.getCurrentPosition(pos => {
+                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
+                    iniciarRadar();
+                }, () => { document.getElementById('search-box').style.display = "flex"; });
+                
+                // ALTERNÂNCIA DO RODAPÉ AJUSTADA PARA 10 SEGUNDOS (10000ms)
+                setInterval(() => {
+                    if(!currentTarget) {
+                        const envMsgs = [
+                            "RADAR SWEEP ACTIVE",
+                            "TEMP: 24C / SKY CLEAR",
+                            "VISIBILITY: 10KM+",
+                            "LOCAL QNH: 1013 HPA"
+                        ];
+                        updateWithEffect('status', envMsgs[statusIndex % envMsgs.length]);
+                        statusIndex++;
+                    } else {
+                        const flightMsgs = [
+                            `FLT: ${currentTarget.callsign}`,
+                            `PATH: ${currentTarget.origin} > ${currentTarget.dest}`,
+                            `SPEED: ${currentTarget.speed} KTS`,
+                            `TYPE: ${currentTarget.type}`,
+                            "VISIBILITY: 10KM+"
+                        ];
+                        updateWithEffect('status', flightMsgs[statusIndex % flightMsgs.length]);
+                        statusIndex++;
+                    }
+                }, 10000); // 10 Segundos parado antes de trocar
             };
+
+            function iniciarRadar() { setInterval(executarBusca, 8000); executarBusca(); }
+
+            function executarBusca() {
+                if(!latAlvo) return;
+                fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
+                .then(res => res.json()).then(data => {
+                    if(data.found) {
+                        currentTarget = data;
+                        updateWithEffect('callsign', data.callsign);
+                        updateWithEffect('type_id', data.type);
+                        updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
+                        updateWithEffect('dist_body', data.dist + " KM");
+                        document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
+                    } else {
+                        currentTarget = null;
+                        updateWithEffect('callsign', 'SEARCHING');
+                        updateWithEffect('type_id', '----');
+                    }
+                });
+            }
+
+            async function buscarEndereco() {
+                const query = document.getElementById('endereco').value;
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+                const data = await res.json();
+                if(data.length > 0) {
+                    latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
+                    document.getElementById('search-box').style.display = "none";
+                    iniciarRadar();
+                }
+            }
         </script>
     </body>
     </html>
     ''')
 
-@app.route('/api/air')
-def api_air():
+@app.route('/api/data')
+def get_data():
+    lat_u = float(request.args.get('lat', 0))
+    lon_u = float(request.args.get('lon', 0))
     try:
-        lat = float(request.args.get('lat'))
-        lon = float(request.args.get('lon'))
-        url = f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/{RADIUS}"
-        r = requests.get(url, headers=HEADERS, timeout=10).json()
-        
+        url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
+        r = requests.get(url, timeout=5).json()
         if r.get('ac'):
-            # Pega o avião mais próximo
-            ac = sorted([a for a in r['ac'] if 'lat' in a], key=lambda x: get_distance(lat, lon, x['lat'], x['lon']))[0]
+            ac = sorted(r['ac'], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
             return jsonify({
-                "found": True,
-                "callsign": (ac.get('flight') or ac.get('call') or "UNKNOWN").strip(),
-                "distance": get_distance(lat, lon, ac['lat'], ac['lon']),
-                "altitude": int(ac.get('alt_baro', 0)),
-                "bearing": get_bearing(lat, lon, ac['lat'], ac['lon']),
-                "speed": ac.get('gs', 0)
+                "found": True, 
+                "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
+                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                "alt_ft": int(ac.get('alt_baro', 0)), 
+                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "origin": ac.get('t_from', 'N/A').split(' ')[0],
+                "dest": ac.get('t_to', 'N/A').split(' ')[0],
+                "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0)
             })
     except: pass
     return jsonify({"found": False})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(debug=True)
+
 
 
 
