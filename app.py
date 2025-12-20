@@ -6,7 +6,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 app = Flask(__name__)
 
 # --- CONFIGURAÇÕES ---
-RAIO_KM = 80.0
+RAIO_KM = 120.0
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 ]
@@ -109,19 +109,12 @@ def index():
 
             #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
             
-            /* AJUSTE NO LINK DO CÓDIGO DE BARRAS */
             #radar-link { 
-                display: block; 
-                text-decoration: none; 
-                opacity: 0.2; 
-                transition: opacity 0.5s ease;
-                cursor: default;
-                pointer-events: none; /* Desativado por padrão */
+                display: block; text-decoration: none; opacity: 0.2; 
+                transition: opacity 0.5s ease; cursor: default; pointer-events: none;
             }
             #radar-link.active { 
-                opacity: 1 !important; 
-                cursor: pointer !important;
-                pointer-events: auto !important; /* Ativado quando tem alvo */
+                opacity: 1 !important; cursor: pointer !important; pointer-events: auto !important;
             }
             .barcode { 
                 width: 150px; height: 55px; 
@@ -165,7 +158,7 @@ def index():
                     <div class="col-side">
                         <div style="text-align: center;"><div class="label">Type</div><div id="type_id" class="value">----</div></div>
                         <div id="compass">↑</div>
-                        <a id="radar-link" href="#" target="_blank" title="View on RadarBox">
+                        <a id="radar-link" href="#" target="_blank">
                             <div class="barcode"></div>
                         </a>
                     </div>
@@ -179,32 +172,37 @@ def index():
 
         <script>
             let latAlvo = null, lonAlvo = null, currentTarget = null, step = 0;
-            let weather = { temp: '--', sky: 'SCANNING' };
+            let weather = { temp: '--', sky: 'SCANNING', vis: '--' };
             const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->°%";
 
             function updateProximityScale(dist) {
                 const steps = document.querySelectorAll('.scale-step');
-                const activeCount = Math.max(1, Math.min(8, Math.ceil(8 - (dist / 10))));
+                const activeCount = Math.max(1, Math.min(8, Math.ceil(8 - (dist / 12))));
                 steps.forEach((s, i) => {
                     if (i < activeCount) s.classList.add('active');
                     else s.classList.remove('active');
                 });
             }
 
+            // FUNÇÃO DE ANIMAÇÃO COMPLETA (RESTAURADA)
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
                 if (!container) return;
                 const newText = String(newValue || "").toUpperCase();
+                
                 while (container.childNodes.length < newText.length) {
                     const s = document.createElement("span"); s.className = "letter-slot"; s.innerHTML = "&nbsp;"; container.appendChild(s);
                 }
                 while (container.childNodes.length > newText.length) { container.removeChild(container.lastChild); }
+                
                 const slots = container.querySelectorAll('.letter-slot');
                 newText.split('').forEach((targetChar, i) => {
                     const slot = slots[i];
                     if (slot.innerText === targetChar && targetChar !== " ") return;
+                    
                     const randomDelay = Math.floor(Math.random() * 200); 
                     const randomDuration = 10 + Math.floor(Math.random() * 15);
+                    
                     setTimeout(() => {
                         let cycles = 0;
                         const interval = setInterval(() => {
@@ -230,7 +228,7 @@ def index():
                         latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
                         document.getElementById('search-section').classList.add('hidden');
                         getWeather();
-                        if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 12000);
+                        if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 10000);
                         executarBusca();
                     }
                 } catch(e) { }
@@ -239,10 +237,11 @@ def index():
             async function getWeather() {
                 if(!latAlvo) return;
                 try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latAlvo}&longitude=${lonAlvo}&current_weather=true`);
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latAlvo}&longitude=${lonAlvo}&current_weather=true&hourly=visibility`);
                     const data = await res.json();
                     weather.temp = Math.round(data.current_weather.temperature) + "°C";
-                    weather.sky = data.current_weather.weathercode < 3 ? "CLEAR SKY" : "CLOUDY";
+                    weather.sky = data.current_weather.weathercode < 3 ? "CLEAR" : "CLOUDY";
+                    if(data.hourly && data.hourly.visibility) weather.vis = (data.hourly.visibility[0]/1000).toFixed(1) + "KM";
                 } catch(e) {}
             }
 
@@ -259,14 +258,11 @@ def index():
                         updateWithEffect('dist_body', data.dist + " KM");
                         updateProximityScale(data.dist);
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        
-                        // ATUALIZAÇÃO E ATIVAÇÃO DO LINK
                         radarLink.href = `https://www.radarbox.com/@${data.lat},${data.lon},z12`;
                         radarLink.classList.add('active');
                     } else {
                         currentTarget = null;
                         radarLink.classList.remove('active');
-                        radarLink.href = "#";
                         updateWithEffect('callsign', 'SEARCHING');
                         updateWithEffect('dist_body', '---');
                         updateWithEffect('alt', '---');
@@ -278,15 +274,28 @@ def index():
             window.onload = function() {
                 updateWithEffect('callsign', 'READY');
                 
-                // CICLO DE FRASES DO RODAPÉ
+                // CICLO DE FRASES COMPLETO (RESTAURADO)
                 setInterval(() => {
+                    let msg = "";
                     if(!currentTarget) {
-                        const msgs = [`> CONNECTING SERVER...`,`> LOCAL TEMP: ${weather.temp}`,`> SKY: ${weather.sky}`];
-                        updateWithEffect('status-container', msgs[step % msgs.length]);
+                        const msgs = [
+                            `> CONNECTING ATC SERVER...`,
+                            `> TEMP: ${weather.temp}`,
+                            `> SKY: ${weather.sky}`,
+                            `> VISIBILITY: ${weather.vis}`,
+                            `> SCANNING AIRSPACE...`
+                        ];
+                        msg = msgs[step % msgs.length];
                     } else {
-                        const info = [`> TARGET LOCKED: ${currentTarget.callsign}`,`> SPEED: ${currentTarget.speed} KT`,`> POSITION: STABLE` ];
-                        updateWithEffect('status-container', info[step % info.length]);
+                        const info = [
+                            `> TARGET LOCKED: ${currentTarget.callsign}`,
+                            `> SPEED: ${currentTarget.speed} KT`,
+                            `> ROUTE: ${currentTarget.origin} -> ${currentTarget.dest}`,
+                            `> POSITION: STABLE`
+                        ];
+                        msg = info[step % info.length];
                     }
+                    updateWithEffect('status-container', msg);
                     step++;
                 }, 5000);
 
@@ -294,7 +303,7 @@ def index():
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     document.getElementById('search-section').classList.add('hidden');
                     getWeather();
-                    window.searchLoop = setInterval(executarBusca, 12000);
+                    window.searchLoop = setInterval(executarBusca, 10000);
                     executarBusca();
                 });
             };
@@ -311,21 +320,28 @@ def get_data():
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, headers={'User-Agent': random.choice(USER_AGENTS)}, timeout=10).json()
         if r.get('ac'):
-            ac = sorted([a for a in r['ac'] if 'lat' in a], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-            return jsonify({
-                "found": True, 
-                "callsign": ac.get('flight', ac.get('call', 'N/A')).strip(), 
-                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
-                "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
-                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
-                "lat": ac['lat'], "lon": ac['lon']
-            })
+            # Filtro de aeronaves com dados de posição
+            ac_list = [a for a in r['ac'] if 'lat' in a]
+            if ac_list:
+                ac = sorted(ac_list, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+                return jsonify({
+                    "found": True, 
+                    "callsign": ac.get('flight', ac.get('call', 'N/A')).strip(), 
+                    "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                    "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
+                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                    "type": ac.get('t', 'UNKN'), 
+                    "speed": ac.get('gs', 0),
+                    "lat": ac['lat'], "lon": ac['lon'],
+                    "origin": ac.get('origin', 'N/A'), 
+                    "dest": ac.get('destination', 'N/A')
+                })
     except: pass
     return jsonify({"found": False})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
 
 
