@@ -3,7 +3,9 @@ import requests
 from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
-RAIO_KM = 25.0
+
+# Configurações de busca
+RAIO_KM = 25.0 
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -26,160 +28,115 @@ def index():
     <html lang="pt">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <title>Boarding Board Radar</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        <title>Radar Boarding Pass Pro</title>
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
         <style>
-            :root { --blue-bg: #2B6B8F; --text-gray: #888; --gold: #FFD700; }
-            body { background: #E0E5EC; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }
-            
-            .boarding-pass {
-                background: white; width: 95%; max-width: 800px;
-                border-radius: 20px; overflow: hidden;
-                box-shadow: 0 15px 40px rgba(0,0,0,0.2);
-                display: flex; flex-direction: column;
+            :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
+            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+            body { 
+                background-color: var(--bg-dark); margin: 0; padding: 0; 
+                display: flex; align-items: center; justify-content: center; 
+                min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
             }
 
-            .main-ticket { display: flex; flex: 1; min-height: 320px; }
-
-            /* Canhoto Esquerdo (Stub) */
-            .stub { 
-                background: var(--blue-bg); width: 30%; color: white; padding: 25px;
-                border-right: 2px dashed rgba(255,255,255,0.3);
-                display: flex; flex-direction: column; justify-content: space-between;
+            .card { 
+                background: var(--air-blue); width: 95%; max-width: 620px;
+                border-radius: 20px; position: relative; 
+                box-shadow: 0 20px 50px rgba(0,0,0,0.8); overflow: hidden;
             }
-            .seat-label { font-size: 0.8em; opacity: 0.8; }
-            .seat-num { font-size: 5em; font-weight: bold; margin: 10px 0; }
+
+            .header { padding: 15px 0; text-align: center; color: white; font-weight: 900; letter-spacing: 3px; font-size: 1.1em; }
+
+            .white-area { 
+                background: #fdfdfd; margin: 0 10px; display: flex; 
+                padding: 20px 15px; min-height: 250px; border-radius: 4px; 
+            }
+
+            .col-left { flex: 1.6; border-right: 1px dashed #ddd; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
+            .col-right { flex: 1; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
             
-            /* Quadradinhos de Proximidade */
-            .proximity-bars { display: flex; gap: 4px; margin-top: 10px; }
-            .bar { width: 12px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 2px; }
-            .bar.active { background: white; box-shadow: 0 0 8px white; }
+            .label { color: #888; font-size: 0.60em; font-weight: 800; text-transform: uppercase; }
+            .value { font-size: 1.1em; font-weight: 900; color: var(--air-blue); margin-bottom: 8px; }
+            
+            #compass { display: inline-block; transition: transform 0.6s ease; color: var(--warning-gold); font-size: 1.2em; }
+            
+            .barcode-container { width: 100%; display: flex; justify-content: center; cursor: pointer; text-decoration: none; }
+            #barcode { width: 100%; max-width: 150px; height: 50px; }
 
-            /* Parte Principal */
-            .info-area { flex: 1; display: flex; flex-direction: column; }
-            .blue-header { background: var(--blue-bg); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
-            .blue-header h2 { margin: 0; font-size: 1.2em; letter-spacing: 5px; font-weight: normal; }
-
-            .white-content { padding: 30px; flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; position: relative; }
-            .field { margin-bottom: 20px; }
-            .label { color: var(--text-gray); font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
-            .value { color: #222; font-size: 1.4em; font-weight: bold; }
-            .value.highlight { color: #E6B100; font-size: 1.8em; }
-
-            #compass { display: inline-block; transition: transform 0.6s ease; font-size: 1.5em; color: #E67E22; }
-
-            /* Faixa Preta Inferior */
-            .black-footer { 
-                background: #000; padding: 12px 30px; 
-                border-top: 4px solid var(--gold);
-                min-height: 50px; display: flex; align-items: center;
+            .footer { 
+                background: #000 !important; padding: 15px; min-height: 80px; 
+                display: flex; align-items: center; justify-content: center;
+                border-top: 4px solid var(--warning-gold);
             }
             .status-msg { 
-                color: var(--gold) !important; font-family: monospace; 
-                font-weight: bold; text-transform: uppercase; letter-spacing: 2px;
-                display: block !important;
-            }
-
-            @media (max-width: 600px) {
-                .main-ticket { flex-direction: column; }
-                .stub { width: auto; border-right: none; border-bottom: 2px dashed #ccc; }
-                .white-content { grid-template-columns: 1fr; }
+                color: #FFD700 !important; font-weight: 900; font-size: 1.1em; 
+                text-transform: uppercase; text-align: center;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
             }
         </style>
     </head>
     <body>
-        <div class="boarding-pass">
-            <div class="main-ticket">
-                <div class="stub">
-                    <div>
-                        <div class="seat-label">RADAR BASE<br>Seat:</div>
-                        <div class="seat-num">19 A</div>
-                        <div class="proximity-bars" id="proximity">
-                            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                            <div class="bar"></div><div class="bar"></div>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.8em; opacity: 0.7;">ATC Secure</div>
+        <div class="card">
+            <div class="header">✈ ATC BOARDING PASS ✈</div>
+            <div class="white-area">
+                <div class="col-left">
+                    <div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div>
+                    <div class="label">FLIGHT PATH</div><div id="route" class="value">-- / --</div>
+                    <div class="label">TYPE / SPEED</div><div id="type_speed" class="value">-- / -- KTS</div>
+                    <div class="label">DISTANCE</div><div id="dist_body" class="value">-- KM</div>
                 </div>
-
-                <div class="info-area">
-                    <div class="blue-header">
-                        <span>✈</span>
-                        <h2>BOARDING BOARD</h2>
-                        <span>✈</span>
-                    </div>
-                    <div class="white-content">
-                        <div>
-                            <div class="field">
-                                <div class="label">Ident / Callsign</div>
-                                <div id="callsign" class="value highlight">READY</div>
-                            </div>
-                            <div class="field">
-                                <div class="label">Aircraft Distance</div>
-                                <div id="dist" class="value">---</div>
-                            </div>
-                            <div class="field">
-                                <div class="label">Altitude (MSL)</div>
-                                <div id="alt" class="value">---</div>
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div class="field">
-                                <div class="label">Type</div>
-                                <div id="type" class="value">----</div>
-                            </div>
-                            <div class="field">
-                                <div id="compass" class="value">↑</div>
-                            </div>
-                            <a id="map-link" target="_blank" style="display:inline-block; margin-top:10px; opacity:0.3;">
-                                <svg id="barcode" style="width:120px; height:60px;"></svg>
-                            </a>
-                        </div>
-                    </div>
+                <div class="col-right">
+                    <div class="label">ALTITUDE</div><div id="alt" class="value">00000 FT</div>
+                    <div class="label">BEARING</div><div class="value"><span id="compass">↑</span></div>
+                    <a id="map-link" target="_blank" class="barcode-container">
+                        <svg id="barcode"></svg>
+                    </a>
                 </div>
             </div>
-            <div class="black-footer">
-                <div id="status" class="status-msg">INITIALIZING RADAR SYSTEM...</div>
-            </div>
+            <div class="footer"><div id="status" class="status-msg">INITIALIZING RADAR...</div></div>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
         <script>
-            let latU, lonU;
+            let latAlvo, lonAlvo;
+
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
-                    latU = pos.coords.latitude; lonU = pos.coords.longitude;
-                    setInterval(update, 8000); update();
-                }, () => { document.getElementById('status').innerText = "ERROR: GPS DENIED"; });
+                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
+                    setInterval(executarBusca, 8000); executarBusca();
+                }, () => { 
+                    document.getElementById('status').textContent = "LOCATION ERROR: ENABLE GPS"; 
+                });
             };
 
-            function update() {
-                if(!latU) return;
-                fetch(`/api/data?lat=${latU}&lon=${lonU}&t=${Date.now()}`)
-                .then(r => r.json()).then(data => {
-                    const status = document.getElementById('status');
+            function executarBusca() {
+                if(!latAlvo) return;
+                fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=` + Date.now())
+                .then(res => res.json()).then(data => {
+                    const statusElem = document.getElementById('status');
                     if(data.found) {
-                        document.getElementById('callsign').innerText = data.callsign;
-                        document.getElementById('dist').innerText = data.dist + " KM";
-                        document.getElementById('alt').innerText = data.alt_ft.toLocaleString() + " FT";
-                        document.getElementById('type').innerText = data.type;
+                        document.getElementById('callsign').textContent = data.callsign;
+                        document.getElementById('route').textContent = data.origin + " / " + data.dest;
+                        document.getElementById('type_speed').textContent = data.type + " / " + data.speed + " KTS";
+                        document.getElementById('alt').textContent = data.alt_ft.toLocaleString() + " FT";
+                        document.getElementById('dist_body').textContent = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-                        status.innerText = "> TARGET ACQUIRED: " + data.callsign;
+                        
+                        // Atualiza as letras amarelas no campo preto
+                        statusElem.textContent = "TARGET ACQUIRED: " + data.callsign;
 
-                        // Lógica dos quadradinhos (8 barras)
-                        // Quanto menor a distância, mais barras acendem
-                        let barsToLight = Math.max(1, Math.ceil((25 - data.dist) / 3.1));
-                        const bars = document.querySelectorAll('.bar');
-                        bars.forEach((b, i) => {
-                            b.classList.toggle('active', i < barsToLight);
+                        JsBarcode("#barcode", data.callsign, {
+                            format: "CODE128", width: 1.5, height: 40, displayValue: false, lineColor: "#1A237E"
                         });
-
-                        JsBarcode("#barcode", data.callsign, { format: "CODE128", displayValue: false, lineColor: "#222" });
                     } else {
-                        status.innerText = "SCANNING AIRSPACE...";
+                        statusElem.textContent = "SCANNING AIRSPACE...";
+                        document.getElementById('callsign').textContent = "SEARCHING";
+                        document.getElementById('barcode').innerHTML = "";
                     }
+                }).catch(err => {
+                    document.getElementById('status').textContent = "RADAR OFFLINE";
                 });
             }
         </script>
@@ -195,16 +152,26 @@ def get_data():
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, timeout=5).json()
         if r.get('ac'):
-            ac = sorted([a for a in r['ac'] if a.get('lat')], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-            return jsonify({
-                "found": True, 
-                "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
-                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
-                "alt_ft": int(ac.get('alt_baro', 0)), 
-                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                "type": ac.get('t', 'UNKN'), 
-                "map_url": f"https://globe.adsbexchange.com/?lat={ac['lat']}&lon={ac['lon']}&zoom=11"
-            })
+            validos = [a for a in r['ac'] if a.get('lat')]
+            if validos:
+                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+                map_url = (f"https://globe.adsbexchange.com/?"
+                           f"lat={ac['lat']}&lon={ac['lon']}&zoom=11"
+                           f"&hex={ac.get('hex', '')}&sel={ac.get('hex', '')}"
+                           f"&SiteLat={lat_u}&SiteLon={lon_u}")
+                
+                return jsonify({
+                    "found": True, 
+                    "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
+                    "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                    "alt_ft": int((ac.get('alt_baro') or 0)), 
+                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                    "map_url": map_url,
+                    "origin": ac.get('t_from', 'N/A')[:3],
+                    "dest": ac.get('t_to', 'N/A')[:3],
+                    "type": ac.get('t', 'UNKN'),
+                    "speed": ac.get('gs', 0)
+                })
     except: pass
     return jsonify({"found": False})
 
