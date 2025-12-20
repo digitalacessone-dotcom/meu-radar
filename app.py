@@ -26,154 +26,126 @@ def index():
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Radar Interativo</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <style>
-        body {
-            margin: 0;
-            font-family: sans-serif;
-            background: #0a192f;
-            color: white;
-        }
-        .card {
-            max-width: 700px;
-            margin: 20px auto;
-            background: #1A237E;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.6);
-        }
-        .header {
-            background: #1A237E;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            font-size: 1.5em;
-            font-weight: bold;
-        }
-        .content {
-            background: white;
-            color: #1A237E;
-            padding: 20px;
-        }
-        .label {
-            font-size: 0.8em;
-            color: #888;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        .value {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        #map {
-            height: 300px;
-            width: 100%;
-            margin-top: 15px;
-            border-radius: 10px;
-        }
-        .footer {
-            background: #000;
-            color: #FFD700;
-            text-align: center;
-            padding: 15px;
-            font-weight: bold;
-            font-size: 1.1em;
-            border-top: 4px solid #FFD700;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radar Interativo</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <style>
+    body { background:#0a192f; margin:0; font-family:'Courier New', monospace; color:white; }
+    .card { background:#1A237E; width:95%; max-width:720px; margin:20px auto; border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,0.8); overflow:hidden; }
+    .header { padding:15px 0; text-align:center; color:white; font-weight:900; letter-spacing:3px; }
+    .white-area { background:#fff; margin:0 10px 10px; padding:20px 15px; border-radius:4px; }
+    .info { display:flex; gap:15px; flex-wrap:wrap; }
+    .col-left { flex:1.4; border-right:1px dashed #ddd; padding-right:15px; min-width:260px; }
+    .col-right { flex:1; padding-left:15px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:space-around; min-width:220px; }
+    .label { color:#888; font-size:0.65em; font-weight:800; text-transform:uppercase; }
+    .value { font-size:1.1em; font-weight:900; color:#1A237E; margin-bottom:10px; }
+    #compass { display:inline-block; transition:transform 0.6s ease; color:#ff8c00; font-size:1.5em; }
+    #barcode { width:100%; max-width:160px; height:50px; display:block; }
+    #map { height:340px; width:100%; border-radius:10px; margin-top:15px; }
+    .footer { background:#000; padding:15px; min-height:80px; display:flex; align-items:center; justify-content:center; border-top:4px solid #FFD700; }
+    .status-msg { color:#FFD700; font-weight:900; font-size:1.1em; text-transform:uppercase; text-align:center; text-shadow:1px 1px 2px rgba(0,0,0,0.8); }
+  </style>
 </head>
 <body>
-    <div class="card">
-        <div class="header">✈ Radar Interativo ✈</div>
-        <div class="content">
-            <div class="label">Callsign</div>
-            <div id="callsign" class="value">--</div>
-            <div class="label">Origem / Destino</div>
-            <div id="route" class="value">-- / --</div>
-            <div class="label">Tipo / Velocidade</div>
-            <div id="type_speed" class="value">-- / -- KTS</div>
-            <div class="label">Altitude</div>
-            <div id="alt" class="value">-- FT</div>
-            <div class="label">Distância</div>
-            <div id="dist_body" class="value">-- KM</div>
-            <div class="label">Rumo</div>
-            <div id="bearing" class="value">--°</div>
-            <svg id="barcode"></svg>
-            <div id="map"></div>
+  <div class="card">
+    <div class="header">✈ ATC BOARDING PASS ✈</div>
+    <div class="white-area">
+      <div class="info">
+        <div class="col-left">
+          <div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div>
+          <div class="label">FLIGHT PATH</div><div id="route" class="value">-- / --</div>
+          <div class="label">TYPE / SPEED</div><div id="type_speed" class="value">-- / -- KTS</div>
+          <div class="label">DISTANCE</div><div id="dist_body" class="value">-- KM</div>
         </div>
-        <div class="footer" id="status">INICIALIZANDO RADAR...</div>
+        <div class="col-right">
+          <div class="label">ALTITUDE</div><div id="alt" class="value">00000 FT</div>
+          <div class="label">BEARING</div><div class="value"><span id="compass">↑</span></div>
+          <svg id="barcode"></svg>
+        </div>
+      </div>
+      <div id="map"></div>
     </div>
+    <div class="footer"><div id="status" class="status-msg">INITIALIZING RADAR...</div></div>
+  </div>
 
-    <script>
-        let latAlvo, lonAlvo;
-        let map, userMarker, planeMarker;
+  <script>
+    let latUser, lonUser;
+    let map, userMarker, planeMarker;
 
-        window.onload = function() {
-            navigator.geolocation.getCurrentPosition(pos => {
-                latAlvo = pos.coords.latitude;
-                lonAlvo = pos.coords.longitude;
-                initMap(latAlvo, lonAlvo);
-                setInterval(executarBusca, 8000);
-                executarBusca();
-            }, () => {
-                document.getElementById('status').textContent = "ERRO DE LOCALIZAÇÃO";
+    function initMap(lat, lon) {
+      map = L.map('map').setView([lat, lon], 8);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+      userMarker = L.marker([lat, lon], { title: 'Você' }).addTo(map);
+    }
+
+    function updatePlane(lat, lon, callsign) {
+      if (planeMarker) map.removeLayer(planeMarker);
+      planeMarker = L.marker([lat, lon], { title: callsign }).addTo(map);
+      map.fitBounds(L.latLngBounds([userMarker.getLatLng(), planeMarker.getLatLng()]), { padding: [20, 20] });
+    }
+
+    function setStatus(msg) {
+      document.getElementById('status').textContent = msg;
+    }
+
+    function executarBusca() {
+      if (latUser == null || lonUser == null) return;
+      fetch(`/api/data?lat=${latUser}&lon=${lonUser}&t=${Date.now()}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.found) {
+            document.getElementById('callsign').textContent = data.callsign;
+            document.getElementById('route').textContent = `${data.origin} / ${data.dest}`;
+            document.getElementById('type_speed').textContent = `${data.type} / ${data.speed} KTS`;
+            document.getElementById('alt').textContent = `${Number(data.alt_ft).toLocaleString()} FT`;
+            document.getElementById('dist_body').textContent = `${data.dist} KM`;
+            document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
+            JsBarcode("#barcode", data.callsign || "UNKNOWN", {
+              format: "CODE128", width: 1.5, height: 40, displayValue: false, lineColor: "#1A237E"
             });
-        };
-
-        function initMap(lat, lon) {
-            map = L.map('map').setView([lat, lon], 8);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
-            userMarker = L.marker([lat, lon], {title: "Você"}).addTo(map);
-        }
-
-        function updatePlane(lat, lon, callsign) {
+            updatePlane(data.lat, data.lon, data.callsign);
+            setStatus(`TARGET ACQUIRED: ${data.callsign}`);
+          } else {
+            setStatus("SCANNING AIRSPACE...");
+            document.getElementById('callsign').textContent = "SEARCHING";
+            document.getElementById('barcode').innerHTML = "";
             if (planeMarker) map.removeLayer(planeMarker);
-            planeMarker = L.marker([lat, lon], {title: callsign}).addTo(map);
-            map.fitBounds(L.latLngBounds([userMarker.getLatLng(), planeMarker.getLatLng()]));
-        }
+          }
+        })
+        .catch(err => {
+          setStatus("DATA LINK ERROR");
+          console.error(err);
+        });
+    }
 
-        function executarBusca() {
-            if (!latAlvo) return;
-            fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=` + Date.now())
-            .then(res => res.json())
-            .then(data => {
-                const statusElem = document.getElementById('status');
-                if (data.found) {
-                    document.getElementById('callsign').textContent = data.callsign;
-                    document.getElementById('route').textContent = data.origin + " / " + data.dest;
-                    document.getElementById('type_speed').textContent = data.type + " / " + data.speed + " KTS";
-                    document.getElementById('alt').textContent = data.alt_ft + " FT";
-                    document.getElementById('dist_body').textContent = data.dist + " KM";
-                    document.getElementById('bearing').textContent = data.bearing + "°";
-                    JsBarcode("#barcode", data.callsign, {
-                        format: "CODE128", width: 1.5, height: 40, displayValue: false, lineColor: "#1A237E"
-                    });
-                    updatePlane(data.lat, data.lon, data.callsign);
-                    statusElem.textContent = "ALVO IDENTIFICADO: " + data.callsign;
-                } else {
-                    statusElem.textContent = "ESCANEANDO O CÉU...";
-                    document.getElementById('callsign').textContent = "--";
-                    document.getElementById('barcode').innerHTML = "";
-                    if (planeMarker) map.removeLayer(planeMarker);
-                }
-            })
-            .catch(err => {
-                document.getElementById('status').textContent = "ERRO DE CONEXÃO";
-                console.error("Erro:", err);
-            });
-        }
-    </script>
+    window.onload = function() {
+      if (!('geolocation' in navigator)) {
+        setStatus("LOCATION ERROR: NO GPS");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          latUser = pos.coords.latitude;
+          lonUser = pos.coords.longitude;
+          initMap(latUser, lonUser);
+          setInterval(executarBusca, 8000);
+          executarBusca();
+        },
+        err => {
+          setStatus("LOCATION ERROR: ENABLE GPS AND HTTPS");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    };
+  </script>
 </body>
 </html>
-""")  # fim do render_template_string
+""")
 
 @app.route('/api/data')
 def get_data():
@@ -183,24 +155,4 @@ def get_data():
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, timeout=5).json()
         if r.get('ac'):
-            validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
-            if validos:
-                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                dist = round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1)
-                bearing = round(calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']), 2)
-                return jsonify({
-                    "found": True,
-                    "callsign": ac.get("flight", "UNKNOWN"),
-                    "origin": ac.get("r", "--"),
-                    "dest": ac.get("d", "--"),
-                    "type": ac.get("t", "--"),
-                    "speed": ac.get("spd", 0),
-                    "alt_ft": ac.get("alt_baro", 0),
-                    "dist": dist,
-                    "bearing": bearing,
-                    "lat": ac['lat'],
-                    "lon": ac['lon']
-                })
-    except Exception as e:
-        print("Erro na API:", e)
-    return jsonify({"found": False})
+            validos
