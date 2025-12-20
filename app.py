@@ -31,110 +31,104 @@ def index():
         <title>Boarding Board Radar</title>
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
         <style>
-            :root { --main-blue: #2A6E91; --text-gray: #777; --warning-yellow: #FFD700; }
-            body { background: #f0f2f5; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }
+            :root { --blue: #2A6E91; --yellow: #FFD700; --text-gray: #999; }
+            body { background: #f4f7f9; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }
             
-            /* Barra de busca superior */
-            .search-box {
-                background: white; width: 90%; max-width: 850px; padding: 10px 20px;
-                border-radius: 12px; display: flex; align-items: center; gap: 10px;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 25px;
+            /* Barra de busca superior separada */
+            .search-header {
+                background: white; width: 90%; max-width: 850px; padding: 12px 20px;
+                border-radius: 12px; display: flex; gap: 10px; margin-bottom: 25px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.05); align-items: center;
             }
-            .search-box input { flex: 1; border: 1px solid #ddd; padding: 12px; border-radius: 8px; outline: none; }
-            .search-box button { background: var(--main-blue); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+            .search-header input { flex: 1; border: 1px solid #ddd; padding: 12px; border-radius: 8px; outline: none; }
+            .search-header button { background: var(--blue); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-            /* Cartão de Embarque */
-            .boarding-pass {
+            /* Estrutura do Cartão */
+            .ticket {
                 background: white; width: 90%; max-width: 850px; height: 420px;
                 border-radius: 25px; display: flex; overflow: hidden;
-                box-shadow: 0 20px 40px rgba(0,0,0,0.1); position: relative;
+                box-shadow: 0 20px 50px rgba(0,0,0,0.1);
             }
 
-            /* Lateral Esquerda (Canhoto Azul) */
-            .side-panel { background: var(--main-blue); width: 250px; color: white; padding: 30px 25px; display: flex; flex-direction: column; border-right: 2px dashed rgba(255,255,255,0.3); }
-            .side-label { font-size: 0.7em; opacity: 0.8; margin-bottom: 5px; text-transform: uppercase; font-weight: bold; }
-            .seat-num { font-size: 5.5em; font-weight: bold; margin: 15px 0; line-height: 1; }
-            .dots { display: flex; gap: 4px; margin-bottom: auto; }
-            .dot { width: 10px; height: 10px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+            /* Canhoto Azul */
+            .stub {
+                background: var(--blue); width: 220px; color: white; padding: 30px;
+                display: flex; flex-direction: column; border-right: 2px dashed rgba(255,255,255,0.3);
+            }
+            .stub-label { font-size: 0.7em; opacity: 0.7; font-weight: bold; text-transform: uppercase; }
+            .seat-num { font-size: 5.5em; font-weight: bold; margin: 10px 0; }
+            .dot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; }
+            .dot { width: 12px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+            .atc-text { margin-top: auto; font-size: 1em; opacity: 0.9; }
 
-            /* Lado Direito (Conteúdo) */
-            .main-content { flex: 1; display: flex; flex-direction: column; }
-            .top-bar { background: var(--main-blue); color: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; }
-            .top-bar h1 { margin: 0; font-size: 1.6em; letter-spacing: 8px; font-weight: normal; }
+            /* Corpo Principal */
+            .main { flex: 1; display: flex; flex-direction: column; }
+            .top-strip { background: var(--blue); color: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; }
+            .top-strip h1 { margin: 0; font-size: 1.6em; letter-spacing: 10px; font-weight: 300; }
 
-            .info-grid { padding: 30px 45px; display: grid; grid-template-columns: 1.5fr 1fr; flex: 1; position: relative; }
-            .data-label { color: var(--text-gray); font-size: 0.75em; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
-            .data-value { font-size: 1.9em; font-weight: bold; color: var(--warning-yellow); margin-bottom: 25px; font-family: 'Courier New', monospace; }
-            .data-value.dark { color: #333; font-size: 1.4em; }
+            .info-area { padding: 30px 45px; display: flex; flex: 1; }
+            .data-col { flex: 1.5; }
+            .visual-col { flex: 1; border-left: 1px solid #eee; display: flex; flex-direction: column; align-items: center; justify-content: space-around; padding-left: 20px; }
 
-            /* Divider Vertical */
-            .divider { border-left: 1px solid #eee; height: 70%; position: absolute; left: 60%; top: 15%; }
+            .label { color: var(--text-gray); font-size: 0.7em; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+            .value-y { color: var(--yellow); font-size: 2em; font-weight: bold; font-family: 'Courier New', monospace; margin-bottom: 25px; }
+            .value-d { color: #333; font-size: 1.3em; font-weight: bold; margin-bottom: 25px; }
 
-            /* Bússola e Barcode */
-            .right-visuals { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-            #compass { font-size: 2.5em; transition: transform 0.8s ease; color: #ff8c00; margin-bottom: 15px; }
-            #barcode { width: 150px; height: 60px; }
+            #compass { font-size: 2.5em; transition: transform 0.6s ease; color: #ff8c00; }
+            #barcode { width: 160px; height: 60px; }
 
-            /* Rodapé Preto */
-            .footer-black { background: #000; height: 60px; display: flex; align-items: center; justify-content: center; border-top: 4px solid var(--warning-yellow); }
-            .status-msg { color: var(--warning-yellow); font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.1em; text-transform: uppercase; }
-            
-            @media (max-width: 700px) {
-                .boarding-pass { height: auto; flex-direction: column; }
-                .side-panel { width: 100%; height: auto; border-right: none; border-bottom: 2px dashed #ccc; }
-                .divider { display: none; }
-                .info-grid { grid-template-columns: 1fr; }
+            /* Rodapé Preto e Amarelo */
+            .footer { background: #000; height: 65px; border-top: 4px solid var(--yellow); display: flex; align-items: center; justify-content: center; }
+            .status { color: var(--yellow); font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.1em; text-transform: uppercase; }
+
+            @media (max-width: 600px) {
+                .ticket { flex-direction: column; height: auto; }
+                .stub { width: auto; border-right: none; border-bottom: 2px dashed #ddd; }
+                .info-area { flex-direction: column; }
+                .visual-col { border-left: none; border-top: 1px solid #eee; padding: 20px 0; }
             }
         </style>
     </head>
     <body>
-        <div class="search-box">
+        <div class="search-header">
             <input type="text" placeholder="Enter City or Location...">
             <button>CONNECT RADAR</button>
         </div>
 
-        <div class="boarding-pass">
-            <div class="side-panel">
-                <div class="side-label">Radar Base</div>
-                <div class="side-label" style="margin-top:10px">Seat:</div>
+        <div class="ticket">
+            <div class="stub">
+                <div class="stub-label">Radar Base</div>
+                <div class="stub-label" style="margin-top:10px">Seat:</div>
                 <div class="seat-num">19 A</div>
-                <div class="dots">
-                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                    <div class="dot"></div><div class="dot"></div>
+                <div class="dot-grid">
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
                 </div>
-                <div class="side-label" style="margin-top: auto;">ATC Secure</div>
+                <div class="atc-text">ATC Secure</div>
             </div>
 
-            <div class="main-content">
-                <div class="top-bar">
+            <div class="main">
+                <div class="top-strip">
                     <span>✈</span><h1>BOARDING BOARD</h1><span>✈</span>
                 </div>
-
-                <div class="info-grid">
-                    <div class="left-data">
-                        <div class="data-label">IDENT / CALLSIGN</div>
-                        <div id="callsign" class="data-value">READY</div>
-
-                        <div class="data-label">AIRCRAFT DISTANCE</div>
-                        <div id="dist_body" class="data-value dark">--- KM</div>
-
-                        <div class="data-label">ALTITUDE (MSL)</div>
-                        <div id="alt" class="data-value dark">--- FT</div>
+                <div class="info-area">
+                    <div class="data-col">
+                        <div class="label">Ident / Callsign</div>
+                        <div id="callsign" class="value-y">READY</div>
+                        <div class="label">Aircraft Distance</div>
+                        <div id="dist_body" class="value-d">--- KM</div>
+                        <div class="label">Altitude (MSL)</div>
+                        <div id="alt" class="value-d">--- FT</div>
                     </div>
-
-                    <div class="divider"></div>
-
-                    <div class="right-visuals">
-                        <div class="data-label">TYPE</div>
-                        <div id="type" class="data-value dark" style="margin-bottom:10px">----</div>
+                    <div class="visual-col">
+                        <div class="label">Type</div>
+                        <div id="type" class="value-d" style="margin-bottom:10px">----</div>
                         <div id="compass">↑</div>
                         <svg id="barcode"></svg>
                     </div>
                 </div>
-
-                <div class="footer-black">
-                    <div id="status" class="status-msg">INITIALIZING RADAR...</div>
+                <div class="footer">
+                    <div id="status" class="status">INITIALIZING RADAR...</div>
                 </div>
             </div>
         </div>
@@ -145,9 +139,7 @@ def index():
                 navigator.geolocation.getCurrentPosition(pos => {
                     latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
                     setInterval(executarBusca, 8000); executarBusca();
-                }, () => { 
-                    document.getElementById('status').textContent = "ERROR: ENABLE GPS"; 
-                });
+                }, () => { document.getElementById('status').textContent = "ERROR: ENABLE GPS"; });
             };
 
             function executarBusca() {
