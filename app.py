@@ -5,6 +5,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
+# --- CONFIGURAÇÕES ---
 RAIO_KM = 80.0
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -12,13 +13,13 @@ USER_AGENTS = [
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
-    dlat, dlon = radians(lat2-lat1), radians(lon2-lon1)
-    a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
-    return 2 * R * atan2(sqrt(a), sqrt(1-a))
+    dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
+    a = sin(dlat / 2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2)**2
+    return 2 * R * atan2(sqrt(a), sqrt(1 - a))
 
 def calculate_bearing(lat1, lon1, lat2, lon2):
-    y = sin(radians(lon2-lon1)) * cos(radians(lat2))
-    x = cos(radians(lat1)) * sin(radians(lat2)) - sin(radians(lat1)) * cos(radians(lat2)) * cos(radians(lon2-lon1))
+    y = sin(radians(lon2 - lon1)) * cos(radians(lat2))
+    x = cos(radians(lat1)) * sin(radians(lat2)) - sin(radians(lat1)) * cos(radians(lat2)) * cos(radians(lon2 - lon1))
     return (degrees(atan2(y, x)) + 360) % 360
 
 @app.route('/')
@@ -31,7 +32,12 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <title>ATC Premium Pass</title>
         <style>
-            :root { --air-blue: #226488; --warning-gold: #FFD700; --bg-dark: #f0f4f7; }
+            :root { 
+                --air-blue: #226488; 
+                --warning-gold: #FFD700; 
+                --bg-dark: #f0f4f7; 
+            }
+
             * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
             body { 
@@ -40,21 +46,16 @@ def index():
                 min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden;
             }
 
-            /* BARRA DE PESQUISA COM SUMIÇO SUAVE */
             #search-section {
                 background: #fff; padding: 15px 25px; border-radius: 12px;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.08);
                 display: flex; gap: 10px; align-items: center; border: 1px solid #ddd;
                 width: 95%; max-width: 850px; z-index: 100;
                 max-height: 200px; opacity: 1; margin-bottom: 20px; overflow: hidden;
-                transition: max-height 0.8s ease, opacity 0.8s ease, margin-bottom 0.8s ease, padding 0.8s ease;
+                transition: all 0.8s ease;
             }
 
-            #search-section.hidden { 
-                max-height: 0; opacity: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0;
-                border: 0px solid transparent; pointer-events: none;
-            }
-
+            #search-section.hidden { max-height: 0; opacity: 0; margin-bottom: 0; padding: 0; border: 0; pointer-events: none; }
             #search-section input { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
             #search-section button { background: var(--air-blue); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
@@ -65,13 +66,29 @@ def index():
                 display: flex; overflow: hidden; border: 1px solid #ddd;
             }
 
+            /* LADO ESQUERDO COM ESCALA ABAIXO */
             .left-stub {
                 width: 25%; background: var(--air-blue); color: white;
                 padding: 20px; display: flex; flex-direction: column;
                 border-right: 2px dashed rgba(255,255,255,0.3);
             }
-            .left-stub .seat-num { font-size: 4em; font-weight: 900; margin-top: 20px; line-height: 1; }
-            .left-stub .seat-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; }
+
+            .seat-num { font-size: 4em; font-weight: 900; margin-top: 10px; line-height: 1; }
+            
+            /* ESCALA DE QUADRADOS BRANCOS */
+            .proximity-scale {
+                display: flex; gap: 4px; margin-top: 15px;
+                width: 100%; justify-content: flex-start;
+            }
+            .scale-step {
+                width: 12px; height: 12px;
+                background: rgba(255,255,255,0.15); /* Inativo: Branco bem transparente */
+                border-radius: 2px; transition: all 0.4s ease;
+            }
+            .scale-step.active { 
+                background: #ffffff; /* Ativo: Branco Sólido */
+                box-shadow: 0 0 5px rgba(255,255,255,0.8);
+            }
 
             .main-ticket { flex: 1; display: flex; flex-direction: column; }
             .header-bar { 
@@ -101,11 +118,9 @@ def index():
             @keyframes flap { 50% { transform: scaleY(0.1); opacity: 0.3; } }
 
             #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
-            
             #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s; opacity: 0.1; }
             #radar-link.active { pointer-events: auto !important; opacity: 1 !important; cursor: pointer !important; }
             .barcode { width: 150px; height: 55px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 5px); margin-top: 10px; }
-
         </style>
     </head>
     <body>
@@ -120,6 +135,13 @@ def index():
                 <div class="label" style="color: rgba(255,255,255,0.7)">Radar Base</div>
                 <div class="seat-label">Seat:</div>
                 <div class="seat-num">19 A</div>
+                
+                <div class="proximity-scale" id="p-scale">
+                    <div class="scale-step"></div><div class="scale-step"></div><div class="scale-step"></div>
+                    <div class="scale-step"></div><div class="scale-step"></div><div class="scale-step"></div>
+                    <div class="scale-step"></div><div class="scale-step"></div>
+                </div>
+
                 <div class="seat-label" style="margin-top: auto;">ATC Secure</div>
             </div>
 
@@ -150,56 +172,33 @@ def index():
 
         <script>
             let latAlvo = null, lonAlvo = null, currentTarget = null, step = 0;
-            let weather = { temp: '--', sky: 'SCANNING', vis: '--' };
             const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->°%";
 
-            async function geocodeAddress() {
-                const query = document.getElementById('address-input').value;
-                if(!query) return;
-                try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-                    const data = await res.json();
-                    if(data.length > 0) {
-                        latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
-                        document.getElementById('search-section').classList.add('hidden');
-                        getWeather();
-                        if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 12000);
-                        executarBusca();
-                    }
-                } catch(e) { }
-            }
-
-            async function getWeather() {
-                if(!latAlvo) return;
-                try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latAlvo}&longitude=${lonAlvo}&current_weather=true&hourly=visibility`);
-                    const data = await res.json();
-                    weather.temp = Math.round(data.current_weather.temperature) + "°C";
-                    const code = data.current_weather.weathercode;
-                    weather.sky = code < 3 ? "CLEAR SKY" : code < 50 ? "CLOUDY" : "RAIN EXPECTED";
-                    weather.vis = (data.hourly.visibility[0] / 1000).toFixed(1) + "KM";
-                } catch(e) {}
+            function updateProximityScale(dist) {
+                const steps = document.querySelectorAll('.scale-step');
+                // 8 quadrados. Se dist <= 5km acende todos. Se dist >= 80km acende 1.
+                const activeCount = Math.max(1, Math.min(8, Math.ceil(8 - (dist / 10))));
+                
+                steps.forEach((s, i) => {
+                    if (i < activeCount) s.classList.add('active');
+                    else s.classList.remove('active');
+                });
             }
 
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
                 if (!container) return;
                 const newText = String(newValue || "").toUpperCase();
-                
                 while (container.childNodes.length < newText.length) {
                     const s = document.createElement("span"); s.className = "letter-slot"; s.innerHTML = "&nbsp;"; container.appendChild(s);
                 }
                 while (container.childNodes.length > newText.length) { container.removeChild(container.lastChild); }
-                
                 const slots = container.querySelectorAll('.letter-slot');
-                
                 newText.split('').forEach((targetChar, i) => {
                     const slot = slots[i];
                     if (slot.innerText === targetChar && targetChar !== " ") return;
-
                     const randomDelay = Math.floor(Math.random() * 200); 
                     const randomDuration = 10 + Math.floor(Math.random() * 15);
-
                     setTimeout(() => {
                         let cycles = 0;
                         const interval = setInterval(() => {
@@ -215,30 +214,20 @@ def index():
                 });
             }
 
-            window.onload = function() {
-                updateWithEffect('callsign', 'SEARCHING');
-                updateWithEffect('dist_body', '---');
-                updateWithEffect('alt', '---');
-                
-                navigator.geolocation.getCurrentPosition(pos => {
-                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    document.getElementById('search-section').classList.add('hidden');
-                    getWeather();
-                    window.searchLoop = setInterval(executarBusca, 12000);
-                    executarBusca();
-                });
-
-                setInterval(() => {
-                    if(!currentTarget) {
-                        const msgs = [`> CONNECTING SERVER...`,`> LOCAL TEMP: ${weather.temp}`,`> SKY: ${weather.sky}`,`> TUNNEL: ACTIVE` ];
-                        updateWithEffect('status-container', msgs[step % msgs.length]);
-                    } else {
-                        const info = [`> TARGET LOCKED: ${currentTarget.callsign}`,`> SPEED: ${currentTarget.speed} KT`,`> ROUTE: ${currentTarget.origin} -> ${currentTarget.dest}`,`> POSITION: STABLE` ];
-                        updateWithEffect('status-container', info[step % info.length]);
+            async function geocodeAddress() {
+                const query = document.getElementById('address-input').value;
+                if(!query) return;
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                    const data = await res.json();
+                    if(data.length > 0) {
+                        latAlvo = parseFloat(data[0].lat); lonAlvo = parseFloat(data[0].lon);
+                        document.getElementById('search-section').classList.add('hidden');
+                        if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 12000);
+                        executarBusca();
                     }
-                    step++;
-                }, 5000); 
-            };
+                } catch(e) { }
+            }
 
             function executarBusca() {
                 if(!latAlvo) return;
@@ -251,6 +240,7 @@ def index():
                         updateWithEffect('type_id', data.type);
                         updateWithEffect('alt', data.alt_ft.toLocaleString() + " FT");
                         updateWithEffect('dist_body', data.dist + " KM");
+                        updateProximityScale(data.dist);
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         radarLink.href = `https://www.radarbox.com/@${data.lat},${data.lon},z12`;
                         radarLink.classList.add('active');
@@ -260,9 +250,20 @@ def index():
                         updateWithEffect('callsign', 'SEARCHING');
                         updateWithEffect('dist_body', '---');
                         updateWithEffect('alt', '---');
+                        document.querySelectorAll('.scale-step').forEach(s => s.classList.remove('active'));
                     }
                 });
             }
+
+            window.onload = function() {
+                updateWithEffect('callsign', 'READY');
+                navigator.geolocation.getCurrentPosition(pos => {
+                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
+                    document.getElementById('search-section').classList.add('hidden');
+                    window.searchLoop = setInterval(executarBusca, 12000);
+                    executarBusca();
+                });
+            };
         </script>
     </body>
     </html>
@@ -284,8 +285,7 @@ def get_data():
                 "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
                 "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
                 "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
-                "lat": ac['lat'], "lon": ac['lon'],
-                "origin": ac.get('origin', 'N/A'), "dest": ac.get('destination', 'N/A')
+                "lat": ac['lat'], "lon": ac['lon']
             })
     except: pass
     return jsonify({"found": False})
