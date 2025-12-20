@@ -28,165 +28,164 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>Radar Boarding Pass Pro</title>
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+        <title>Radar Boarding Pass</title>
         <style>
-            :root { --air-blue: #1A237E; --warning-gold: #FFD700; --bg-dark: #0a192f; }
-            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+            :root { --air-blue: #2B7DA3; --text-gray: #555; --bg-main: #e0e5ec; }
+            * { box-sizing: border-box; font-family: 'Helvetica Neue', Arial, sans-serif; }
             
             body { 
-                background: var(--bg-dark); 
-                margin:0; padding:0;
-                display:flex; align-items:center; justify-content:center; 
-                min-height:100vh; font-family:'Courier New', monospace; 
-                overflow: hidden;
+                background: var(--bg-main); margin: 0; padding: 20px;
+                display: flex; align-items: center; justify-content: center; min-height: 100vh;
             }
 
-            .card { 
-                background: var(--air-blue); 
-                width:95%; max-width:620px; 
-                border-radius:20px; 
-                box-shadow:0 20px 50px rgba(0,0,0,0.8); 
-                overflow:hidden; 
+            /* Container do Cartão */
+            .boarding-pass {
+                background: white; width: 100%; max-width: 800px;
+                display: flex; border-radius: 15px; overflow: hidden;
+                box-shadow: 10px 10px 20px rgba(0,0,0,0.1);
                 position: relative;
             }
 
-            .header { padding:15px 0; text-align:center; color:white; font-weight:900; letter-spacing:3px; }
+            /* Seção Esquerda (Canhoto/Stub) */
+            .stub {
+                background: #1e5d7b; color: white; width: 25%;
+                padding: 20px; border-right: 2px dashed rgba(255,255,255,0.3);
+                display: flex; flex-direction: column; justify-content: space-between;
+            }
+            .stub .label { color: rgba(255,255,255,0.7); font-size: 0.7em; text-transform: uppercase; }
+            .stub .big-text { font-size: 3.5em; font-weight: bold; margin: 10px 0; }
             
-            .white-area { 
-                background:#fff; margin:0 10px; 
-                display:flex; padding:20px 15px; 
-                min-height:250px; border-radius:4px; 
-                position: relative; z-index: 1;
+            /* Seção Direita (Principal) */
+            .main-ticket { width: 75%; padding: 0; display: flex; flex-direction: column; }
+            
+            .ticket-header { 
+                background: var(--air-blue); color: white; padding: 15px 25px;
+                display: flex; justify-content: space-between; align-items: center;
+                font-weight: bold; letter-spacing: 2px;
             }
 
-            .col-left { flex:1.6; border-right:1px dashed #ddd; padding-right:15px; }
-            .col-right { flex:1; padding-left:15px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:space-around; }
-            
-            .label { color:#888; font-size:0.65em; font-weight:800; text-transform:uppercase; }
-            .value { font-size:1.1em; font-weight:900; color:var(--air-blue); margin-bottom:10px; }
-            
-            #compass { display:inline-block; transition:transform 0.6s ease; color:#ff8c00; font-size:1.5em; }
-            
-            .barcode-container { width:100%; display:flex; justify-content:center; cursor:pointer; text-decoration:none; }
-            #barcode { width:100%; max-width:150px; height:50px; display:block; }
-            
-            /* Ajuste crítico para o texto no iOS */
-            .footer { 
-                background:#000; 
-                padding:15px 5px; 
-                min-height:70px; 
-                display:flex; 
-                align-items:center; 
-                justify-content:center; 
-                border-top:4px solid var(--warning-gold);
-                position: relative;
-                z-index: 2;
+            .ticket-body { padding: 25px; flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+            .info-box { margin-bottom: 15px; }
+            .label { color: #999; font-size: 0.75em; font-weight: bold; text-transform: uppercase; display: block; }
+            .value { color: #222; font-size: 1.2em; font-weight: bold; }
+            .highlight { color: #f39c12; font-size: 1.5em; }
+
+            /* Código de Barras e Mapa */
+            .barcode-area { 
+                border-top: 1px solid #eee; padding: 15px 25px; 
+                display: flex; justify-content: space-between; align-items: center;
+                background: #fafafa;
+            }
+            .barcode-img { 
+                height: 50px; width: 200px;
+                background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 4px);
             }
 
-            .status-msg { 
-                color: var(--warning-gold) !important; 
-                font-weight: 900; 
-                font-size: 0.9em; 
-                text-transform: uppercase; 
-                text-align: center; 
-                width: 100%;
-                letter-spacing: 1px;
-                /* Garante visibilidade no Safari */
-                display: block !important;
-                opacity: 1 !important;
-                text-shadow: 0 0 2px rgba(0,0,0,1);
+            /* Status no Rodapé */
+            .footer-status {
+                background: #000; color: #FFD700; padding: 10px;
+                text-align: center; font-family: monospace; font-size: 0.8em;
+                text-transform: uppercase;
+            }
+
+            #compass { display: inline-block; transition: transform 0.6s ease; font-size: 1.5em; color: var(--air-blue); }
+
+            @media (max-width: 600px) {
+                .boarding-pass { flex-direction: column; }
+                .stub { width: 100%; border-right: none; border-bottom: 2px dashed #ccc; }
+                .main-ticket { width: 100%; }
+                .ticket-body { grid-template-columns: 1fr; }
             }
         </style>
     </head>
     <body>
-        <div class="card">
-            <div class="header">✈ ATC BOARDING PASS ✈</div>
-            <div class="white-area">
-                <div class="col-left">
-                    <div class="label">IDENT / CALLSIGN</div><div id="callsign" class="value">SEARCHING</div>
-                    <div class="label">FLIGHT PATH</div><div id="route" class="value">-- / --</div>
-                    <div class="label">TYPE / SPEED</div><div id="type_speed" class="value">-- / -- KTS</div>
-                    <div class="label">DISTANCE</div><div id="dist_body" class="value">-- KM</div>
+
+        <div class="boarding-pass">
+            <div class="stub">
+                <div>
+                    <div class="label">Radar Base</div>
+                    <div class="label">Seat:</div>
+                    <div class="big-text">19 A</div>
                 </div>
-                <div class="col-right">
-                    <div class="label">ALTITUDE</div><div id="alt" class="value">00000 FT</div>
-                    <div class="label">BEARING</div><div class="value"><span id="compass">↑</span></div>
-                    <a id="map-link" target="_blank" class="barcode-container">
-                        <svg id="barcode"></svg>
-                    </a>
+                <div>
+                    <div id="signal-bars" style="letter-spacing:3px;">▯▯▯▯▯</div>
+                    <div class="label" style="margin-top:10px;">ATC Secure</div>
                 </div>
             </div>
-            <div class="footer">
-                <div id="status" class="status-msg">INITIALIZING RADAR...</div>
+
+            <div class="main-ticket">
+                <div class="ticket-header">
+                    <span>✈</span>
+                    <span>BOARDING BOARD</span>
+                    <span>✈</span>
+                </div>
+
+                <div class="ticket-body">
+                    <div class="info-box">
+                        <span class="label">Ident / Callsign</span>
+                        <span id="callsign" class="value highlight">SEARCHING</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Type</span>
+                        <span id="type_ac" class="value">----</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Aircraft Distance</span>
+                        <span id="dist_body" class="value">--- KM</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Bearing</span>
+                        <span id="compass" class="value">↑</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Altitude (MSL)</span>
+                        <span id="alt" class="value">--- FT</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="label">Speed</span>
+                        <span id="speed" class="value">--- KTS</span>
+                    </div>
+                </div>
+
+                <a id="map-link" target="_blank" class="barcode-area" style="text-decoration:none;">
+                    <div class="barcode-img"></div>
+                    <div class="label" style="color:var(--air-blue)">TAP TO VIEW MAP</div>
+                </a>
+
+                <div class="footer-status" id="status">SCANNING AIRSPACE...</div>
             </div>
         </div>
 
         <script>
-            let latAlvo, lonAlvo;
-            let currentMapUrl = null;
-            let msgIndex = 0;
-            const msgs = ["SCANNING AIRSPACE...", "ATC LINK ACTIVE", "VISIBILITY: GOOD", "WIND: CALM"];
+            let latAlvo = null, lonAlvo = null;
 
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
-                    latAlvo = pos.coords.latitude; 
-                    lonAlvo = pos.coords.longitude;
-                    setInterval(executarBusca, 8000); 
+                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
+                    setInterval(executarBusca, 8000);
                     executarBusca();
-                }, () => { 
-                    updateStatus("ERROR: ENABLE GPS"); 
                 });
-
-                // Ciclo de mensagens rotativas se nenhum alvo estiver ativo
-                setInterval(() => {
-                    const status = document.getElementById('status').textContent;
-                    if (!status.includes("TARGET")) {
-                        updateStatus(msgs[msgIndex]);
-                        msgIndex = (msgIndex + 1) % msgs.length;
-                    }
-                }, 4000);
             };
-
-            function updateStatus(txt) {
-                const el = document.getElementById('status');
-                el.textContent = txt;
-                // Força o Safari a redesenhar o elemento
-                el.style.display = 'none';
-                el.offsetHeight; 
-                el.style.display = 'block';
-            }
 
             function executarBusca() {
                 if(!latAlvo) return;
-                fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=` + Date.now())
-                .then(res => res.json())
-                .then(data => {
+                fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
+                .then(res => res.json()).then(data => {
                     if(data.found) {
-                        document.getElementById('callsign').textContent = data.callsign;
-                        document.getElementById('route').textContent = data.origin + " / " + data.dest;
-                        document.getElementById('type_speed').textContent = data.type + " / " + data.speed + " KTS";
-                        document.getElementById('alt').textContent = data.alt_ft.toLocaleString() + " FT";
-                        document.getElementById('dist_body').textContent = data.dist + " KM";
+                        document.getElementById('callsign').innerText = data.callsign;
+                        document.getElementById('type_ac').innerText = data.type;
+                        document.getElementById('alt').innerText = data.alt_ft.toLocaleString() + " FT";
+                        document.getElementById('dist_body').innerText = data.dist + " KM";
+                        document.getElementById('speed').innerText = data.speed + " KTS";
+                        
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
-                        
-                        currentMapUrl = data.map_url;
-                        document.getElementById('map-link').href = currentMapUrl;
-                        
-                        updateStatus("TARGET ACQUIRED: " + data.callsign);
+                        document.getElementById('map-link').href = data.map_url;
+                        document.getElementById('status').innerText = "TARGET ACQUIRED: " + data.callsign;
 
-                        document.getElementById('barcode').innerHTML = "";
-                        JsBarcode("#barcode", data.callsign, {
-                            format: "CODE128", width: 1.5, height: 40, displayValue: false, lineColor: "#1A237E"
-                        });
-                    } else {
-                        document.getElementById('callsign').textContent = "SEARCHING";
-                        document.getElementById('barcode').innerHTML = "";
-                        document.getElementById('map-link').removeAttribute('href');
+                        let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
+                        document.getElementById('signal-bars').innerText = "▮".repeat(bars) + "▯".repeat(5-bars);
                     }
-                })
-                .catch(err => {
-                    updateStatus("DATA LINK ERROR");
                 });
             }
         </script>
@@ -205,25 +204,20 @@ def get_data():
             validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
             if validos:
                 ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                map_url = (f"https://globe.adsbexchange.com/?"
-                           f"lat={ac['lat']}&lon={ac['lon']}&zoom=11"
-                           f"&hex={ac.get('hex', '')}&sel={ac.get('hex', '')}")
+                dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
                 
                 return jsonify({
                     "found": True, 
                     "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
-                    "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                    "dist": round(dist_km, 1), 
                     "alt_ft": int(ac.get('alt_baro', 0)), 
                     "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                    "origin": ac.get('t_from', 'N/A')[:3], 
-                    "dest": ac.get('t_to', 'N/A')[:3],
+                    "map_url": f"https://globe.adsbexchange.com/?lat={ac['lat']}&lon={ac['lon']}&zoom=11",
                     "type": ac.get('t', 'UNKN'), 
-                    "speed": ac.get('gs', 0),
-                    "map_url": map_url
+                    "speed": ac.get('gs', 0)
                 })
     except: pass
     return jsonify({"found": False})
 
 if __name__ == '__main__':
-    # host='0.0.0.0' é necessário para que o iPhone acesse pelo IP do PC
     app.run(debug=True, host='0.0.0.0', port=5000)
