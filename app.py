@@ -5,22 +5,25 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-# --- CONFIGURAÇÕES ---
+# --- CONFIGURAÇÕES DO SERVIDOR (COMPLETAS) ---
 RAIO_KM = 80.0
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 ]
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
     dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
     a = sin(dlat / 2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2)**2
-    return 2 * R * atan2(sqrt(a), sqrt(1 - a))
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return R * c
 
 def calculate_bearing(lat1, lon1, lat2, lon2):
     y = sin(radians(lon2 - lon1)) * cos(radians(lat2))
     x = cos(radians(lat1)) * sin(radians(lat2)) - sin(radians(lat1)) * cos(radians(lat2)) * cos(radians(lon2 - lon1))
-    return (degrees(atan2(y, x)) + 360) % 360
+    bearing = degrees(atan2(y, x))
+    return (bearing + 360) % 360
 
 @app.route('/')
 def index():
@@ -30,30 +33,37 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>ATC Premium Pass</title>
+        <title>ATC Premium Pass - Live Radar</title>
         <style>
-            :root { --air-blue: #226488; --warning-gold: #FFD700; --bg-dark: #f0f4f7; }
-            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+            :root { 
+                --air-blue: #226488; 
+                --warning-gold: #FFD700; 
+                --bg-dark: #f0f4f7; 
+            }
+
+            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
 
             body { 
-                background-color: var(--bg-dark); margin: 0; padding: 0; 
+                background-color: var(--bg-dark); 
                 display: flex; flex-direction: column; align-items: center; justify-content: center; 
                 min-height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden;
             }
 
+            /* --- BARRA DE BUSCA --- */
             #search-section {
                 background: #fff; padding: 15px 25px; border-radius: 12px;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.08);
                 display: flex; gap: 10px; align-items: center; border: 1px solid #ddd;
                 width: 95%; max-width: 850px; z-index: 100;
-                max-height: 200px; opacity: 1; margin-bottom: 20px; overflow: hidden;
-                transition: all 0.8s ease;
+                max-height: 200px; opacity: 1; margin-bottom: 20px;
+                transition: max-height 0.8s ease, opacity 0.8s ease, margin 0.8s ease;
             }
 
             #search-section.hidden { max-height: 0; opacity: 0; margin-bottom: 0; padding: 0; border: 0; pointer-events: none; }
             #search-section input { border: 1px solid #ccc; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
             #search-section button { background: var(--air-blue); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
+            /* --- CARTÃO TICKET --- */
             .card { 
                 background: white; width: 95%; max-width: 850px;
                 border-radius: 20px; position: relative; 
@@ -69,6 +79,7 @@ def index():
 
             .seat-num { font-size: 4em; font-weight: 900; margin-top: 10px; line-height: 1; }
             
+            /* ESCALA DE QUADRADOS BRANCOS */
             .proximity-scale {
                 display: flex; gap: 4px; margin-top: 15px;
                 width: 100%; justify-content: flex-start;
@@ -94,18 +105,24 @@ def index():
             .label { color: #888; font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
             .value { font-size: 1.5em; font-weight: 900; color: var(--air-blue); min-height: 1.2em; display: flex; }
 
+            /* --- FAIXA PRETA (FOOTER) --- */
             .terminal-footer { 
                 background: #000; padding: 12px 40px; border-top: 3px solid var(--warning-gold);
-                min-height: 55px; display: flex; align-items: center;
+                min-height: 55px; display: flex; align-items: center; overflow: hidden;
             }
 
+            /* --- EFEITO DE ANIMAÇÃO DAS LETRAS --- */
             .letter-slot { 
                 display: inline-block; color: var(--warning-gold); 
                 font-family: 'Courier New', monospace; font-weight: 900; 
                 min-width: 0.65em; text-align: center;
             }
             .flapping { animation: flap 0.08s infinite; }
-            @keyframes flap { 50% { transform: scaleY(0.1); opacity: 0.3; } }
+            @keyframes flap { 
+                0% { transform: scaleY(1); }
+                50% { transform: scaleY(0.1); opacity: 0.3; } 
+                100% { transform: scaleY(1); }
+            }
 
             #compass { font-size: 2.5em; transition: transform 0.8s ease; display: inline-block; color: #ff8c00; }
             #radar-link { display: block; text-decoration: none; pointer-events: none; transition: 0.4s; opacity: 0.1; }
@@ -160,37 +177,41 @@ def index():
 
         <script>
             let latAlvo = null, lonAlvo = null, currentTarget = null, step = 0;
-            let weather = { temp: '--', sky: 'SCANNING' };
+            let weather = { temp: '--', sky: 'SCANNING', vis: '--' };
             const chars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.:->°%";
 
-            function updateProximityScale(dist) {
-                const steps = document.querySelectorAll('.scale-step');
-                const activeCount = Math.max(1, Math.min(8, Math.ceil(8 - (dist / 10))));
-                steps.forEach((s, i) => {
-                    if (i < activeCount) s.classList.add('active');
-                    else s.classList.remove('active');
-                });
-            }
-
+            // FUNÇÃO DE ANIMAÇÃO "FLAP" (RESTAURADA TOTALMENTE)
             function updateWithEffect(id, newValue) {
                 const container = document.getElementById(id);
                 if (!container) return;
                 const newText = String(newValue || "").toUpperCase();
+                
+                // Sincroniza o número de slots
                 while (container.childNodes.length < newText.length) {
-                    const s = document.createElement("span"); s.className = "letter-slot"; s.innerHTML = "&nbsp;"; container.appendChild(s);
+                    const s = document.createElement("span"); 
+                    s.className = "letter-slot"; 
+                    s.innerHTML = "&nbsp;"; 
+                    container.appendChild(s);
                 }
-                while (container.childNodes.length > newText.length) { container.removeChild(container.lastChild); }
+                while (container.childNodes.length > newText.length) { 
+                    container.removeChild(container.lastChild); 
+                }
+                
                 const slots = container.querySelectorAll('.letter-slot');
+                
                 newText.split('').forEach((targetChar, i) => {
                     const slot = slots[i];
                     if (slot.innerText === targetChar && targetChar !== " ") return;
+
                     const randomDelay = Math.floor(Math.random() * 200); 
-                    const randomDuration = 10 + Math.floor(Math.random() * 15);
+                    const randomDuration = 12 + Math.floor(Math.random() * 10);
+
                     setTimeout(() => {
                         let cycles = 0;
                         const interval = setInterval(() => {
                             slot.innerText = chars[Math.floor(Math.random() * chars.length)];
                             slot.classList.add('flapping');
+                            
                             if (++cycles >= randomDuration) {
                                 clearInterval(interval);
                                 slot.innerText = targetChar === " " ? "\u00A0" : targetChar;
@@ -198,6 +219,15 @@ def index():
                             }
                         }, 50);
                     }, randomDelay);
+                });
+            }
+
+            function updateProximityScale(dist) {
+                const steps = document.querySelectorAll('.scale-step');
+                const activeCount = Math.max(1, Math.min(8, Math.ceil(8 - (dist / 10))));
+                steps.forEach((s, i) => {
+                    if (i < activeCount) s.classList.add('active');
+                    else s.classList.remove('active');
                 });
             }
 
@@ -214,16 +244,18 @@ def index():
                         if(!window.searchLoop) window.searchLoop = setInterval(executarBusca, 12000);
                         executarBusca();
                     }
-                } catch(e) { }
+                } catch(e) { console.error("Geocode error", e); }
             }
 
             async function getWeather() {
                 if(!latAlvo) return;
                 try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latAlvo}&longitude=${lonAlvo}&current_weather=true`);
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latAlvo}&longitude=${lonAlvo}&current_weather=true&hourly=visibility`);
                     const data = await res.json();
                     weather.temp = Math.round(data.current_weather.temperature) + "°C";
-                    weather.sky = data.current_weather.weathercode < 3 ? "CLEAR SKY" : "CLOUDY";
+                    const code = data.current_weather.weathercode;
+                    weather.sky = code < 3 ? "CLEAR SKY" : code < 50 ? "CLOUDY" : "RAIN EXPECTED";
+                    weather.vis = (data.hourly.visibility[0] / 1000).toFixed(1) + "KM";
                 } catch(e) {}
             }
 
@@ -256,14 +288,28 @@ def index():
             window.onload = function() {
                 updateWithEffect('callsign', 'READY');
                 
+                // LOOP DE STATUS DA FAIXA PRETA (TOTALMENTE RESTAURADO)
                 setInterval(() => {
+                    let msg = "";
                     if(!currentTarget) {
-                        const msgs = [`> CONNECTING SERVER...`,`> LOCAL TEMP: ${weather.temp}`,`> SKY: ${weather.sky}`,`> SCANNING AIRSPACE...` ];
-                        updateWithEffect('status-container', msgs[step % msgs.length]);
+                        const msgs = [
+                            `> CONNECTING TO ATC SERVER...`,
+                            `> LOCAL TEMP: ${weather.temp}`,
+                            `> SKY CONDITIONS: ${weather.sky}`,
+                            `> VISIBILITY: ${weather.vis}`,
+                            `> SCANNING AIRSPACE...`
+                        ];
+                        msg = msgs[step % msgs.length];
                     } else {
-                        const info = [`> TARGET LOCKED: ${currentTarget.callsign}`,`> SPEED: ${currentTarget.speed} KT`,`> ROUTE: ${currentTarget.origin} -> ${currentTarget.dest}`,`> POSITION: STABLE` ];
-                        updateWithEffect('status-container', info[step % info.length]);
+                        const info = [
+                            `> TARGET LOCKED: ${currentTarget.callsign}`,
+                            `> GROUND SPEED: ${currentTarget.speed} KT`,
+                            `> ROUTE: ${currentTarget.origin} -> ${currentTarget.dest}`,
+                            `> POSITION TRACKING: STABLE`
+                        ];
+                        msg = info[step % info.length];
                     }
+                    updateWithEffect('status-container', msg);
                     step++;
                 }, 5000);
 
@@ -273,6 +319,8 @@ def index():
                     getWeather();
                     window.searchLoop = setInterval(executarBusca, 12000);
                     executarBusca();
+                }, (err) => {
+                    console.log("GPS Denied, waiting for manual input.");
                 });
             };
         </script>
@@ -288,22 +336,32 @@ def get_data():
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, headers={'User-Agent': random.choice(USER_AGENTS)}, timeout=10).json()
         if r.get('ac'):
-            ac = sorted([a for a in r['ac'] if 'lat' in a], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+            # Pega o avião mais próximo que tenha coordenadas
+            ac_list = [a for a in r['ac'] if 'lat' in a]
+            if not ac_list: return jsonify({"found": False})
+            
+            ac = sorted(ac_list, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+            
             return jsonify({
                 "found": True, 
                 "callsign": ac.get('flight', ac.get('call', 'N/A')).strip(), 
                 "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
                 "alt_ft": int(ac.get('alt_baro', 0) if isinstance(ac.get('alt_baro'), (int, float)) else 0), 
                 "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                "type": ac.get('t', 'UNKN'), "speed": ac.get('gs', 0),
-                "lat": ac['lat'], "lon": ac['lon'],
-                "origin": ac.get('origin', 'N/A'), "dest": ac.get('destination', 'N/A')
+                "type": ac.get('t', 'UNKN'), 
+                "speed": ac.get('gs', 0),
+                "lat": ac['lat'], 
+                "lon": ac['lon'],
+                "origin": ac.get('origin', 'N/A'), 
+                "dest": ac.get('destination', 'N/A')
             })
-    except: pass
+    except Exception as e:
+        print(f"Server Error: {e}")
     return jsonify({"found": False})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
 
 
