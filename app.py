@@ -3,8 +3,7 @@ import requests
 from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
-
-RAIO_KM = 25.0 
+RAIO_KM = 25.0
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -27,164 +26,121 @@ def index():
     <html lang="pt">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>Radar Boarding Pass</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Boarding Pass Radar</title>
         <style>
-            :root { --air-blue: #2B7DA3; --text-gray: #555; --bg-main: #e0e5ec; }
-            * { box-sizing: border-box; font-family: 'Helvetica Neue', Arial, sans-serif; }
+            body { background: #d0e4f2; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; font-family: Arial, sans-serif; }
             
-            body { 
-                background: var(--bg-main); margin: 0; padding: 20px;
-                display: flex; align-items: center; justify-content: center; min-height: 100vh;
+            .ticket {
+                background: white; width: 750px; height: 300px;
+                border-radius: 20px; display: flex; overflow: hidden;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             }
 
-            /* Container do Cartão */
-            .boarding-pass {
-                background: white; width: 100%; max-width: 800px;
-                display: flex; border-radius: 15px; overflow: hidden;
-                box-shadow: 10px 10px 20px rgba(0,0,0,0.1);
-                position: relative;
-            }
+            /* Lateral Esquerda */
+            .left-side { width: 220px; background: #4ba8cc; padding: 20px; color: white; border-right: 2px dashed #ddd; display: flex; flex-direction: column; justify-content: space-between; }
+            .seat-num { font-size: 5em; font-weight: bold; margin-top: 10px; }
+            .flight-info-left { font-size: 0.9em; margin-bottom: 5px; }
 
-            /* Seção Esquerda (Canhoto/Stub) */
-            .stub {
-                background: #1e5d7b; color: white; width: 25%;
-                padding: 20px; border-right: 2px dashed rgba(255,255,255,0.3);
-                display: flex; flex-direction: column; justify-content: space-between;
-            }
-            .stub .label { color: rgba(255,255,255,0.7); font-size: 0.7em; text-transform: uppercase; }
-            .stub .big-text { font-size: 3.5em; font-weight: bold; margin: 10px 0; }
-            
-            /* Seção Direita (Principal) */
-            .main-ticket { width: 75%; padding: 0; display: flex; flex-direction: column; }
-            
-            .ticket-header { 
-                background: var(--air-blue); color: white; padding: 15px 25px;
-                display: flex; justify-content: space-between; align-items: center;
-                font-weight: bold; letter-spacing: 2px;
-            }
+            /* Lado Direito Principal */
+            .right-side { flex: 1; display: flex; flex-direction: column; }
+            .top-bar { background: #4ba8cc; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; color: white; font-weight: bold; letter-spacing: 2px; }
+            .top-bar img { height: 25px; filter: brightness(0) invert(1); }
 
-            .ticket-body { padding: 25px; flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .main-content { padding: 25px 35px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; flex: 1; position: relative; }
+            .label { color: #4ba8cc; font-size: 0.75em; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+            .value { color: #333; font-size: 1.3em; font-weight: bold; margin-bottom: 15px; }
 
-            .info-box { margin-bottom: 15px; }
-            .label { color: #999; font-size: 0.75em; font-weight: bold; text-transform: uppercase; display: block; }
-            .value { color: #222; font-size: 1.2em; font-weight: bold; }
-            .highlight { color: #f39c12; font-size: 1.5em; }
+            .barcode-section { display: flex; justify-content: flex-end; align-items: flex-end; padding-right: 35px; padding-bottom: 20px; }
+            .barcode-line { height: 60px; width: 180px; background: repeating-linear-gradient(90deg, #333, #333 1px, transparent 1px, transparent 4px, #333 4px, #333 5px); }
 
-            /* Código de Barras e Mapa */
-            .barcode-area { 
-                border-top: 1px solid #eee; padding: 15px 25px; 
-                display: flex; justify-content: space-between; align-items: center;
-                background: #fafafa;
-            }
-            .barcode-img { 
-                height: 50px; width: 200px;
-                background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 4px);
-            }
-
-            /* Status no Rodapé */
-            .footer-status {
-                background: #000; color: #FFD700; padding: 10px;
-                text-align: center; font-family: monospace; font-size: 0.8em;
-                text-transform: uppercase;
-            }
-
-            #compass { display: inline-block; transition: transform 0.6s ease; font-size: 1.5em; color: var(--air-blue); }
+            #status-bar { background: #000; color: #FFD700; text-align: center; font-size: 0.7em; padding: 4px; font-family: monospace; }
+            #compass { display: inline-block; transition: transform 0.6s ease; font-size: 1.5em; color: #f39c12; }
 
             @media (max-width: 600px) {
-                .boarding-pass { flex-direction: column; }
-                .stub { width: 100%; border-right: none; border-bottom: 2px dashed #ccc; }
-                .main-ticket { width: 100%; }
-                .ticket-body { grid-template-columns: 1fr; }
+                .ticket { width: 95%; height: auto; flex-direction: column; border-radius: 10px; }
+                .left-side { width: auto; height: 150px; border-right: none; border-bottom: 2px dashed #ddd; }
             }
         </style>
     </head>
     <body>
-
-        <div class="boarding-pass">
-            <div class="stub">
+        <div class="ticket">
+            <div class="left-side">
                 <div>
-                    <div class="label">Radar Base</div>
-                    <div class="label">Seat:</div>
-                    <div class="big-text">19 A</div>
+                    <div style="font-size: 0.7em; opacity: 0.8;">RADAR BASE</div>
+                    <div class="seat-num">19 A</div>
                 </div>
-                <div>
-                    <div id="signal-bars" style="letter-spacing:3px;">▯▯▯▯▯</div>
-                    <div class="label" style="margin-top:10px;">ATC Secure</div>
+                <div class="flight-info-left">
+                    <div>SCANNING: 25KM</div>
+                    <div id="signal">▯▯▯▯▯</div>
                 </div>
             </div>
 
-            <div class="main-ticket">
-                <div class="ticket-header">
-                    <span>✈</span>
-                    <span>BOARDING BOARD</span>
+            <div class="right-side">
+                <div class="top-bar">
+                    <span>✈ AIR RADAR</span>
+                    <span style="font-size: 1.2em;">BOARDING PASS</span>
                     <span>✈</span>
                 </div>
 
-                <div class="ticket-body">
-                    <div class="info-box">
-                        <span class="label">Ident / Callsign</span>
-                        <span id="callsign" class="value highlight">SEARCHING</span>
+                <div class="main-content">
+                    <div>
+                        <div class="label">IDENT / CALLSIGN</div>
+                        <div id="callsign" class="value" style="font-size: 1.8em; color: #4ba8cc;">SEARCHING</div>
+                        
+                        <div class="label">AIRCRAFT DISTANCE</div>
+                        <div id="dist" class="value">--- KM</div>
+
+                        <div class="label">ALTITUDE (MSL)</div>
+                        <div id="alt" class="value">--- FT</div>
                     </div>
-                    <div class="info-box">
-                        <span class="label">Type</span>
-                        <span id="type_ac" class="value">----</span>
-                    </div>
-                    <div class="info-box">
-                        <span class="label">Aircraft Distance</span>
-                        <span id="dist_body" class="value">--- KM</span>
-                    </div>
-                    <div class="info-box">
-                        <span class="label">Bearing</span>
-                        <span id="compass" class="value">↑</span>
-                    </div>
-                    <div class="info-box">
-                        <span class="label">Altitude (MSL)</span>
-                        <span id="alt" class="value">--- FT</span>
-                    </div>
-                    <div class="info-box">
-                        <span class="label">Speed</span>
-                        <span id="speed" class="value">--- KTS</span>
+                    <div>
+                        <div class="label">TYPE</div>
+                        <div id="type" class="value">----</div>
+
+                        <div class="label">BEARING</div>
+                        <div class="value"><span id="compass">↑</span></div>
+                        
+                        <div class="label">SPEED</div>
+                        <div id="speed" class="value">--- KTS</div>
                     </div>
                 </div>
 
-                <a id="map-link" target="_blank" class="barcode-area" style="text-decoration:none;">
-                    <div class="barcode-img"></div>
-                    <div class="label" style="color:var(--air-blue)">TAP TO VIEW MAP</div>
-                </a>
-
-                <div class="footer-status" id="status">SCANNING AIRSPACE...</div>
+                <div class="barcode-section">
+                    <a id="map-link" target="_blank" style="text-decoration: none;">
+                        <div class="barcode-line"></div>
+                        <div style="font-size: 0.6em; color: #999; text-align: center; margin-top: 5px;">VIEW LIVE MAP</div>
+                    </a>
+                </div>
+                <div id="status-bar">SYSTEM INITIALIZING...</div>
             </div>
         </div>
 
         <script>
-            let latAlvo = null, lonAlvo = null;
-
+            let latU, lonU;
             window.onload = function() {
                 navigator.geolocation.getCurrentPosition(pos => {
-                    latAlvo = pos.coords.latitude; lonAlvo = pos.coords.longitude;
-                    setInterval(executarBusca, 8000);
-                    executarBusca();
+                    latU = pos.coords.latitude; lonU = pos.coords.longitude;
+                    setInterval(update, 8000); update();
                 });
             };
 
-            function executarBusca() {
-                if(!latAlvo) return;
-                fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=${Date.now()}`)
-                .then(res => res.json()).then(data => {
+            function update() {
+                if(!latU) return;
+                fetch(`/api/data?lat=${latU}&lon=${lonU}&t=${Date.now()}`)
+                .then(r => r.json()).then(data => {
                     if(data.found) {
                         document.getElementById('callsign').innerText = data.callsign;
-                        document.getElementById('type_ac').innerText = data.type;
+                        document.getElementById('dist').innerText = data.dist + " KM";
                         document.getElementById('alt').innerText = data.alt_ft.toLocaleString() + " FT";
-                        document.getElementById('dist_body').innerText = data.dist + " KM";
+                        document.getElementById('type').innerText = data.type;
                         document.getElementById('speed').innerText = data.speed + " KTS";
-                        
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
                         document.getElementById('map-link').href = data.map_url;
-                        document.getElementById('status').innerText = "TARGET ACQUIRED: " + data.callsign;
-
-                        let bars = Math.max(1, Math.ceil((25 - data.dist) / 5));
-                        document.getElementById('signal-bars').innerText = "▮".repeat(bars) + "▯".repeat(5-bars);
+                        document.getElementById('status-bar').innerText = "RADAR: TARGET LOCKED " + data.callsign;
+                        
+                        let b = Math.max(1, Math.ceil((25-data.dist)/5));
+                        document.getElementById('signal').innerText = "▮".repeat(b) + "▯".repeat(5-b);
                     }
                 });
             }
@@ -201,21 +157,17 @@ def get_data():
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, timeout=5).json()
         if r.get('ac'):
-            validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
-            if validos:
-                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                dist_km = haversine(lat_u, lon_u, ac['lat'], ac['lon'])
-                
-                return jsonify({
-                    "found": True, 
-                    "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
-                    "dist": round(dist_km, 1), 
-                    "alt_ft": int(ac.get('alt_baro', 0)), 
-                    "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
-                    "map_url": f"https://globe.adsbexchange.com/?lat={ac['lat']}&lon={ac['lon']}&zoom=11",
-                    "type": ac.get('t', 'UNKN'), 
-                    "speed": ac.get('gs', 0)
-                })
+            ac = sorted([a for a in r['ac'] if a.get('lat')], key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
+            return jsonify({
+                "found": True, 
+                "callsign": ac.get('flight', ac.get('call', 'UNKN')).strip(), 
+                "dist": round(haversine(lat_u, lon_u, ac['lat'], ac['lon']), 1), 
+                "alt_ft": int(ac.get('alt_baro', 0)), 
+                "bearing": calculate_bearing(lat_u, lon_u, ac['lat'], ac['lon']),
+                "type": ac.get('t', 'UNKN'), 
+                "speed": ac.get('gs', 0),
+                "map_url": f"https://globe.adsbexchange.com/?lat={ac['lat']}&lon={ac['lon']}&zoom=11"
+            })
     except: pass
     return jsonify({"found": False})
 
