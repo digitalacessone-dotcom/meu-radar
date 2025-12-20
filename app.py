@@ -45,6 +45,10 @@ def index():
             #barcode { width:100%; max-width:150px; height:50px; }
             .footer { background:#000; padding:15px; min-height:80px; display:flex; align-items:center; justify-content:center; border-top:4px solid var(--warning-gold); }
             .status-msg { color:#FFD700; font-weight:900; font-size:1.1em; text-transform:uppercase; text-align:center; text-shadow:1px 1px 2px rgba(0,0,0,0.8); }
+            /* Quadradinhos de proximidade */
+            #proximity { margin-top:8px; }
+            .square { display:inline-block; width:12px; height:12px; margin:2px; background:#444; border-radius:3px; }
+            .square.active { background:#FFD700; }
         </style>
     </head>
     <body>
@@ -56,6 +60,12 @@ def index():
                     <div class="label">FLIGHT PATH</div><div id="route" class="value">-- / --</div>
                     <div class="label">TYPE / SPEED</div><div id="type_speed" class="value">-- / -- KTS</div>
                     <div class="label">DISTANCE</div><div id="dist_body" class="value">-- KM</div>
+                    <div id="proximity" class="value">
+                        <span class="square"></span>
+                        <span class="square"></span>
+                        <span class="square"></span>
+                        <span class="square"></span>
+                    </div>
                 </div>
                 <div class="col-right">
                     <div class="label">ALTITUDE</div><div id="alt" class="value">00000 FT</div>
@@ -81,6 +91,14 @@ def index():
                     document.getElementById('status').textContent = "GPS ERROR: ENABLE LOCATION";
                 });
             };
+            function atualizarProximidade(dist) {
+                const squares = document.querySelectorAll('#proximity .square');
+                squares.forEach(sq => sq.classList.remove('active'));
+                if(dist < 20) squares[0].classList.add('active');
+                if(dist < 15) squares[1].classList.add('active');
+                if(dist < 10) squares[2].classList.add('active');
+                if(dist < 5)  squares[3].classList.add('active');
+            }
             function executarBusca() {
                 if(!latAlvo) return;
                 fetch(`/api/data?lat=${latAlvo}&lon=${lonAlvo}&t=`+Date.now())
@@ -96,11 +114,13 @@ def index():
                         document.getElementById('map-link').href = data.map_url;
                         statusElem.textContent = "TARGET ACQUIRED: " + data.callsign;
                         JsBarcode("#barcode", data.callsign, {format:"CODE128", width:1.5, height:40, displayValue:false, lineColor:"#1A237E"});
+                        atualizarProximidade(data.dist);
                     } else {
                         statusElem.textContent = "SCANNING AIRSPACE...";
                         document.getElementById('callsign').textContent = "SEARCHING";
                         document.getElementById('barcode').innerHTML = "";
                         document.getElementById('map-link').removeAttribute('href');
+                        atualizarProximidade(999); // limpa quadradinhos
                     }
                 }).catch(() => {
                     document.getElementById('status').textContent = "DATA LINK ERROR";
@@ -119,9 +139,3 @@ def get_data():
         url = f"https://api.adsb.lol/v2/lat/{lat_u}/lon/{lon_u}/dist/{RAIO_KM}"
         r = requests.get(url, timeout=5).json()
         if r.get('ac'):
-            validos = [a for a in r['ac'] if a.get('lat')]
-            if validos:
-                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                map_url = (f"https://globe.adsbexchange.com/?lat={ac['lat']}&lon={ac['lon']}&zoom=11"
-                           f"&hex={ac.get('hex','')}&sel={ac.get('hex','')}&SiteLat={lat_u}&SiteLon={lon_u}")
-                return
