@@ -4,7 +4,7 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 
 app = Flask(__name__)
 
-RAIO_KM = 25.0  # raio de alcance do radar
+RAIO_KM = 125.0  # raio de alcance do radar
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
@@ -81,7 +81,7 @@ def index():
                 });
             };
 
-            // Listener para garantir clique no código de barras
+            // Listener para clique no código de barras
             document.getElementById('map-link').addEventListener('click', (e) => {
                 if (!currentMapUrl) { e.preventDefault(); return; }
                 const opened = window.open(currentMapUrl, '_blank');
@@ -101,6 +101,7 @@ def index():
                         document.getElementById('alt').textContent = data.alt_ft.toLocaleString() + " FT";
                         document.getElementById('dist_body').textContent = data.dist + " KM";
                         document.getElementById('compass').style.transform = `rotate(${data.bearing}deg)`;
+
                         currentMapUrl = data.map_url;
                         document.getElementById('map-link').href = currentMapUrl;
                         statusElem.textContent = "TARGET ACQUIRED: " + data.callsign;
@@ -137,5 +138,4 @@ def get_data():
         if r.get('ac'):
             validos = [a for a in r['ac'] if a.get('lat') and a.get('lon')]
             if validos:
-                ac = sorted(validos, key=lambda x: haversine(lat_u, lon_u, x['lat'], x['lon']))[0]
-                map_url = (f"https://globe.ads
+                ac = sorted(validos, key=lambda x: haversine
