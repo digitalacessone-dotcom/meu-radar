@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Settings V99 - Full English & Environment/Telemetry Cycle
+# Settings V101 - Corrected Proximity Logic & Independent Flaps
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -21,16 +21,12 @@ def get_weather_info(lat, lon):
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         code = curr['weather_code']
-        
         mapping = {0: "CLEAR SKY", 1: "FEW CLOUDS", 2: "SCATTERED", 3: "OVERCAST", 45: "FOGGY", 51: "DRIZZLE", 61: "RAIN", 80: "SHOWERS"}
         sky = mapping.get(code, "STABLE")
-        
-        # Visibility estimation based on weather code
         vis = "10KM+"
         if code in [45, 48]: vis = "1.5KM"
         elif code in [51, 53, 55, 61]: vis = "5KM"
         elif code in [63, 65, 80]: vis = "3KM"
-        
         return {"temp": f"{int(curr['temperature_2m'])}C", "sky": sky, "vis": vis}
     except:
         return {"temp": "--C", "sky": "METAR ON", "vis": "---"}
@@ -77,10 +73,8 @@ def radar():
                         if call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
-                        
                         spd_kts = int(s.get('gs', 0))
                         alt = int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0)
-                        
                         proc.append({
                             "icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), 
                             "call": call, "airline": airline, "color": color, 
@@ -150,10 +144,10 @@ def index():
             <div class="main">
                 <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-                    <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
-                    <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
+                    <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap" data-limit="8"></div></div>
+                    <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666" data-limit="8"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap" data-limit="8"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap" data-limit="8"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                     <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
@@ -164,14 +158,14 @@ def index():
         <div class="face back">
             <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column;">
                 <div style="display:flex; justify-content:space-between;">
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
-                    <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap" data-limit="8"></div></div>
+                    <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap" data-limit="8"></div></div>
                 </div>
                 <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V99</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V101</div>
                 </div>
             </div>
         </div>
@@ -179,20 +173,16 @@ def index():
     <div class="ticker" id="tk">AWAITING LOCALIZATION...</div>
     <script>
         let pos = null, act = null, isTest = false, weather = null;
-        let toggleState = true; 
-        let tickerMsg = [], tickerIdx = 0;
-        let audioCtx = null;
-        let fDate = "-- --- ----", fTime = "--.--", lastDist = null;
+        let tickerMsg = [], tickerIdx = 0, lastDist = null;
+        let audioCtx = null, fDate = "-- --- ----", fTime = "--.--";
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
-        const MAX_RANGE = 190;
 
         function playPing() {
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
                 osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.5);
@@ -202,33 +192,26 @@ def index():
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             if(!container) return;
-            const limit = isTicker ? 30 : 8;
+            const limit = parseInt(container.getAttribute('data-limit') || (isTicker ? 30 : 8));
             const target = text.toUpperCase().padEnd(limit, ' ');
-            container.innerHTML = '';
-            [...target].forEach((char) => {
-                const span = document.createElement('span');
-                if(!isTicker) span.className = 'char';
-                span.innerHTML = '&nbsp;';
-                container.appendChild(span);
-                let count = 0, max = 15; 
+            if (container.children.length === 0) {
+                for (let i = 0; i < limit; i++) {
+                    const span = document.createElement('span');
+                    if (!isTicker) span.className = 'char';
+                    span.innerHTML = '&nbsp;';
+                    container.appendChild(span);
+                }
+            }
+            [...target].forEach((char, i) => {
+                const span = container.children[i];
+                if (!span || span.innerText === char || (char === ' ' && span.innerHTML === '&nbsp;')) return;
+                let count = 0, max = Math.floor(Math.random() * 8) + 8;
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
                     if (count++ >= max) { clearInterval(interval); span.innerHTML = (char === ' ') ? '&nbsp;' : char; }
-                }, 40); 
+                }, 30 + (Math.random() * 20));
             });
         }
-
-        setInterval(() => {
-            if(act) {
-                toggleState = !toggleState;
-                document.getElementById('icao-label').innerText = toggleState ? "AIRCRAFT ICAO" : "REGISTRATION";
-                applyFlap('f-icao', toggleState ? act.icao : act.reg);
-                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "ESTIMATED CONTACT";
-                applyFlap('f-dist', toggleState ? act.dist + " KM" : "ETA " + act.eta + "M");
-                document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
-                applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
-            }
-        }, 20000);
 
         function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
         setInterval(updateTicker, 10000);
@@ -239,7 +222,6 @@ def index():
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
                 weather = d.weather;
-                
                 if(d.flight) {
                     const f = d.flight;
                     let trend = "OVERHEAD";
@@ -248,25 +230,27 @@ def index():
                         else if(f.dist > lastDist + 0.2) trend = "MOVING AWAY";
                     }
                     lastDist = f.dist;
-
                     if(!act || act.icao !== f.icao) {
                         fDate = f.date; fTime = f.time; playPing();
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('arr').style.color = f.color;
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
-                        toggleState = true;
-                        document.getElementById('icao-label').innerText = "AIRCRAFT ICAO"; applyFlap('f-icao', f.icao);
-                        document.getElementById('dist-label').innerText = "DISTANCE"; applyFlap('f-dist', f.dist + " KM");
+                        applyFlap('f-icao', f.icao); applyFlap('f-dist', f.dist + " KM");
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                     }
                     document.getElementById('f-line1').innerText = fDate; document.getElementById('f-line2').innerText = fTime;
                     document.getElementById('b-date-line1').innerText = fDate; document.getElementById('b-date-line2').innerText = fTime;
+                    
+                    // CORREÇÃO: Proximidade acendendo da ESQUERDA para a DIREITA
                     for(let i=1; i<=5; i++) {
-                        const threshold = MAX_RANGE - ((i-1) * 38);
-                        document.getElementById('d'+(6-i)).className = f.dist <= threshold ? 'sq on' : 'sq';
+                        // Quanto menor a distância, mais pontos acendem
+                        const threshold = (6 - i) * 38; 
+                        document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
+
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
+                    if(!act || act.spd !== f.spd) applyFlap('b-spd', f.spd + " KMH");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
                     tickerMsg = [
@@ -278,11 +262,11 @@ def index():
                         `SOURCE: ADS-B • GPS: 3D-FIX`
                     ];
                 } else if (act) {
-                    document.getElementById('stb').style.background = "#444"; document.getElementById('arr').style.color = "#444"; 
+                    document.getElementById('stb').style.background = "#444"; 
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     tickerMsg = [`SIGNAL LOST: ${act.call}`, `STATUS: GHOST MODE`, `TEMP: ${weather.temp} • ${weather.sky}` ];
                 } else {
-                    tickerMsg = [`SEARCHING TRAFFIC...`, `TEMP: ${weather.temp} • ${weather.sky}`, `SYSTEM READY V99` ];
+                    tickerMsg = [`SEARCHING TRAFFIC...`, `TEMP: ${weather.temp} • ${weather.sky}`, `SYSTEM READY V101` ];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                 }
             } catch(e) {}
