@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V99.0 - Estabilidade e Raridade
+# Configurações V101 - Estabilidade e Raridade
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -55,7 +55,7 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            # Mistura Blackbird com voo comum no teste
+            # Sorteio para incluir Blackbird no teste
             if random.random() > 0.5:
                 f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
             else:
@@ -73,7 +73,6 @@ def radar():
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip()
                         airline, color, is_rare = "PRIVATE", "#444", False
-                        # Identificação de Raros/Militares
                         if s.get('mil') or s.get('t') in ['H60', 'C130', 'F16', 'F35', 'B52']:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
@@ -108,11 +107,11 @@ def index():
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
+        .face.back { transform: rotateY(180deg); background: #fdfdfd; padding: 15px; }
         
         /* Stub Dinâmico */
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: background 0.5s; }
-        .stub.military { background: #000 !important; color: var(--gold) !important; }
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; }
+        .stub.rare { background: #000 !important; color: var(--gold) !important; }
         
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
@@ -126,11 +125,12 @@ def index():
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px;}
         
-        /* Ticker com espaçamento corrigido */
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; padding: 0 10px; }
+        /* Ticker Corrigido */
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 4px; white-space: pre; padding: 0 10px; }
         
-        /* Selo Elegante */
-        .seal { position: absolute; bottom: 10px; right: 10px; width: 35px; height: 35px; background: linear-gradient(135deg, #d4af37, #f1d592); border-radius: 50%; border: 1px solid #b8860b; display: none; align-items: center; justify-content: center; font-size: 6px; color: #5c4300; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transform: rotate(-10deg); }
+        /* Selo Circular Discreto */
+        .seal { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); width: 100px; height: 100px; border: 4px double #d4af37; border-radius: 50%; display: none; flex-direction: column; align-items: center; justify-content: center; color: #d4af37; font-weight: 900; opacity: 0.8; pointer-events: none; }
+        .seal span { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
@@ -144,7 +144,7 @@ def index():
         <div class="face front">
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
-                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING TRAFFIC...</div>
+                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
                 <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
                 <div class="dots-container" id="dots">
                     <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
@@ -156,7 +156,7 @@ def index():
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
                     <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
                     <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENT</span><div id="f-call" class="flap"></div></div>
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
@@ -175,20 +175,24 @@ def index():
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
                     <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900;">
+                <div id="stamp-area" style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; z-index: 2;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V99.0</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V101</div>
                 </div>
-                <div id="gold-seal" class="seal">GOLD</div>
+                <div id="gold-seal" class="seal">
+                    <span style="font-size:6px;">AUTHENTIC</span>
+                    <span style="font-size:10px;">RARE</span>
+                    <span style="font-size:6px;">FOUND</span>
+                </div>
             </div>
         </div>
     </div>
     <div class="ticker" id="tk">AWAITING LOCALIZATION...</div>
 
     <script>
-        let pos = null, act = null, prevDist = null, isTest = false, weather = null;
+        let pos = null, act = null, isTest = false, weather = null;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
@@ -217,21 +221,20 @@ def index():
                 span.innerHTML = '&nbsp;';
                 container.appendChild(span);
                 let count = 0;
-                // PARADA ALEATORIA E DESENCONTRADA: i * 120ms cria cascata lenta
-                let max = 30 + Math.floor(Math.random() * 40);
+                // PARADA ALEATORIA: max maior e influenciado pela posição da letra (i)
+                let max = 40 + Math.floor(Math.random() * 60) + (i * 15);
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
-                    if (count++ >= max + (i * 2)) { 
+                    if (count++ >= max) { 
                         clearInterval(interval); 
                         span.innerHTML = (char === ' ') ? '&nbsp;' : char; 
                     }
-                }, 40 + (i * 5)); 
+                }, 30); // Velocidade aumentada
             });
         }
 
         function saveRare(f) {
             if(isTest) return;
-            if(!f.is_rare) return;
             let history = JSON.parse(localStorage.getItem('radar_collection') || '[]');
             if(!history.find(x => x.icao === f.icao)) {
                 history.push({icao: f.icao, call: f.call, date: f.date});
@@ -251,8 +254,13 @@ def index():
             }
         }, 12000);
 
-        function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
-        setInterval(updateTicker, 8000);
+        function updateTicker() { 
+            if (tickerMsg.length > 0) { 
+                applyFlap('tk', tickerMsg[tickerIdx], true); 
+                tickerIdx = (tickerIdx + 1) % tickerMsg.length; 
+            } 
+        }
+        setInterval(updateTicker, 15000); // Exibição de 15 segundos
 
         async function update() {
             if(!pos) return;
@@ -266,11 +274,11 @@ def index():
                     const seal = document.getElementById('gold-seal');
                     
                     if(f.is_rare) {
-                        stub.classList.add('military');
+                        stub.className = 'stub rare';
                         seal.style.display = 'flex';
                         saveRare(f);
                     } else {
-                        stub.classList.remove('military');
+                        stub.className = 'stub';
                         stub.style.background = f.color;
                         seal.style.display = 'none';
                     }
@@ -309,7 +317,7 @@ def index():
         }
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
-        function hideUI() { document.getElementById('ui').classList.add('hide'); update(); setInterval(update, 15000); }
+        function hideUI() { document.getElementById('ui').classList.add('hide'); update(); setInterval(update, 20000); }
         navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => {}, { timeout: 6000 });
     </script>
 </body>
