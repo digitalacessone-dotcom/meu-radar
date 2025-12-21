@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V77 - Rodapé com Infos de Clima e Voo
+# Configurações V78 - Efeito Split-Flap em Absolutamente Tudo
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -16,7 +16,7 @@ def get_time_local():
     return datetime.utcnow() - timedelta(hours=3)
 
 def get_weather_desc(code):
-    mapping = {0: "CÉU LIMPO", 1: "POUCAS NUVENS", 2: "PARCIAL. NUBLADO", 3: "NUBLADO", 45: "NEVOEIRO", 51: "CHUVA LEVE", 61: "CHUVA", 80: "PANCADAS CHUVA"}
+    mapping = {0: "CEU LIMPO", 1: "POUCAS NUVENS", 2: "PARCIAL NUBLADO", 3: "NUBLADO", 45: "NEVOEIRO", 51: "CHUVA LEVE", 61: "CHUVA", 80: "PANCADAS"}
     return mapping.get(code, "CONDIÇÕES OK")
 
 def get_weather(lat, lon):
@@ -24,25 +24,25 @@ def get_weather(lat, lon):
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,relative_humidity_2m"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
-        temp = f"{curr['temperature_2m']}°C"
-        sky = get_weather_desc(curr['weather_code'])
-        hum = f"UMIDADE: {curr['relative_humidity_2m']}%"
-        return {"temp": temp, "sky": sky, "hum": hum}
+        return {
+            "temp": f"{int(curr['temperature_2m'])}C",
+            "sky": get_weather_desc(curr['weather_code']),
+            "hum": f"UMID {curr['relative_humidity_2m']}%"
+        }
     except:
-        return {"temp": "--°C", "sky": "METAR ON", "hum": ""}
+        return {"temp": "--C", "sky": "RADAR ON", "hum": "---"}
 
 def fetch_aircrafts(lat, lon):
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/250",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/250"
     ]
-    headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)', 'Accept': 'application/json'}
+    headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     random.shuffle(endpoints)
     for url in endpoints:
         try:
             r = requests.get(url, headers=headers, timeout=5)
-            if r.status_code == 200:
-                return r.json().get('aircraft', [])
+            if r.status_code == 200: return r.json().get('aircraft', [])
         except: continue
     return []
 
@@ -55,12 +55,9 @@ def radar():
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
-        
-        weather_data = get_weather(lat, lon)
-
+        w = get_weather(lat, lon)
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time}, "weather": weather_data})
-
+            return jsonify({"flight": {"icao": "E4953E", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time}, "weather": w})
         data = fetch_aircrafts(lat, lon)
         found = None
         if data:
@@ -75,13 +72,9 @@ def radar():
                         if call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
-                        proc.append({
-                            "icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1),
-                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
-                            "spd": int(s.get('gs', 0) * 1.852), "hd": int(s.get('track', 0)), "date": now_date, "time": now_time
-                        })
+                        proc.append({"icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": int(s.get('gs', 0) * 1.852), "hd": int(s.get('track', 0)), "date": now_date, "time": now_time})
             if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
-        return jsonify({"flight": found, "weather": weather_data, "date": now_date, "time": now_time})
+        return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
 
 @app.route('/')
@@ -92,41 +85,36 @@ def index():
 <head>
     <meta charset="UTF-8">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <style>
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
-
-        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s ease; }
+        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
-
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
-
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; }
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-
         .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
-        .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
-        .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
-
+        .flap { font-family: monospace; font-size: 16px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
+        .char { width: 13px; height: 20px; background: #eee; border-radius: 2px; display: flex; align-items: center; justify-content: center; }
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; }
         .stamp { border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; }
-        
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); }
-        .ticker { width: 300px; height: 25px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 9px; overflow: hidden; white-space: nowrap; }
+        
+        /* TICKER ESTILO PLACAR */
+        .ticker { width: 300px; height: 30px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 1px; padding: 0 5px; }
+        .t-char { width: 10px; height: 18px; background: #111; color: var(--gold); font-family: monospace; font-size: 11px; display: flex; align-items: center; justify-content: center; border-radius: 1px; border-bottom: 1px solid #222; }
 
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
@@ -143,78 +131,71 @@ def index():
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
                 <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
                 <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
-                <div class="dots-container" id="dots">
-                    <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
-                </div>
+                <div class="dots-container"><div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div></div>
             </div>
             <div class="perfor"></div>
             <div class="main">
-                <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
-                    <div style="grid-column:span 2;"><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
+                <div style="color:#333; font-weight:900; font-size:11px; border:1.5px solid #333; padding:2px 8px; border-radius:4px; align-self:flex-start;">BOARDING PASS</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div><span style="font-size:7px; color:#bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
+                    <div><span style="font-size:7px; color:#bbb;">DISTANCE</span><div id="f-dist" class="flap"></div></div>
+                    <div style="grid-column:span 2;"><span style="font-size:7px; color:#bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
+                    <div id="arr" style="font-size:40px; transition:1.5s;">✈</div>
                     <div class="date-visual">
-                        <div id="f-line1">-- --- ----</div>
-                        <div id="f-line2">--.--</div>
+                        <div id="f-line1" style="font-size:12px">-- --- ----</div>
+                        <div id="f-line2" style="font-size:20px">--.--</div>
                         <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)">
                     </div>
                 </div>
             </div>
         </div>
         <div class="face back">
-            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column;">
+            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; justify-content:space-between;">
                 <div style="display:flex; justify-content:space-between;">
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
+                    <div><span style="font-size:7px; color:#bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
+                    <div><span style="font-size:7px; color:#bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
                 <div class="stamp">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V77</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V78</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="ticker" id="tk">AGUARDANDO LOCALIZAÇÃO...</div>
+    <div class="ticker" id="tk"></div>
 
     <script>
-        let pos = null, act = null, isTest = false, weather = null;
-        let tickerMsg = [], tickerIdx = 0;
-        const audio = new (window.AudioContext || window.webkitAudioContext)();
+        let pos = null, act = null, isTest = false, weather = {temp:"--", sky:"AGUARDANDO", hum:"--"};
+        let messages = [], msgIdx = 0;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ. ";
 
-        function applyFlap(id, text) {
-            const container = document.getElementById(id);
-            const target = text.toUpperCase().padEnd(8, ' ');
-            container.innerHTML = '';
+        function flap(id, text, isTicker = false) {
+            const el = document.getElementById(id);
+            const target = text.toUpperCase().padEnd(isTicker ? 25 : 10, ' ');
+            el.innerHTML = '';
             [...target].forEach((char, i) => {
-                const span = document.createElement('span'); span.className = 'char'; span.innerText = ' ';
-                container.appendChild(span);
-                let count = 0, max = 10 + (i * 2);
-                const interval = setInterval(() => {
-                    span.innerText = chars[Math.floor(Math.random() * chars.length)];
-                    if (count++ >= max) { clearInterval(interval); span.innerText = char; }
+                const s = document.createElement('span');
+                s.className = isTicker ? 't-char' : 'char';
+                el.appendChild(s);
+                let count = 0, max = 8 + (i % 5);
+                const iv = setInterval(() => {
+                    s.innerText = chars[Math.floor(Math.random() * chars.length)];
+                    if (count++ >= max) { clearInterval(iv); s.innerText = char; }
                 }, 40);
             });
         }
 
-        function updateTicker() {
-            if (tickerMsg.length > 0) {
-                const el = document.getElementById('tk');
-                el.style.opacity = 0;
-                setTimeout(() => {
-                    el.innerText = tickerMsg[tickerIdx];
-                    el.style.opacity = 1;
-                    tickerIdx = (tickerIdx + 1) % tickerMsg.length;
-                }, 500);
+        function rotateTicker() {
+            if (messages.length > 0) {
+                flap('tk', messages[msgIdx], true);
+                msgIdx = (msgIdx + 1) % messages.length;
             }
         }
-        setInterval(updateTicker, 3500);
+        setInterval(rotateTicker, 4000);
 
         async function update() {
             if(!pos) return;
@@ -222,31 +203,28 @@ def index():
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
                 weather = d.weather;
-                
                 if(d.flight) {
                     const f = d.flight;
                     document.getElementById('f-line1').innerText = f.date;
                     document.getElementById('f-line2').innerText = f.time;
                     document.getElementById('b-date-line1').innerText = f.date;
                     document.getElementById('b-date-line2').innerText = f.time;
-                    
                     if(!act || act.icao !== f.icao) {
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('airl').innerText = f.airline;
-                        applyFlap('f-icao', f.icao); applyFlap('f-call', f.call);
+                        flap('f-icao', f.icao); flap('f-call', f.call);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                         document.getElementById('bc').style.opacity = "0.8";
                     }
-                    if(!act || act.dist !== f.dist) applyFlap('f-dist', f.dist + "KM");
-                    if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + "FT");
-                    if(!act || act.spd !== f.spd) applyFlap('b-spd', f.spd + "KMH");
-                    
+                    if(!act || act.dist !== f.dist) flap('f-dist', f.dist + "KM");
+                    if(!act || act.alt !== f.alt) flap('b-alt', f.alt + "FT");
+                    if(!act || act.spd !== f.spd) flap('b-spd', f.spd + "KMH");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    tickerMsg = [`VOO: ${f.call}`, `DIST: ${f.dist}KM`, `TEMP: ${weather.temp}`, `CÉU: ${weather.sky}`, weather.hum];
+                    messages = [`VOO ${f.call}`, `DISTANCIA ${f.dist}KM`, `TEMP ${weather.temp}`, `CEU ${weather.sky}`, weather.hum];
                 } else {
-                    tickerMsg = [`BUSCANDO...`, `TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
+                    messages = [`BUSCANDO AERONAVES`, `TEMP ${weather.temp}`, `SKY ${weather.sky}`];
                 }
             } catch(e) {}
         }
@@ -260,15 +238,8 @@ def index():
                 });
             }
         }
-
-        function hideUI() { 
-            document.getElementById('ui').classList.add('hide'); 
-            setTimeout(() => { update(); setInterval(update, 10000); }, 800);
-        }
-
-        navigator.geolocation.getCurrentPosition(p => {
-            pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI();
-        }, () => { document.getElementById('tk').innerText = "DIGITE O LOCAL ACIMA"; }, { timeout: 6000 });
+        function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 10000); }, 800); }
+        navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => { flap('tk', 'DIGITE O LOCAL ACIMA', true); }, { timeout: 6000 });
     </script>
 </body>
 </html>
