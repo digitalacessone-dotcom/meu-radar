@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V94 - Timestamp Freeze on Detection
+# Configurações V95 - GHOST MODE IMPLEMENTED
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -155,7 +155,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V94</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V95</div>
                 </div>
             </div>
         </div>
@@ -166,7 +166,8 @@ def index():
         let toggleState = true; 
         let tickerMsg = [], tickerIdx = 0;
         let audioCtx = null;
-        let fDate = "-- --- ----", fTime = "--.--"; // Timestamp persistente do voo
+        let fDate = "-- --- ----", fTime = "--.--";
+        let isGhost = false; // Novo controle de estado Ghost
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
         function playPing() {
@@ -174,8 +175,7 @@ def index():
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
                 gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
                 osc.connect(gain); gain.connect(audioCtx.destination);
@@ -223,24 +223,28 @@ def index():
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
                 weather = d.weather;
+                
                 if(d.flight) {
                     const f = d.flight;
-                    
-                    // LÓGICA DE DETECÇÃO: Se é um voo novo, congela a hora atual
+                    isGhost = false; // Sinal recuperado
+
                     if(!act || act.icao !== f.icao) {
-                        fDate = f.date;
-                        fTime = f.time;
+                        fDate = f.date; fTime = f.time;
                         playPing();
                         document.getElementById('stb').style.background = f.color;
+                        document.getElementById('arr').style.color = f.color; // Ícone ganha cor
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         toggleState = true;
                         document.getElementById('icao-label').innerText = "AIRCRAFT ICAO"; applyFlap('f-icao', f.icao);
                         document.getElementById('dist-label').innerText = "DISTANCE"; applyFlap('f-dist', f.dist + " KM");
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
+                    } else {
+                        // Voo continua o mesmo, apenas atualizamos a cor caso tenha mudado
+                        document.getElementById('stb').style.background = f.color;
+                        document.getElementById('arr').style.color = f.color;
                     }
 
-                    // Aplica o timestamp congelado na interface
                     document.getElementById('f-line1').innerText = fDate;
                     document.getElementById('f-line2').innerText = fTime;
                     document.getElementById('b-date-line1').innerText = fDate;
@@ -254,11 +258,18 @@ def index():
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
-                    tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN`, `SKY: ${weather.sky}`];
-                } else { 
+                    tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN` ];
+                } else if (act) {
+                    // MODO GHOST: Sinal perdido, mas havia um voo na tela
+                    isGhost = true;
+                    document.getElementById('stb').style.background = "#444"; // Reset cor do stub
+                    document.getElementById('arr').style.color = "#444"; // Reset cor do avião
+                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
+                    tickerMsg = [`SIGNAL LOST: ${act.call}`, `GHOST MODE ACTIVE`, `LAST KNOWN POS STORED` ];
+                } else {
+                    // Sem voo e sem histórico
                     tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
-                    act = null;
                 }
             } catch(e) {}
         }
