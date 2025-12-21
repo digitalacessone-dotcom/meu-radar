@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V107 - Raio 190km e Split-Flap Independente
+# Config V108 - 190km Radius & English Localization
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -22,7 +22,7 @@ def get_weather_desc(code):
 def get_weather(lat, lon):
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,visibility,weather_code"
-        r = requests.get(url, timeout=4).json()["current"]
+        r = requests.get(url, timeout=5).json()["current"]
         return {
             "temp": f"{int(r['temperature_2m'])}C",
             "vis": f"{int(r['visibility']/1000)}KM",
@@ -100,9 +100,9 @@ def index():
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
-        button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; cursor:pointer; }
+        button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
         
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s ease-in-out; }
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
         .flipped { transform: rotateY(180deg); }
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
@@ -117,12 +117,19 @@ def index():
         .char { width: 14px; height: 22px; background: #e0e0e0; border-radius: 3px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
-        #bc { width: 110px; height: 35px; opacity: 0.15; transition: 0.5s; }
+        #bc { width: 110px; height: 35px; opacity: 0.15; cursor: pointer; transition: 0.5s; filter: grayscale(1); }
         .ticker { width: 310px; height: 35px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 9px; border: 1px solid #333; padding: 0 10px; text-align: center; }
         
         .ghost .stub { background: #333 !important; }
         .ghost .main { filter: grayscale(1); opacity: 0.6; }
-        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
+
+        @media (orientation: landscape) { 
+            .scene { width: 550px; height: 260px; } 
+            .face { flex-direction: row !important; } 
+            .stub { width: 30% !important; height: 100% !important; } 
+            .main { width: 70% !important; } 
+            .ticker { width: 550px; } 
+        }
     </style>
 </head>
 <body onclick="handleFlip(event)">
@@ -153,7 +160,7 @@ def index():
                     <div class="date-visual">
                         <div id="f-date">-- --- ----</div>
                         <div id="f-time" style="font-size:22px;">--.--</div>
-                        <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING">
+                        <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)">
                     </div>
                 </div>
             </div>
@@ -168,7 +175,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date">-- --- ----</div>
                     <div id="b-time" style="font-size:24px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V107</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V108</div>
                 </div>
             </div>
         </div>
@@ -190,7 +197,7 @@ def index():
             } catch(e){}
         }
 
-        // Efeito Split-Flap Independente
+        // Random Independent Mechanical Flap Logic
         function applyFlap(id, text) {
             const el = document.getElementById(id); if(!el) return;
             const target = text.toUpperCase().padEnd(8, ' ');
@@ -201,9 +208,9 @@ def index():
                 s.innerHTML='&nbsp;'; 
                 el.appendChild(s);
                 
-                // Cada letra tem um tempo aleatório de "giro"
-                let count=0;
-                let maxCycles = 10 + Math.floor(Math.random() * 25); 
+                let count = 0;
+                // Each character stops at a random time
+                let maxCycles = 15 + Math.floor(Math.random() * 30); 
                 
                 const interval = setInterval(() => {
                     s.innerText = chars[Math.floor(Math.random() * chars.length)];
@@ -211,7 +218,7 @@ def index():
                         clearInterval(interval);
                         s.innerText = (char === ' ') ? '' : char;
                     }
-                }, 50);
+                }, 40);
             });
         }
 
@@ -232,6 +239,7 @@ def index():
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}`;
                         document.getElementById('bc').style.opacity = "0.7";
+                        document.getElementById('bc').style.filter = "none";
                     }
                     
                     document.getElementById('f-date').innerText = fDate; document.getElementById('f-time').innerText = fTime;
@@ -248,14 +256,14 @@ def index():
                     
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     
-                    // Dots Proximidade (Esquerda p/ Direita)
+                    // Radar Dots: Left to Right calibration for 190km
                     const thresholds = [190, 150, 110, 70, 30];
                     thresholds.forEach((t, i) => {
                         document.getElementById('d'+(i+1)).className = f.dist <= t ? 'sq on' : 'sq';
                     });
                     
-                    let trend = f.dist < lastDist ? "APROXIMANDO" : "AFASTANDO";
-                    let vrate_txt = f.v_rate > 150 ? "SUBINDO" : (f.v_rate < -150 ? "DESCENDO" : "ESTÁVEL");
+                    let trend = f.dist < lastDist ? "APPROACHING" : "DEPARTING";
+                    let vrate_txt = f.v_rate > 150 ? "CLIMBING" : (f.v_rate < -150 ? "DESCENDING" : "STABLE");
                     lastDist = f.dist;
 
                     document.getElementById('tk').innerText = `V.RATE: ${f.v_rate} FPM (${vrate_txt}) • SQK: ${f.sqk} • ${trend}`;
@@ -267,6 +275,8 @@ def index():
                 } else {
                     document.getElementById('tk').innerText = `SEARCHING TRAFFIC... TEMP: ${w.temp} • VIS: ${w.vis} • ${w.sky}`;
                     document.getElementById('stb').style.background = "#555";
+                    document.getElementById('bc').style.opacity = "0.15";
+                    document.getElementById('bc').style.filter = "grayscale(1)";
                 }
             } catch(e) {}
         }
@@ -277,7 +287,8 @@ def index():
             if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
             else { fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v).then(r=>r.json()).then(d=>{ if(d[0]) { pos={lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
         }
-        function handleFlip(e) { if(!e.target.closest('#ui')) document.getElementById('card-scene').classList.toggle('flipped'); }
+        function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card-scene').classList.toggle('flipped'); }
+        function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
         function hideUI() { document.getElementById('ui').classList.add('hide'); update(); setInterval(update, 20000); }
         navigator.geolocation.getCurrentPosition(p => { pos={lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, null);
     </script>
