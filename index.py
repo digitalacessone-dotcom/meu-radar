@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V73 - Estabilidade + Visual Completo
+# Configurações V74 - Base Estável V73
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -102,6 +102,9 @@ def index():
         .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
 
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; }
+        
+        /* CORREÇÃO AQUI: Forçado Row para não ficarem em pé */
+        .dots-container { display: flex !important; flex-direction: row !important; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
 
@@ -117,7 +120,6 @@ def index():
 
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; }
         
-        /* ESTILO DO CARIMBO */
         .stamp { border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; }
         
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); }
@@ -173,7 +175,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V73</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V74</div>
                 </div>
                 
                 <div style="margin-top:auto; color:#ccc; font-size:10px; text-align:right;">BACKSIDE_VERIFICATION</div>
