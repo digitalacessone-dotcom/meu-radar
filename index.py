@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V93.1 - Refined UI & Ticket Contrast
+# Configurações V94 - Clean Layout & No Border
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -21,7 +21,7 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}/longitude={lon}&current=temperature_2m,weather_code"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         return {"temp": f"{int(curr['temperature_2m'])}C", "sky": get_weather_desc(curr['weather_code'])}
@@ -33,7 +33,7 @@ def fetch_aircrafts(lat, lon):
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/250",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/250"
     ]
-    headers = {'User-Agent': 'Mozilla/5.0'}
+    headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     random.shuffle(endpoints)
     for url in endpoints:
         try:
@@ -54,7 +54,7 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459}, "weather": w, "date": now_date, "time": now_time})
+            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 9.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459}, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
         found = None
@@ -66,7 +66,7 @@ def radar():
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip()
-                        airline, color = "PRIVATE", "#444"
+                        airline, color = "PRIVATE", "#444444"
                         if call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
@@ -87,103 +87,120 @@ def index():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <style>
-        :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
+        :root { --gold: #FFD700; --bg: #080a0c; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
+        body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1200px; overflow: hidden; }
         
-        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 20px; z-index: 500; transition: opacity 0.8s; }
-        #ui.hide { opacity: 0; pointer-events: none; }
+        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 20px; z-index: 500; transition: 0.5s; }
+        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(-20px); }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
-        
-        .scene { width: 320px; height: 480px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
+
+        .scene { width: 310px; height: 470px; position: relative; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
         .scene.flipped { transform: rotateY(180deg); }
         
-        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 24px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.6); border: 1px solid rgba(0,0,0,0.1); }
+        /* Ajuste para remover a "linha" no entorno */
+        .face { 
+            position: absolute; width: 100%; height: 100%; 
+            backface-visibility: hidden; border-radius: 24px; 
+            background: #ffffff; display: flex; flex-direction: column; 
+            overflow: hidden; border: none; outline: none;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4); 
+        }
+        
         .face.back { transform: rotateY(180deg); background: #fdfdfd; padding: 15px; }
-        
-        .stub { height: 30%; background: var(--brand); color: #fff; padding: 25px 20px; display: flex; flex-direction: column; justify-content: center; transition: background 0.5s; position: relative; }
+
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 25px 20px; display: flex; flex-direction: column; justify-content: center; transition: background 0.6s ease; }
         .dots-container { display: flex; gap: 5px; margin-top: 10px; }
-        .sq { width: 12px; height: 12px; border: 1.5px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); border-radius: 3px; transition: 0.3s; }
+        .sq { width: 11px; height: 11px; border: 1.5px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.1); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 12px var(--gold); }
+
+        .perfor { height: 4px; position: relative; background: #fff; z-index: 10; }
+        .perfor::before { content:""; position:absolute; width:100%; top:0; border-top: 5px dotted #ddd; }
+        .perfor::after, .perfor::before { pointer-events: none; }
         
-        .perfor { height: 4px; border-top: 6px dotted #eee; position: relative; background: #fff; z-index: 10; }
-        .perfor::before, .perfor::after { content:""; position:absolute; width:40px; height:40px; background:var(--bg); border-radius:50%; top:-20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.2); }
-        .perfor::before { left:-30px; } .perfor::after { right:-30px; }
+        /* Cortes laterais da perfuração */
+        .cut-l, .cut-r { position: absolute; width: 30px; height: 30px; background: var(--bg); border-radius: 50%; top: -15px; z-index: 11; }
+        .cut-l { left: -20px; } .cut-r { right: -20px; }
+
+        .main { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; justify-content: space-between; }
+        .flap { font-family: monospace; font-size: 19px; font-weight: 900; color: #111; height: 26px; display: flex; gap: 1.5px; }
+        .char { width: 15px; height: 24px; background: #f4f4f4; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
         
-        .main { flex: 1; padding: 25px 20px; display: flex; flex-direction: column; justify-content: space-between; background: #fff; }
-        .flap { font-family: monospace; font-size: 19px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
-        .char { width: 15px; height: 23px; background: #f4f4f4; border-radius: 3px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #ddd; }
+        .date-visual { color: var(--blue-txt); font-weight: 900; text-align: right; }
+        #bc { width: 120px; height: 40px; opacity: 0.2; filter: grayscale(1); margin-top: 8px; cursor: pointer; }
         
-        .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 1; text-align: right; }
-        #bc { width: 120px; height: 40px; opacity: 0.8; margin-top: 10px; cursor: pointer; transition: 0.3s; }
-        #bc:hover { opacity: 1; }
-        
-        .ticker { width: 320px; height: 36px; background: #000; border-radius: 10px; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; border: 1px solid #222; }
+        .ticker { width: 310px; height: 35px; background: #000; border-radius: 8px; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; }
 
         @media (orientation: landscape) { 
-            .scene { width: 580px; height: 280px; } 
+            .scene { width: 560px; height: 260px; } 
             .face { flex-direction: row !important; } 
-            .stub { width: 30% !important; height: 100% !important; } 
-            .perfor { width: 4px !important; height: 100% !important; border-left: 6px dotted #eee !important; border-top: none !important; }
-            .perfor::before { left:-20px; top:-30px; } .perfor::after { left:-20px; bottom:-30px; top: auto; }
-            .main { width: 70% !important; } .ticker { width: 580px; }
+            .stub { width: 32% !important; height: 100% !important; } 
+            .perfor { width: 4px !important; height: 100% !important; background: transparent; }
+            .perfor::before { border-top: none; border-left: 5px dotted #ddd; height: 100%; left: 0; }
+            .cut-l { top: -20px; left: -15px; } .cut-r { bottom: -20px; top: auto; left: -15px; }
+            .main { width: 68% !important; } 
         }
     </style>
 </head>
 <body onclick="handleFlip(event)">
     <div id="ui">
-        <input type="text" id="in" placeholder="ENTER LOCATION (OR 'TEST')">
-        <button onclick="startSearch()">CHECK-IN</button>
+        <input type="text" id="in" placeholder="ENTER CITY OR AIRPORT">
+        <button onclick="startSearch()">SCAN</button>
     </div>
+
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
                 <div style="font-size:8px; font-weight:900; opacity:0.6; letter-spacing:1px;">RADAR SCANNING</div>
-                <div style="font-size:11px; font-weight:900; margin-top:6px; color:rgba(255,255,255,0.9);" id="airl">WAITING DATA...</div>
-                <div style="font-size:70px; font-weight:900; letter-spacing:-5px; margin:5px 0; line-height:0.8;">19A</div>
+                <div style="font-size:11px; font-weight:900; margin-top:4px;" id="airl">SEARCHING...</div>
+                <div style="font-size:72px; font-weight:900; letter-spacing:-5px; margin:2px 0; line-height:1;">19A</div>
                 <div class="dots-container" id="dots">
                     <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
                 </div>
             </div>
-            <div class="perfor"></div>
+            
+            <div class="perfor"><div class="cut-l"></div><div class="cut-r"></div></div>
+            
             <div class="main">
                 <div style="color: #222; font-weight: 900; font-size: 12px; border: 2px solid #222; padding: 4px 12px; border-radius: 6px; align-self: flex-start; letter-spacing:1px;">BOARDING PASS</div>
                 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:15px;">
-                    <div><span id="icao-label" style="font-size: 8px; font-weight: 900; color: #aaa;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
-                    <div><span id="dist-label" style="font-size: 8px; font-weight: 900; color: #aaa;">DISTANCE</span><div id="f-dist" class="flap" style="color:#555"></div></div>
-                    <div><span style="font-size: 8px; font-weight: 900; color: #aaa;">FLIGHT IDENT</span><div id="f-call" class="flap"></div></div>
-                    <div><span style="font-size: 8px; font-weight: 900; color: #aaa;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:10px;">
+                    <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #aaa;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
+                    <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #aaa;">DISTANCE</span><div id="f-dist" class="flap" style="color:#555"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #aaa;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #aaa;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:10px;">
-                    <div id="arr" style="font-size:50px; transition:2s cubic-bezier(0.4, 0, 0.2, 1); filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));">✈</div>
+                    <div id="arr" style="font-size:50px; transition:1.5s; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">✈</div>
                     <div class="date-visual">
                         <div id="f-line1" style="font-size:14px;">-- --- ----</div>
-                        <div id="f-line2" style="font-size:32px;">--.--</div>
-                        <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING&scale=2" onclick="openMap(event)">
+                        <div id="f-line2" style="font-size:28px; line-height:1;">--.--</div>
+                        <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=RADAR" onclick="openMap(event)">
                     </div>
                 </div>
             </div>
         </div>
+
         <div class="face back">
-            <div style="height:100%; border:2px dashed #e0e0e0; border-radius:18px; padding:20px; display:flex; flex-direction:column; background: #fff;">
+            <div style="height:100%; border:2px dashed #eee; border-radius:18px; padding:20px; display:flex; flex-direction:column; justify-content:space-between;">
                 <div style="display:flex; justify-content:space-between;">
-                    <div><span style="font-size: 8px; font-weight: 900; color: #aaa;">ALTITUDE (FT)</span><div id="b-alt" class="flap"></div></div>
-                    <div><span id="spd-label" style="font-size: 8px; font-weight: 900; color: #aaa;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #aaa;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
+                    <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #aaa;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                <div style="border: 4px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 12px; transform: rotate(-8deg); align-self: center; margin-top: 40px; text-align: center; font-weight: 900; background: rgba(52, 168, 201, 0.05);">
-                    <div style="font-size:10px; letter-spacing:2px;">SECURITY CHECKED</div>
-                    <div id="b-date-line1" style="font-size:16px; margin: 5px 0;">-- --- ----</div>
-                    <div id="b-date-line2" style="font-size:28px;">--.--</div>
-                    <div style="font-size:9px; margin-top:8px; opacity:0.8;">RADAR CONTACT V93.1</div>
+                <div style="border: 4px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 12px; transform: rotate(-8deg); align-self: center; text-align: center; font-weight: 900; background: rgba(52, 168, 201, 0.05);">
+                    <div style="font-size:9px; letter-spacing:1px;">SECURITY CHECKED</div>
+                    <div id="b-date-line1" style="font-size:12px;">-- --- ----</div>
+                    <div id="b-date-line2" style="font-size:26px;">--.--</div>
+                    <div style="font-size:8px; margin-top:5px; opacity:0.8;">RADAR CONTACT V94</div>
                 </div>
-                <div style="margin-top:auto; font-size:7px; color:#ccc; text-align:center; font-weight:900;">NON-TRANSFERABLE RADAR PASS</div>
+                <div style="font-size:7px; color:#ccc; text-align:center; font-weight:900;">SCAN BARCODE FOR LIVE TRACKING</div>
             </div>
         </div>
     </div>
-    <div class="ticker" id="tk">INITIALIZING RADAR SYSTEM...</div>
+
+    <div class="ticker" id="tk">INITIALIZING RADAR...</div>
 
     <script>
         let pos = null, act = null, isTest = false, weather = null;
@@ -230,15 +247,15 @@ def index():
                 toggleState = !toggleState;
                 document.getElementById('icao-label').innerText = toggleState ? "AIRCRAFT ICAO" : "REGISTRATION";
                 applyFlap('f-icao', toggleState ? act.icao : act.reg);
-                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "EST. CONTACT";
+                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "ESTIMATED CONTACT";
                 applyFlap('f-dist', toggleState ? act.dist + " KM" : "ETA " + act.eta + "M");
-                document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED IND.";
+                document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
                 applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
             }
-        }, 12000);
+        }, 15000);
 
         function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
-        setInterval(updateTicker, 8000);
+        setInterval(updateTicker, 12000);
 
         async function update() {
             if(!pos) return;
@@ -271,9 +288,9 @@ def index():
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
-                    tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `SKY: ${weather.sky}`];
+                    tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN`, `SKY: ${weather.sky}`];
                 } else { 
-                    tickerMsg = [`SEARCHING TRAFFIC...`, `TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
+                    tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     act = null;
                 }
@@ -288,7 +305,8 @@ def index():
         }
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
-        function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 15000); }, 800); }
+        function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 15000); }, 600); }
+        
         navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => { applyFlap('tk', 'ENTER LOCATION ABOVE', true); }, { timeout: 6000 });
     </script>
 </body>
