@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V97.0 - Custom Ticker Logic
+# Configurações V98.5 - Mechanical Detach System
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -55,7 +55,8 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1500}, "weather": w, "date": now_date, "time": now_time})
+            # Simulação de aeronave a 8.5km para testar o corte
+            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 8.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1500}, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
         found = None
@@ -92,28 +93,55 @@ def index():
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
+        
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
+
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: background 0.5s; }
-        .dots-container { display: flex; gap: 4px; margin-top: 8px; }
-        .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
-        .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-        .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; }
-        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
+
+        /* LÓGICA DE SEPARAÇÃO DO TICKET */
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: background 0.5s, transform 0.5s; position: relative; }
+        
+        /* Divisória com efeito de picotado lateral */
+        .perfor { height: 4px; border-top: 5px dotted #ccc; position: relative; background: #fff; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Os Semicírculos laterais (Buracos de rasgo) */
+        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; transition: 0.5s; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+
+        /* ESTADO DETACHED (D < 10km) */
+        .scene.detached .perfor { background: var(--bg); border-color: transparent; height: 8px; margin: 4px 0; }
+        .scene.detached .stub { transform: translateY(-4px); }
+        
+        /* Picotes extras em V durante a separação */
+        .v-cut { position: absolute; width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; opacity: 0; transition: 0.5s; }
+        .v-cut.left { left: 0; border-left: 10px solid var(--bg); top: -10px; }
+        .v-cut.right { right: 0; border-right: 10px solid var(--bg); top: -10px; }
+        .scene.detached .v-cut { opacity: 1; }
+
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+        
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; }
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; }
+        
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; white-space: pre; }
-        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
+
+        @media (orientation: landscape) { 
+            .scene { width: 550px; height: 260px; } 
+            .face { flex-direction: row !important; } 
+            .stub { width: 30% !important; height: 100% !important; } 
+            .perfor { width: 4px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } 
+            .main { width: 70% !important; } 
+            .scene.detached .stub { transform: translateX(-4px); }
+            .scene.detached .perfor { width: 10px !important; margin: 0 4px; }
+        }
     </style>
 </head>
 <body onclick="handleFlip(event)">
@@ -121,17 +149,23 @@ def index():
         <input type="text" id="in" placeholder="ENTER LOCATION">
         <button onclick="startSearch()">CHECK-IN</button>
     </div>
+    
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
-                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING TRAFFIC...</div>
+                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
                 <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
                 <div class="dots-container" id="dots">
                     <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
                 </div>
             </div>
-            <div class="perfor"></div>
+            
+            <div class="perfor">
+                <div class="v-cut left"></div>
+                <div class="v-cut right"></div>
+            </div>
+            
             <div class="main">
                 <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
@@ -146,6 +180,7 @@ def index():
                 </div>
             </div>
         </div>
+        
         <div class="face back">
             <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column;">
                 <div style="display:flex; justify-content:space-between;">
@@ -156,12 +191,14 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V97.0</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V98.5</div>
                 </div>
             </div>
         </div>
     </div>
+    
     <div class="ticker" id="tk">AWAITING LOCALIZATION...</div>
+
     <script>
         let pos = null, act = null, prevDist = null, isTest = false, weather = null;
         let toggleState = true; 
@@ -231,7 +268,10 @@ def index():
                     isGhost = false;
                     document.getElementById('stb').style.background = f.color;
                     
-                    // Lógica de Proximidade (Aproximando/Afastando)
+                    // Lógica de Separação Visual (< 10km)
+                    if(f.dist < 10) document.getElementById('card').classList.add('detached');
+                    else document.getElementById('card').classList.remove('detached');
+
                     let proximity = "MAINTAINING";
                     if(prevDist !== null) {
                         if(f.dist < prevDist - 0.05) proximity = "CLOSING IN";
@@ -239,7 +279,6 @@ def index():
                     }
                     prevDist = f.dist;
 
-                    // Lógica de Razão Vertical
                     let vStatus = "LEVEL";
                     if(f.vrate > 150) vStatus = "CLIMBING";
                     else if(f.vrate < -150) vStatus = "DESCENDING";
@@ -268,24 +307,18 @@ def index():
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
 
-                    // CONDIÇÃO 2: Contato estabelecido
                     tickerMsg = [`V.RATE: ${f.vrate}`, `FPM ${vStatus}`, proximity];
                     
                 } else if(act) { 
-                    // CONDIÇÃO 3: Modo Ghost
                     isGhost = true;
                     prevDist = null;
+                    document.getElementById('card').classList.remove('detached');
                     document.getElementById('stb').style.background = "var(--brand)";
                     const g = "SIGNAL LOST / GHOST MODE ACTIVE";
-                    tickerMsg = [
-                        g, "SEARCHING TRAFFIC...",
-                        g, `TEMP: ${weather.temp}`,
-                        g, `VIS: ${weather.vis}`,
-                        g, weather.sky, g
-                    ];
+                    tickerMsg = [g, "SEARCHING TRAFFIC...", g, `TEMP: ${weather.temp}`, g, `VIS: ${weather.vis}`, g, weather.sky, g];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                 } else {
-                    // CONDIÇÃO 1: Busca Inicial (Sem aeronave prévia)
+                    document.getElementById('card').classList.remove('detached');
                     document.getElementById('stb').style.background = "var(--brand)";
                     tickerMsg = ["SEARCHING TRAFFIC...", `TEMP: ${weather.temp}`, `VIS: ${weather.vis}`, weather.sky];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
