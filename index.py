@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V88 - ETA Dynamic Logic
+# Configurações V90 - 10s Interleaving Cycle for Front and Back
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -21,7 +21,7 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,relative_humidity_2m"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         return {"temp": f"{int(curr['temperature_2m'])}C", "sky": get_weather_desc(curr['weather_code'])}
@@ -54,7 +54,7 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA"}, "weather": w})
+            return jsonify({"flight": {"icao": "E4953E", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459}, "weather": w})
         
         data = fetch_aircrafts(lat, lon)
         found = None
@@ -70,10 +70,10 @@ def radar():
                         if call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
-                        route = s.get('route', "--- ---")
-                        spd = int(s.get('gs', 0) * 1.852)
-                        eta = round((d / spd) * 60) if spd > 50 else 0
-                        proc.append({"icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": route, "eta": eta})
+                        spd_kts = int(s.get('gs', 0))
+                        spd_kmh = int(spd_kts * 1.852)
+                        eta = round((d / spd_kmh) * 60) if spd_kmh > 50 else 0
+                        proc.append({"icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta})
             if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
@@ -147,20 +147,21 @@ def index():
             <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column;">
                 <div style="display:flex; justify-content:space-between;">
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
+                    <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
                 <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V88</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V90</div>
                 </div>
             </div>
         </div>
     </div>
     <div class="ticker" id="tk">AWAITING LOCALIZATION...</div>
     <script>
-        let pos = null, act = null, isTest = false, weather = null, distToggle = true;
+        let pos = null, act = null, isTest = false, weather = null;
+        let distToggle = true, spdToggle = true;
         let tickerMsg = [], tickerIdx = 0;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
@@ -182,14 +183,23 @@ def index():
             });
         }
 
+        // DISTANCE Toggle (10s)
         setInterval(() => {
             if(act) {
                 distToggle = !distToggle;
                 document.getElementById('dist-label').innerText = distToggle ? "DISTANCE" : "ESTIMATED CONTACT";
-                const val = distToggle ? act.dist + " KM" : "ETA " + act.eta + "M";
-                applyFlap('f-dist', val);
+                applyFlap('f-dist', distToggle ? act.dist + " KM" : "ETA " + act.eta + "M");
             }
-        }, 5000);
+        }, 10000);
+
+        // SPEED Toggle (10s)
+        setInterval(() => {
+            if(act) {
+                spdToggle = !spdToggle;
+                document.getElementById('spd-label').innerText = spdToggle ? "GROUND SPEED" : "AIRSPEED INDICATOR";
+                applyFlap('b-spd', spdToggle ? act.spd + " KMH" : act.kts + " KTS");
+            }
+        }, 10000);
 
         function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
         setInterval(updateTicker, 15000);
@@ -214,7 +224,6 @@ def index():
                         document.getElementById('bc').style.opacity = "0.8";
                     }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
-                    if(!act || act.spd !== f.spd) applyFlap('b-spd', f.spd + " KMH");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
@@ -226,7 +235,7 @@ def index():
         function startSearch() {
             const v = document.getElementById('in').value.toUpperCase();
             if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
-            else { fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${v}`).then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
+            else { fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v).then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
         }
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
