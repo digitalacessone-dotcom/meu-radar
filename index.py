@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V75 - Foco no Efeito Placar (Split-Flap)
+# Configurações V76 - Foco em Fluidez e Efeito Visual
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -90,10 +90,10 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
 
-        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; }
-        #ui.hide { display: none; }
-        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; }
-        button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
+        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s ease, visibility 0.8s; }
+        #ui.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
+        button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
 
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
@@ -101,7 +101,7 @@ def index():
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
 
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; }
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: background 0.5s; }
         .dots-container { display: flex !important; flex-direction: row !important; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
@@ -113,13 +113,15 @@ def index():
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
         .bp-title { color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start; }
         .label { font-size: 7px; font-weight: 900; color: #bbb; text-transform: uppercase; letter-spacing: 1px; }
-        .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 22px; display: flex; overflow: hidden; }
-        .char { width: 11px; text-align: center; background: #eee; margin-right: 1px; border-radius: 2px; }
+        
+        /* CONTAINER DO PLACAR */
+        .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
+        .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #ddd; }
 
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; }
         .stamp { border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; }
         
-        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); transition: 0.5s; }
+        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); transition: opacity 0.5s; }
         .ticker { width: 300px; height: 25px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 9px; }
 
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
@@ -171,7 +173,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V75</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V76</div>
                 </div>
                 <div style="margin-top:auto; color:#ccc; font-size:10px; text-align:right;">BACKSIDE_VERIFICATION</div>
             </div>
@@ -182,7 +184,7 @@ def index():
     <script>
         let pos = null, act = null, isTest = false;
         const audio = new (window.AudioContext || window.webkitAudioContext)();
-        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.↑↓↔ ";
+        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ. ";
 
         function bip() {
             const o = audio.createOscillator(); const g = audio.createGain();
@@ -193,16 +195,26 @@ def index():
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
 
-        function flap(id, txt) {
-            const el = document.getElementById(id); if(!el) return;
-            const newTxt = txt.toUpperCase();
-            el.innerHTML = "";
-            [...newTxt].forEach((c, i) => {
-                const s = document.createElement('span'); s.className="char"; s.innerText = "-"; el.appendChild(s);
-                let n = 0; 
-                const iv = setInterval(() => {
-                    s.innerText = chars[Math.floor(Math.random()*chars.length)];
-                    if(n++ > 10 + i) { clearInterval(iv); s.innerText = c; }
+        // NOVA FUNÇÃO FLAP ROBUSTA
+        function applyFlap(id, text) {
+            const container = document.getElementById(id);
+            const target = text.toUpperCase().padEnd(8, ' ');
+            container.innerHTML = '';
+            
+            [...target].forEach((char, i) => {
+                const span = document.createElement('span');
+                span.className = 'char';
+                span.innerText = ' ';
+                container.appendChild(span);
+                
+                let count = 0;
+                const max = 10 + (i * 2);
+                const interval = setInterval(() => {
+                    span.innerText = chars[Math.floor(Math.random() * chars.length)];
+                    if (count++ >= max) {
+                        clearInterval(interval);
+                        span.innerText = char;
+                    }
                 }, 40);
             });
         }
@@ -223,20 +235,20 @@ def index():
                         bip();
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('airl').innerText = f.airline;
-                        flap('f-icao', f.icao); 
-                        flap('f-call', f.call);
+                        applyFlap('f-icao', f.icao); 
+                        applyFlap('f-call', f.call);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                         document.getElementById('bc').style.opacity = "0.8";
                     }
-                    // Sempre roda flap na distância e verso
-                    flap('f-dist', f.dist + "KM");
-                    flap('b-alt', f.alt + "FT"); 
-                    flap('b-spd', f.spd + "KMH");
+                    
+                    if(!act || act.dist !== f.dist) applyFlap('f-dist', f.dist + "KM");
+                    if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + "FT");
+                    if(!act || act.spd !== f.spd) applyFlap('b-spd', f.spd + "KMH");
                     
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    document.getElementById('tk').innerText = `LOCALIZADO: ${f.call} - ${f.dist}KM`;
+                    document.getElementById('tk').innerText = `RADAR: ${f.call} AT ${f.dist}KM`;
                 } else {
                     document.getElementById('tk').innerText = `BUSCANDO... | ${d.weather || 'OFFLINE'}`;
                 }
@@ -253,8 +265,11 @@ def index():
             }
         }
 
-        function hideUI() { document.getElementById('ui').classList.add('hide'); update(); setInterval(update, 10000); }
-        setTimeout(() => { if(!pos) document.getElementById('tk').innerText = "IPHONE: DIGITE O LOCAL ACIMA"; }, 5000);
+        function hideUI() { 
+            document.getElementById('ui').classList.add('hide'); 
+            setTimeout(() => { update(); setInterval(update, 10000); }, 800);
+        }
+
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI();
         }, () => { document.getElementById('tk').innerText = "POR FAVOR, DIGITE O LOCAL"; }, { timeout: 6000 });
