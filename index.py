@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V94.4 - Ghost Recovery & 190km Radius
+# Configurações V95.0 - Ticker Intelligence & 190km Radius
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -21,12 +21,13 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
-        return {"temp": f"{int(curr['temperature_2m'])}C", "sky": get_weather_desc(curr['weather_code'])}
+        vis_km = int(curr.get('visibility', 10000) / 1000)
+        return {"temp": f"{int(curr['temperature_2m'])}C", "sky": get_weather_desc(curr['weather_code']), "vis": f"{vis_km}KM"}
     except:
-        return {"temp": "--C", "sky": "METAR ON"}
+        return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
 def fetch_aircrafts(lat, lon):
     endpoints = [
@@ -54,7 +55,7 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459}, "weather": w, "date": now_date, "time": now_time})
+            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1200}, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
         found = None
@@ -73,7 +74,7 @@ def radar():
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
-                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta})
+                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta, "vrate": int(s.get('baro_rate', 0))})
             if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
@@ -155,14 +156,14 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V94.4</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V95.0</div>
                 </div>
             </div>
         </div>
     </div>
     <div class="ticker" id="tk">AWAITING LOCALIZATION...</div>
     <script>
-        let pos = null, act = null, isTest = false, weather = null;
+        let pos = null, act = null, prevDist = null, isTest = false, weather = null;
         let toggleState = true; 
         let isGhost = false;
         let tickerMsg = [], tickerIdx = 0;
@@ -216,7 +217,7 @@ def index():
         }, 20000);
 
         function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
-        setInterval(updateTicker, 15000);
+        setInterval(updateTicker, 8000);
 
         async function update() {
             if(!pos) return;
@@ -227,8 +228,19 @@ def index():
                 if(d.flight) {
                     const f = d.flight;
                     isGhost = false;
-                    document.getElementById('stb').style.background = f.color; // VOLTA A FICAR COLORIDO
+                    document.getElementById('stb').style.background = f.color;
                     
+                    let proximity = "MAINTAINING";
+                    if(prevDist !== null) {
+                        if(f.dist < prevDist - 0.1) proximity = "CLOSING IN";
+                        else if(f.dist > prevDist + 0.1) proximity = "MOVING AWAY";
+                    }
+                    prevDist = f.dist;
+
+                    let vStatus = "LEVEL";
+                    if(f.vrate > 100) vStatus = "CLIMBING";
+                    else if(f.vrate < -100) vStatus = "DESCENDING";
+
                     if(!act || act.icao !== f.icao) {
                         fDate = f.date; fTime = f.time;
                         playPing();
@@ -239,10 +251,12 @@ def index():
                         document.getElementById('dist-label').innerText = "DISTANCE"; applyFlap('f-dist', f.dist + " KM");
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                     }
+                    
                     document.getElementById('f-line1').innerText = fDate;
                     document.getElementById('f-line2').innerText = fTime;
                     document.getElementById('b-date-line1').innerText = fDate;
                     document.getElementById('b-date-line2').innerText = fTime;
+                    
                     for(let i=1; i<=5; i++) {
                         const threshold = 190 - ((i-1) * 40);
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
@@ -250,16 +264,17 @@ def index():
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
-                    tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN`, `SKY: ${weather.sky}`];
+                    tickerMsg = [`V.RATE: ${f.vrate} FPM`, `STATUS: ${vStatus}`, proximity];
                 } else { 
+                    prevDist = null;
                     if(act) {
                         isGhost = true;
-                        document.getElementById('stb').style.background = "var(--brand)"; // FICA CINZA NO GHOST
-                        tickerMsg = ["SIGNAL LOST / GHOST MODE", `LAST POS: ${act.icao}`, "RE-SCANNING AREA..."];
+                        document.getElementById('stb').style.background = "var(--brand)";
+                        tickerMsg = ["SEARCHING TRAFFIC...", `TEMP: ${weather.temp}`, `VIS: ${weather.vis}`, weather.sky];
                         for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     } else {
                         document.getElementById('stb').style.background = "var(--brand)";
-                        tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
+                        tickerMsg = ["SEARCHING TRAFFIC...", `TEMP: ${weather.temp}`, `VIS: ${weather.vis}`, weather.sky];
                         for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                         act = null;
                     }
