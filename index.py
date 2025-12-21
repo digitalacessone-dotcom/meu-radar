@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V79 - Base V77 com Ticker Split-Flap Estabilizado
+# Configurações V80 - Foco em Realismo Mecânico (Split-Flap Lento)
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -24,10 +24,11 @@ def get_weather(lat, lon):
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,relative_humidity_2m"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
-        temp = f"{int(curr['temperature_2m'])}C"
-        sky = get_weather_desc(curr['weather_code'])
-        hum = f"UMID: {curr['relative_humidity_2m']}%"
-        return {"temp": temp, "sky": sky, "hum": hum}
+        return {
+            "temp": f"{int(curr['temperature_2m'])}C",
+            "sky": get_weather_desc(curr['weather_code']),
+            "hum": f"UMID: {curr['relative_humidity_2m']}%"
+        }
     except:
         return {"temp": "--C", "sky": "METAR ON", "hum": ""}
 
@@ -36,13 +37,12 @@ def fetch_aircrafts(lat, lon):
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/250",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/250"
     ]
-    headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)', 'Accept': 'application/json'}
+    headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     random.shuffle(endpoints)
     for url in endpoints:
         try:
             r = requests.get(url, headers=headers, timeout=5)
-            if r.status_code == 200:
-                return r.json().get('aircraft', [])
+            if r.status_code == 200: return r.json().get('aircraft', [])
         except: continue
     return []
 
@@ -55,12 +55,9 @@ def radar():
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
-        
-        weather_data = get_weather(lat, lon)
-
+        w = get_weather(lat, lon)
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time}, "weather": weather_data})
-
+            return jsonify({"flight": {"icao": "E4953E", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time}, "weather": w})
         data = fetch_aircrafts(lat, lon)
         found = None
         if data:
@@ -75,13 +72,9 @@ def radar():
                         if call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
-                        proc.append({
-                            "icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1),
-                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
-                            "spd": int(s.get('gs', 0) * 1.852), "hd": int(s.get('track', 0)), "date": now_date, "time": now_time
-                        })
+                        proc.append({"icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": int(s.get('gs', 0) * 1.852), "hd": int(s.get('track', 0)), "date": now_date, "time": now_time})
             if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
-        return jsonify({"flight": found, "weather": weather_data, "date": now_date, "time": now_time})
+        return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
 
 @app.route('/')
@@ -92,7 +85,6 @@ def index():
 <head>
     <meta charset="UTF-8">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <style>
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
@@ -175,7 +167,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V79</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V80</div>
                 </div>
             </div>
         </div>
@@ -185,7 +177,6 @@ def index():
     <script>
         let pos = null, act = null, isTest = false, weather = null;
         let tickerMsg = [], tickerIdx = 0;
-        const audio = new (window.AudioContext || window.webkitAudioContext)();
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ. ";
 
         function applyFlap(id, text, isTicker = false) {
@@ -201,14 +192,15 @@ def index():
                 container.appendChild(span);
                 
                 let count = 0;
-                let max = 6 + (i % 4);
+                // Aumentado: maximo agora é baseado na posição da letra para um efeito desencontrado mais longo
+                let max = 15 + (i * 3) + Math.floor(Math.random() * 10); 
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
                     if (count++ >= max) {
                         clearInterval(interval);
                         span.innerText = char;
                     }
-                }, 35);
+                }, 45); // Velocidade levemente reduzida para ver as trocas
             });
         }
 
@@ -218,7 +210,8 @@ def index():
                 tickerIdx = (tickerIdx + 1) % tickerMsg.length;
             }
         }
-        setInterval(updateTicker, 4000);
+        // INTERVALO DE 15 SEGUNDOS PARA AS INFORMAÇÕES
+        setInterval(updateTicker, 15000);
 
         async function update() {
             if(!pos) return;
@@ -278,7 +271,7 @@ def index():
 
         function hideUI() { 
             document.getElementById('ui').classList.add('hide'); 
-            setTimeout(() => { update(); setInterval(update, 10000); }, 800);
+            setTimeout(() => { update(); setInterval(update, 15000); }, 800);
         }
 
         navigator.geolocation.getCurrentPosition(p => {
