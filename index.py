@@ -7,13 +7,13 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V67
+# Configurações V68
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
 
 def get_time_local():
-    # Retorna horário de Brasília (GMT-3)
+    # Horário de Brasília/Rio (GMT-3)
     return datetime.utcnow() - timedelta(hours=3)
 
 def get_weather(lat, lon):
@@ -95,17 +95,13 @@ def index():
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
 
-        /* BASE DO CARD */
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .face.back { transform: rotateY(180deg); background: #f9f9f9; padding: 22px; }
+        .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
 
-        /* SECAO ESCURA (STUB) */
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; position: relative; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; }
-        
-        /* QUADRADINHOS NO STUB */
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; position: relative; display: flex; flex-direction: column; justify-content: center; }
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
@@ -114,64 +110,60 @@ def index():
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
 
-        /* SECAO BRANCA (MAIN) */
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
-        .bp-title { color: #333; font-weight: 900; font-size: 13px; letter-spacing: 2px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start; margin-bottom: 10px; }
+        .bp-title { color: #333; font-weight: 900; font-size: 13px; letter-spacing: 2px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start; }
 
         .label { font-size: 7px; font-weight: 900; color: #bbb; letter-spacing: 1px; text-transform: uppercase; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 22px; display: flex; overflow: hidden; }
         .char { width: 11px; text-align: center; }
 
-        /* DATA AZUL ESTILO IMAGEM */
-        .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: left; margin-bottom: 4px; }
+        /* DATA AZUL */
+        .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: left; }
         .date-visual .line1 { font-size: 20px; }
         .date-visual .line2 { font-size: 18px; }
+
+        /* ESTILO DO VERSO (BACK) */
+        .back-content { border: 2px dashed #ddd; height: 100%; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; position: relative; }
+        .stamp { border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; }
+        .stamp div { font-size: 14px; }
 
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); }
         .ticker { width: 300px; height: 25px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 9px; }
 
-        /* --- FORMATACAO DEITADO (LANDSCAPE) --- */
         @media (orientation: landscape) {
             .scene { width: 550px; height: 260px; }
             .face { flex-direction: row !important; }
-            .stub { width: 30% !important; height: 100% !important; border-right: none; }
+            .stub { width: 30% !important; height: 100% !important; }
             .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; }
-            .perfor::before, .perfor::after { left: -15px !important; top: auto; }
-            .perfor::before { top: -22px !important; } .perfor::after { bottom: -22px !important; }
             .main { width: 70% !important; }
-            .ticker { width: 550px; }
         }
     </style>
 </head>
 <body onclick="handleFlip(event)">
 
     <div id="ui">
-        <input type="text" id="in" placeholder="DIGITE O LOCAL">
+        <input type="text" id="in" placeholder="LOCAL ATUAL">
         <button onclick="startSearch()">SCAN</button>
     </div>
 
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
-                <div style="font-size:7px; font-weight:900; opacity:0.7;" id="stat">RADAR SCANNING</div>
+                <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
                 <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
                 <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
                 <div class="dots-container">
                     <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
                 </div>
             </div>
-
             <div class="perfor"></div>
-
             <div class="main">
                 <div class="bp-title">BOARDING PASS</div>
-                
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                     <div><span class="label">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
                     <div><span class="label">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
                     <div style="grid-column:span 2;"><span class="label">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
                 </div>
-
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                     <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
                     <div>
@@ -186,17 +178,27 @@ def index():
         </div>
 
         <div class="face back">
-            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; gap:12px;">
-                <div><span class="label">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
-                <div><span class="label">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
-                <div style="margin-top:auto; color:var(--blue-txt); font-weight:900; font-size:12px; text-align:right;" id="b-date">
-                    RADAR CONTACT V67
+            <div class="back-content">
+                <div style="display:flex; justify-content:space-between;">
+                    <div><span class="label">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
+                    <div><span class="label">SPEED</span><div id="b-spd" class="flap"></div></div>
+                </div>
+                
+                <div class="stamp">
+                    <div style="font-size:8px;">SECURITY CHECKED</div>
+                    <div id="b-date-line1">-- --- ----</div>
+                    <div id="b-date-line2" style="font-size:22px;">--.--</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V68</div>
+                </div>
+
+                <div style="margin-top:auto; font-size:7px; color:#bbb; text-align:center;">
+                    ADS-B DATA VERIFIED • RIO DE JANEIRO
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="ticker" id="tk">AGUARDANDO LOCALIZAÇÃO...</div>
+    <div class="ticker" id="tk">CONECTANDO...</div>
 
     <script>
         let pos = null, act = null, isTest = false;
@@ -232,6 +234,9 @@ def index():
                     const f = d.flight;
                     document.getElementById('f-line1').innerText = f.date;
                     document.getElementById('f-line2').innerText = f.time;
+                    document.getElementById('b-date-line1').innerText = f.date;
+                    document.getElementById('b-date-line2').innerText = f.time;
+
                     if(!act || act.icao !== f.icao) {
                         bip();
                         document.getElementById('stb').style.background = f.color;
@@ -245,11 +250,9 @@ def index():
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    document.getElementById('tk').innerText = `LOCALIZADO: ${f.call} - ${f.dist}KM`;
-                } else {
-                    document.getElementById('tk').innerText = `BUSCANDO... | ${d.weather || 'OFFLINE'}`;
+                    document.getElementById('tk').innerText = `RADAR: ${f.call} ATIVO`;
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) { }
         }
 
         function startSearch() {
@@ -266,7 +269,7 @@ def index():
 
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI();
-        }, () => { document.getElementById('tk').innerText = "POR FAVOR, DIGITE O LOCAL"; });
+        }, () => { document.getElementById('tk').innerText = "DIGITE A CIDADE"; });
     </script>
 </body>
 </html>
