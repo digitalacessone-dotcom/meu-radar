@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V80 - Foco em Realismo Mecânico (Split-Flap Lento)
+# Configurações V81 - Split-Flap com Finalização Aleatória (Não Linear)
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -118,7 +118,7 @@ def index():
         .stamp { border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; }
         
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; }
-        .ticker { width: 300px; height: 28px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; }
+        .ticker { width: 300px; height: 30px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; padding: 0 10px; }
 
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
@@ -167,7 +167,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V80</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V81</div>
                 </div>
             </div>
         </div>
@@ -192,15 +192,17 @@ def index():
                 container.appendChild(span);
                 
                 let count = 0;
-                // Aumentado: maximo agora é baseado na posição da letra para um efeito desencontrado mais longo
-                let max = 15 + (i * 3) + Math.floor(Math.random() * 10); 
+                // CAOS ALEATÓRIO: O tempo de parada não depende mais da posição (i)
+                // Cada letra decide sozinha quando vai parar de girar
+                let max = 15 + Math.floor(Math.random() * 40); 
+                
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
                     if (count++ >= max) {
                         clearInterval(interval);
                         span.innerText = char;
                     }
-                }, 45); // Velocidade levemente reduzida para ver as trocas
+                }, 50); 
             });
         }
 
@@ -210,7 +212,6 @@ def index():
                 tickerIdx = (tickerIdx + 1) % tickerMsg.length;
             }
         }
-        // INTERVALO DE 15 SEGUNDOS PARA AS INFORMAÇÕES
         setInterval(updateTicker, 15000);
 
         async function update() {
