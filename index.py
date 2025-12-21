@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V96 - Scale 190KM & Dot Calibration
+# Settings V99 - Full English & Environment/Telemetry Cycle
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -15,18 +15,25 @@ DEFAULT_LON = -43.1729
 def get_time_local():
     return datetime.utcnow() - timedelta(hours=3)
 
-def get_weather_desc(code):
-    mapping = {0: "CLEAR SKY", 1: "FEW CLOUDS", 2: "SCATTERED", 3: "OVERCAST", 45: "FOG", 51: "LIGHT DRIZZLE", 61: "RAIN", 80: "SHOWERS"}
-    return mapping.get(code, "CONDITIONS OK")
-
-def get_weather(lat, lon):
+def get_weather_info(lat, lon):
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
-        return {"temp": f"{int(curr['temperature_2m'])}C", "sky": get_weather_desc(curr['weather_code'])}
+        code = curr['weather_code']
+        
+        mapping = {0: "CLEAR SKY", 1: "FEW CLOUDS", 2: "SCATTERED", 3: "OVERCAST", 45: "FOGGY", 51: "DRIZZLE", 61: "RAIN", 80: "SHOWERS"}
+        sky = mapping.get(code, "STABLE")
+        
+        # Visibility estimation based on weather code
+        vis = "10KM+"
+        if code in [45, 48]: vis = "1.5KM"
+        elif code in [51, 53, 55, 61]: vis = "5KM"
+        elif code in [63, 65, 80]: vis = "3KM"
+        
+        return {"temp": f"{int(curr['temperature_2m'])}C", "sky": sky, "vis": vis}
     except:
-        return {"temp": "--C", "sky": "METAR ON"}
+        return {"temp": "--C", "sky": "METAR ON", "vis": "---"}
 
 def fetch_aircrafts(lat, lon):
     endpoints = [
@@ -51,10 +58,10 @@ def radar():
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
-        w = get_weather(lat, lon)
+        weather = get_weather_info(lat, lon)
         
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459}, "weather": w, "date": now_date, "time": now_time})
+            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "squawk": "2241", "vrate": -1200, "cat": "LARGE", "mach": 0.78}, "weather": weather, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
         found = None
@@ -70,12 +77,21 @@ def radar():
                         if call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
+                        
                         spd_kts = int(s.get('gs', 0))
-                        spd_kmh = int(spd_kts * 1.852)
-                        eta = round((d / (spd_kmh or 1)) * 60)
-                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta})
+                        alt = int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0)
+                        
+                        proc.append({
+                            "icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), 
+                            "call": call, "airline": airline, "color": color, 
+                            "dist": round(d, 1), "alt": alt, "spd": int(spd_kts * 1.852), "kts": spd_kts, 
+                            "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, 
+                            "route": s.get('route', "--- ---"), "eta": round((d / ((spd_kts * 1.852) or 1)) * 60),
+                            "squawk": s.get('squawk', '0000'), "vrate": s.get('baro_rate', 0),
+                            "cat": "HEAVY" if s.get('category','').startswith('A5') else "MEDIUM", "mach": round(spd_kts / 661.7, 2)
+                        })
             if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
-        return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
+        return jsonify({"flight": found, "weather": weather, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
 
 @app.route('/')
@@ -155,7 +171,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V96</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V99</div>
                 </div>
             </div>
         </div>
@@ -166,10 +182,9 @@ def index():
         let toggleState = true; 
         let tickerMsg = [], tickerIdx = 0;
         let audioCtx = null;
-        let fDate = "-- --- ----", fTime = "--.--";
-        let isGhost = false;
+        let fDate = "-- --- ----", fTime = "--.--", lastDist = null;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
-        const MAX_RANGE = 190; // Escala calibrada 190km
+        const MAX_RANGE = 190;
 
         function playPing() {
             try {
@@ -187,7 +202,7 @@ def index():
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             if(!container) return;
-            const limit = isTicker ? 25 : 8;
+            const limit = isTicker ? 30 : 8;
             const target = text.toUpperCase().padEnd(limit, ' ');
             container.innerHTML = '';
             [...target].forEach((char) => {
@@ -195,11 +210,11 @@ def index():
                 if(!isTicker) span.className = 'char';
                 span.innerHTML = '&nbsp;';
                 container.appendChild(span);
-                let count = 0, max = 20 + Math.floor(Math.random() * 50); 
+                let count = 0, max = 15; 
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
                     if (count++ >= max) { clearInterval(interval); span.innerHTML = (char === ' ') ? '&nbsp;' : char; }
-                }, 50); 
+                }, 40); 
             });
         }
 
@@ -216,7 +231,7 @@ def index():
         }, 20000);
 
         function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
-        setInterval(updateTicker, 15000);
+        setInterval(updateTicker, 10000);
 
         async function update() {
             if(!pos) return;
@@ -227,11 +242,15 @@ def index():
                 
                 if(d.flight) {
                     const f = d.flight;
-                    isGhost = false;
+                    let trend = "OVERHEAD";
+                    if(lastDist !== null) {
+                        if(f.dist < lastDist - 0.2) trend = "CLOSING IN";
+                        else if(f.dist > lastDist + 0.2) trend = "MOVING AWAY";
+                    }
+                    lastDist = f.dist;
 
                     if(!act || act.icao !== f.icao) {
-                        fDate = f.date; fTime = f.time;
-                        playPing();
+                        fDate = f.date; fTime = f.time; playPing();
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('arr').style.color = f.color;
                         document.getElementById('airl').innerText = f.airline;
@@ -240,34 +259,30 @@ def index():
                         document.getElementById('icao-label').innerText = "AIRCRAFT ICAO"; applyFlap('f-icao', f.icao);
                         document.getElementById('dist-label').innerText = "DISTANCE"; applyFlap('f-dist', f.dist + " KM");
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
-                    } else {
-                        document.getElementById('stb').style.background = f.color;
-                        document.getElementById('arr').style.color = f.color;
                     }
-
-                    document.getElementById('f-line1').innerText = fDate;
-                    document.getElementById('f-line2').innerText = fTime;
-                    document.getElementById('b-date-line1').innerText = fDate;
-                    document.getElementById('b-date-line2').innerText = fTime;
-                    
-                    // CALIBRAGEM DOS DOTS (190 / 5 = 38km por dot)
+                    document.getElementById('f-line1').innerText = fDate; document.getElementById('f-line2').innerText = fTime;
+                    document.getElementById('b-date-line1').innerText = fDate; document.getElementById('b-date-line2').innerText = fTime;
                     for(let i=1; i<=5; i++) {
                         const threshold = MAX_RANGE - ((i-1) * 38);
                         document.getElementById('d'+(6-i)).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
-
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
-                    tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN` ];
+                    tickerMsg = [
+                        `STATUS: ${trend}`,
+                        `CAT: ${f.cat} • MACH: ${f.mach}`,
+                        `V.RATE: ${f.vrate} FPM • SQK: ${f.squawk}`,
+                        `TEMP: ${weather.temp} • SKY: ${weather.sky}`,
+                        `VISIBILITY: ${weather.vis}`,
+                        `SOURCE: ADS-B • GPS: 3D-FIX`
+                    ];
                 } else if (act) {
-                    isGhost = true;
-                    document.getElementById('stb').style.background = "#444"; 
-                    document.getElementById('arr').style.color = "#444"; 
+                    document.getElementById('stb').style.background = "#444"; document.getElementById('arr').style.color = "#444"; 
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
-                    tickerMsg = [`SIGNAL LOST: ${act.call}`, `GHOST MODE ACTIVE`, `LAST KNOWN POS STORED` ];
+                    tickerMsg = [`SIGNAL LOST: ${act.call}`, `STATUS: GHOST MODE`, `TEMP: ${weather.temp} • ${weather.sky}` ];
                 } else {
-                    tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
+                    tickerMsg = [`SEARCHING TRAFFIC...`, `TEMP: ${weather.temp} • ${weather.sky}`, `SYSTEM READY V99` ];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                 }
             } catch(e) {}
@@ -281,7 +296,7 @@ def index():
         }
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
-        function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 15000); }, 800); }
+        function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 10000); }, 800); }
         navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => { applyFlap('tk', 'ENTER LOCATION ABOVE', true); }, { timeout: 6000 });
     </script>
 </body>
