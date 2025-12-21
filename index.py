@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V86 - Otimização e Estabilidade
+# Configurações V87 - Aeronautical English & Check-in Update
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -16,8 +16,8 @@ def get_time_local():
     return datetime.utcnow() - timedelta(hours=3)
 
 def get_weather_desc(code):
-    mapping = {0: "CEU LIMPO", 1: "POUCAS NUVENS", 2: "PARCIAL NUBLADO", 3: "NUBLADO", 45: "NEVOEIRO", 51: "CHUVA LEVE", 61: "CHUVA", 80: "PANCADAS"}
-    return mapping.get(code, "CONDICOES OK")
+    mapping = {0: "CLEAR SKY", 1: "FEW CLOUDS", 2: "SCATTERED", 3: "OVERCAST", 45: "FOG", 51: "LIGHT DRIZZLE", 61: "RAIN", 80: "SHOWERS"}
+    return mapping.get(code, "CONDITIONS OK")
 
 def get_weather(lat, lon):
     try:
@@ -27,7 +27,7 @@ def get_weather(lat, lon):
         return {
             "temp": f"{int(curr['temperature_2m'])}C",
             "sky": get_weather_desc(curr['weather_code']),
-            "hum": f"UMID: {curr['relative_humidity_2m']}%"
+            "hum": f"HUMIDITY: {curr['relative_humidity_2m']}%"
         }
     except:
         return {"temp": "--C", "sky": "METAR ON", "hum": ""}
@@ -84,7 +84,7 @@ def radar():
 def index():
     return render_template_string('''
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -119,14 +119,14 @@ def index():
 </head>
 <body onclick="handleFlip(event)">
     <div id="ui">
-        <input type="text" id="in" placeholder="DIGITE O LOCAL">
-        <button onclick="startSearch()">SCAN</button>
+        <input type="text" id="in" placeholder="ENTER LOCATION">
+        <button onclick="startSearch()">CHECK-IN</button>
     </div>
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
-                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
+                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING TRAFFIC...</div>
                 <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
                 <div class="dots-container" id="dots"><div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div></div>
             </div>
@@ -155,12 +155,12 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V86</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V87</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="ticker" id="tk">AGUARDANDO LOCALIZACAO...</div>
+    <div class="ticker" id="tk">AWAITING LOCALIZATION...</div>
     <script>
         let pos = null, act = null, isTest = false, weather = null;
         let tickerMsg = [], tickerIdx = 0;
@@ -209,8 +209,8 @@ def index():
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    tickerMsg = [`VOO: ${f.call}`, `ROTA: ${f.route}`, `DIST: ${f.dist} KM`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`];
-                } else { tickerMsg = [`BUSCANDO AERONAVES...`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`]; }
+                    tickerMsg = [`SQUAWKING: ${f.call}`, `ROUTE: ${f.route}`, `RANGE: ${f.dist} KM`, `TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
+                } else { tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`]; }
             } catch(e) {}
         }
         function startSearch() {
@@ -221,7 +221,7 @@ def index():
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
         function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 15000); }, 800); }
-        navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => { applyFlap('tk', 'DIGITE O LOCAL ACIMA', true); }, { timeout: 6000 });
+        navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => { applyFlap('tk', 'ENTER LOCATION ABOVE', true); }, { timeout: 6000 });
     </script>
 </body>
 </html>
