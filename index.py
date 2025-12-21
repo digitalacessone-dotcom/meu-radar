@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V81 - Split-Flap com Finalização Aleatória (Não Linear)
+# Configurações V82 - Correção de Espaços e Giro Mecânico Caótico
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -118,7 +118,7 @@ def index():
         .stamp { border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; }
         
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; }
-        .ticker { width: 300px; height: 30px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; padding: 0 10px; }
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; white-space: pre; }
 
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
@@ -167,12 +167,12 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V81</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V82</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="ticker" id="tk">AGUARDANDO LOCALIZAÇÃO...</div>
+    <div class="ticker" id="tk">AGUARDANDO LOCALIZACAO...</div>
 
     <script>
         let pos = null, act = null, isTest = false, weather = null;
@@ -182,25 +182,29 @@ def index():
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             const limit = isTicker ? 25 : 8;
+            // Garante que o texto tenha espaços reais no padding
             const target = text.toUpperCase().padEnd(limit, ' ');
             container.innerHTML = '';
             
             [...target].forEach((char, i) => {
                 const span = document.createElement('span');
                 if(!isTicker) span.className = 'char';
-                span.innerText = ' ';
+                // Preserva o espaço visual inicial usando &nbsp; se for o caso
+                span.innerHTML = '&nbsp;';
                 container.appendChild(span);
                 
                 let count = 0;
-                // CAOS ALEATÓRIO: O tempo de parada não depende mais da posição (i)
-                // Cada letra decide sozinha quando vai parar de girar
-                let max = 15 + Math.floor(Math.random() * 40); 
+                // CAOS ALEATÓRIO: Letras param em tempos totalmente diferentes
+                let max = 20 + Math.floor(Math.random() * 50); 
                 
                 const interval = setInterval(() => {
+                    // Durante o giro, mostra caracteres aleatórios
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
+                    
                     if (count++ >= max) {
                         clearInterval(interval);
-                        span.innerText = char;
+                        // No final, se for espaço, usa &nbsp; para garantir que não colapse
+                        span.innerHTML = (char === ' ') ? '&nbsp;' : char;
                     }
                 }, 50); 
             });
@@ -235,14 +239,14 @@ def index():
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                         document.getElementById('bc').style.opacity = "0.8";
                     }
-                    if(!act || act.dist !== f.dist) applyFlap('f-dist', f.dist + "KM");
-                    if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + "FT");
-                    if(!act || act.spd !== f.spd) applyFlap('b-spd', f.spd + "KMH");
+                    if(!act || act.dist !== f.dist) applyFlap('f-dist', f.dist + " KM");
+                    if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
+                    if(!act || act.spd !== f.spd) applyFlap('b-spd', f.spd + " KMH");
                     
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    tickerMsg = [`VOO: ${f.call}`, `DISTANCIA: ${f.dist}KM`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`, weather.hum];
+                    tickerMsg = [`VOO: ${f.call}`, `DISTANCIA: ${f.dist} KM`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`, weather.hum];
                 } else {
                     tickerMsg = [`BUSCANDO AERONAVES...`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`];
                 }
