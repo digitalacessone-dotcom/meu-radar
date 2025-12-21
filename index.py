@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V94 - "Boarding Separation" Mode
+# Configurações V95
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -54,7 +54,6 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            # Em teste, forçamos 9.5km para você ver o efeito de separação
             return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 9.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459}, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
@@ -93,30 +92,71 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
+        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 20px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
 
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
+        .scene { width: 320px; height: 500px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         
-        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
+        /* A face agora é transparente para o fundo vazar no meio */
+        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; flex-direction: column; }
+        .face.back { transform: rotateY(180deg); background: #f4f4f4; border-radius: 20px; padding: 15px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
 
-        /* Estrutura para o efeito de separação */
-        .stub, .main, .perfor { transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s; }
+        /* Partes individuais com fundo branco */
+        .stub, .main { 
+            background: #fff; 
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
 
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; z-index: 2; }
-        .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; z-index: 1; }
-        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
-        .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; z-index: 2; }
+        .stub { 
+            height: 30%; 
+            background: var(--brand); 
+            color: #fff; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            border-radius: 20px 20px 5px 5px;
+            z-index: 2; 
+        }
 
-        /* ESTADO DE EMBARQUE (< 10km) */
+        .main { 
+            flex: 1; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            border-radius: 5px 5px 20px 20px;
+            z-index: 2; 
+            overflow: hidden; /* Mantém tudo dentro do bilhete */
+        }
+
+        /* A linha de corte agora fica entre as duas partes */
+        .perfor { 
+            height: 10px; 
+            width: 100%; 
+            position: relative; 
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+        }
+        .perfor::after {
+            content: "";
+            width: 90%;
+            border-top: 4px dotted #ccc;
+            opacity: 0.5;
+        }
+
+        /* EFEITO DE DESTACAMENTO REAL */
         .boarding-mode .stub { transform: translateY(-15px); }
         .boarding-mode .main { transform: translateY(15px); }
-        .boarding-mode .perfor { opacity: 0.2; transform: scaleX(0.9); }
+        .boarding-mode .perfor::after { opacity: 0; }
 
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
@@ -124,19 +164,20 @@ def index():
         
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
-        .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; }
-        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; }
+        
+        .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; font-size: 14px; text-align: right; }
+        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px; }
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; white-space: pre; }
 
         @media (orientation: landscape) { 
             .scene { width: 550px; height: 260px; } 
             .face { flex-direction: row !important; } 
-            .stub { width: 30% !important; height: 100% !important; } 
-            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } 
-            .main { width: 70% !important; } 
-            .ticker { width: 550px; }
-            .boarding-mode .stub { transform: translateX(-20px); }
-            .boarding-mode .main { transform: translateX(20px); }
+            .stub { width: 30% !important; height: 100% !important; border-radius: 20px 5px 5px 20px; } 
+            .main { width: 70% !important; height: 100% !important; border-radius: 5px 20px 20px 5px; } 
+            .perfor { width: 10px !important; height: 100% !important; flex-direction: column; }
+            .perfor::after { width: 1px; height: 90%; border-top: none; border-left: 4px dotted #ccc; }
+            .boarding-mode .stub { transform: translateX(-20px) !important; transform: translateY(0); }
+            .boarding-mode .main { transform: translateX(20px) !important; transform: translateY(0); }
         }
     </style>
 </head>
@@ -149,27 +190,36 @@ def index():
         <div class="face front" id="card-front">
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
-                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING TRAFFIC...</div>
+                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
                 <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
                 <div class="dots-container" id="dots">
                     <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
                 </div>
             </div>
+            
             <div class="perfor" id="perf"></div>
+            
             <div class="main">
                 <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
+                
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
                     <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
                     <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: auto;">
                     <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
-                    <div class="date-visual"><div id="f-line1">-- --- ----</div><div id="f-line2">--.--</div><img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)"></div>
+                    <div class="date-visual">
+                        <div id="f-line1">-- --- ----</div>
+                        <div id="f-line2">--.--</div>
+                        <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)">
+                    </div>
                 </div>
             </div>
         </div>
+        
         <div class="face back">
             <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column;">
                 <div style="display:flex; justify-content:space-between;">
@@ -180,7 +230,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V94</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V95</div>
                 </div>
             </div>
         </div>
@@ -251,7 +301,6 @@ def index():
                 if(d.flight) {
                     const f = d.flight;
                     
-                    // Lógica de Separação do Bilhete (< 10km)
                     if (f.dist <= 10) {
                         document.getElementById('card-front').classList.add('boarding-mode');
                     } else {
@@ -284,7 +333,7 @@ def index():
                     tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN`, `SKY: ${weather.sky}`];
                 } else { 
                     document.getElementById('card-front').classList.remove('boarding-mode');
-                    tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
+                    tickerMsg = [`SEARCHING TRAFFIC...`, `TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     act = null;
                 }
@@ -304,7 +353,3 @@ def index():
     </script>
 </body>
 </html>
-''')
-
-if __name__ == "__main__":
-    app.run()
