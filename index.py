@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V95 - GHOST MODE IMPLEMENTED
-RADIUS_KM = 200 
+# Configurações V96 - Scale 190KM & Dot Calibration
+RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
 
@@ -155,7 +155,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V95</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V96</div>
                 </div>
             </div>
         </div>
@@ -167,8 +167,9 @@ def index():
         let tickerMsg = [], tickerIdx = 0;
         let audioCtx = null;
         let fDate = "-- --- ----", fTime = "--.--";
-        let isGhost = false; // Novo controle de estado Ghost
+        let isGhost = false;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
+        const MAX_RANGE = 190; // Escala calibrada 190km
 
         function playPing() {
             try {
@@ -226,13 +227,13 @@ def index():
                 
                 if(d.flight) {
                     const f = d.flight;
-                    isGhost = false; // Sinal recuperado
+                    isGhost = false;
 
                     if(!act || act.icao !== f.icao) {
                         fDate = f.date; fTime = f.time;
                         playPing();
                         document.getElementById('stb').style.background = f.color;
-                        document.getElementById('arr').style.color = f.color; // Ícone ganha cor
+                        document.getElementById('arr').style.color = f.color;
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         toggleState = true;
@@ -240,7 +241,6 @@ def index():
                         document.getElementById('dist-label').innerText = "DISTANCE"; applyFlap('f-dist', f.dist + " KM");
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                     } else {
-                        // Voo continua o mesmo, apenas atualizamos a cor caso tenha mudado
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('arr').style.color = f.color;
                     }
@@ -250,9 +250,10 @@ def index():
                     document.getElementById('b-date-line1').innerText = fDate;
                     document.getElementById('b-date-line2').innerText = fTime;
                     
+                    // CALIBRAGEM DOS DOTS (190 / 5 = 38km por dot)
                     for(let i=1; i<=5; i++) {
-                        const threshold = 250 - (i * 40);
-                        document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
+                        const threshold = MAX_RANGE - ((i-1) * 38);
+                        document.getElementById('d'+(6-i)).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
 
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
@@ -260,14 +261,12 @@ def index():
                     act = f;
                     tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN` ];
                 } else if (act) {
-                    // MODO GHOST: Sinal perdido, mas havia um voo na tela
                     isGhost = true;
-                    document.getElementById('stb').style.background = "#444"; // Reset cor do stub
-                    document.getElementById('arr').style.color = "#444"; // Reset cor do avião
+                    document.getElementById('stb').style.background = "#444"; 
+                    document.getElementById('arr').style.color = "#444"; 
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     tickerMsg = [`SIGNAL LOST: ${act.call}`, `GHOST MODE ACTIVE`, `LAST KNOWN POS STORED` ];
                 } else {
-                    // Sem voo e sem histórico
                     tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                 }
