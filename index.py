@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V95.0 - Ticker Intelligence & 190km Radius
+# Configurações V97.0 - Custom Ticker Logic
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -55,7 +55,7 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1200}, "weather": w, "date": now_date, "time": now_time})
+            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1500}, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
         found = None
@@ -156,7 +156,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V95.0</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V97.0</div>
                 </div>
             </div>
         </div>
@@ -188,7 +188,7 @@ def index():
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             if(!container) return;
-            const limit = isTicker ? 25 : 8;
+            const limit = isTicker ? 32 : 8;
             const target = text.toUpperCase().padEnd(limit, ' ');
             container.innerHTML = '';
             [...target].forEach((char) => {
@@ -225,21 +225,24 @@ def index():
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
                 weather = d.weather;
+                
                 if(d.flight) {
                     const f = d.flight;
                     isGhost = false;
                     document.getElementById('stb').style.background = f.color;
                     
+                    // Lógica de Proximidade (Aproximando/Afastando)
                     let proximity = "MAINTAINING";
                     if(prevDist !== null) {
-                        if(f.dist < prevDist - 0.1) proximity = "CLOSING IN";
-                        else if(f.dist > prevDist + 0.1) proximity = "MOVING AWAY";
+                        if(f.dist < prevDist - 0.05) proximity = "CLOSING IN";
+                        else if(f.dist > prevDist + 0.05) proximity = "MOVING AWAY";
                     }
                     prevDist = f.dist;
 
+                    // Lógica de Razão Vertical
                     let vStatus = "LEVEL";
-                    if(f.vrate > 100) vStatus = "CLIMBING";
-                    else if(f.vrate < -100) vStatus = "DESCENDING";
+                    if(f.vrate > 150) vStatus = "CLIMBING";
+                    else if(f.vrate < -150) vStatus = "DESCENDING";
 
                     if(!act || act.icao !== f.icao) {
                         fDate = f.date; fTime = f.time;
@@ -264,20 +267,28 @@ def index():
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
-                    tickerMsg = [`V.RATE: ${f.vrate} FPM`, `STATUS: ${vStatus}`, proximity];
-                } else { 
+
+                    // CONDIÇÃO 2: Contato estabelecido
+                    tickerMsg = [`V.RATE: ${f.vrate}`, `FPM ${vStatus}`, proximity];
+                    
+                } else if(act) { 
+                    // CONDIÇÃO 3: Modo Ghost
+                    isGhost = true;
                     prevDist = null;
-                    if(act) {
-                        isGhost = true;
-                        document.getElementById('stb').style.background = "var(--brand)";
-                        tickerMsg = ["SEARCHING TRAFFIC...", `TEMP: ${weather.temp}`, `VIS: ${weather.vis}`, weather.sky];
-                        for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
-                    } else {
-                        document.getElementById('stb').style.background = "var(--brand)";
-                        tickerMsg = ["SEARCHING TRAFFIC...", `TEMP: ${weather.temp}`, `VIS: ${weather.vis}`, weather.sky];
-                        for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
-                        act = null;
-                    }
+                    document.getElementById('stb').style.background = "var(--brand)";
+                    const g = "SIGNAL LOST / GHOST MODE ACTIVE";
+                    tickerMsg = [
+                        g, "SEARCHING TRAFFIC...",
+                        g, `TEMP: ${weather.temp}`,
+                        g, `VIS: ${weather.vis}`,
+                        g, weather.sky, g
+                    ];
+                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
+                } else {
+                    // CONDIÇÃO 1: Busca Inicial (Sem aeronave prévia)
+                    document.getElementById('stb').style.background = "var(--brand)";
+                    tickerMsg = ["SEARCHING TRAFFIC...", `TEMP: ${weather.temp}`, `VIS: ${weather.vis}`, weather.sky];
+                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                 }
             } catch(e) {}
         }
