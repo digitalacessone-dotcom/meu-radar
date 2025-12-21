@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V98.5 - Mechanical Detach System
+# Configurações V99.0 - Mechanical Detach Fixed
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -55,7 +55,6 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            # Simulação de aeronave a 8.5km para testar o corte
             return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 8.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1500}, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
@@ -104,27 +103,27 @@ def index():
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
 
-        /* LÓGICA DE SEPARAÇÃO DO TICKET */
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: background 0.5s, transform 0.5s; position: relative; }
+        /* LÓGICA DE SEPARAÇÃO FIXADA */
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; }
         
-        /* Divisória com efeito de picotado lateral */
-        .perfor { height: 4px; border-top: 5px dotted #ccc; position: relative; background: #fff; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .perfor { height: 6px; border-top: 5px dotted #ccc; position: relative; background: #fff; transition: all 0.5s; z-index: 10; }
         
-        /* Os Semicírculos laterais (Buracos de rasgo) */
-        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; transition: 0.5s; }
+        /* Picotes fixos */
+        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-13px; z-index: 20; transition: 0.5s; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
 
-        /* ESTADO DETACHED (D < 10km) */
-        .scene.detached .perfor { background: var(--bg); border-color: transparent; height: 8px; margin: 4px 0; }
-        .scene.detached .stub { transform: translateY(-4px); }
-        
-        /* Picotes extras em V durante a separação */
-        .v-cut { position: absolute; width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; opacity: 0; transition: 0.5s; }
-        .v-cut.left { left: 0; border-left: 10px solid var(--bg); top: -10px; }
-        .v-cut.right { right: 0; border-right: 10px solid var(--bg); top: -10px; }
-        .scene.detached .v-cut { opacity: 1; }
+        /* QUANDO SEPARADO (D < 10KM) */
+        .scene.detached .perfor { 
+            background: var(--bg) !important; 
+            border-color: transparent !important; 
+            height: 12px !important;
+            margin: 5px 0;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        .scene.detached .stub { transform: translateY(-8px); filter: brightness(1.1); }
+        .scene.detached .main { transform: translateY(2px); }
 
-        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.6s; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
         
@@ -137,10 +136,10 @@ def index():
             .scene { width: 550px; height: 260px; } 
             .face { flex-direction: row !important; } 
             .stub { width: 30% !important; height: 100% !important; } 
-            .perfor { width: 4px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } 
+            .perfor { width: 6px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } 
             .main { width: 70% !important; } 
-            .scene.detached .stub { transform: translateX(-4px); }
-            .scene.detached .perfor { width: 10px !important; margin: 0 4px; }
+            .scene.detached .stub { transform: translateX(-10px); }
+            .scene.detached .perfor { width: 15px !important; margin: 0 5px; }
         }
     </style>
 </head>
@@ -161,12 +160,9 @@ def index():
                 </div>
             </div>
             
-            <div class="perfor">
-                <div class="v-cut left"></div>
-                <div class="v-cut right"></div>
-            </div>
+            <div class="perfor" id="divider"></div>
             
-            <div class="main">
+            <div class="main" id="main-body">
                 <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
                     <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
@@ -191,7 +187,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V98.5</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V99.0</div>
                 </div>
             </div>
         </div>
@@ -207,20 +203,6 @@ def index():
         let audioCtx = null;
         let fDate = "-- --- ----", fTime = "--.--";
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
-
-        function playPing() {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
-            } catch(e) {}
-        }
 
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
@@ -268,9 +250,12 @@ def index():
                     isGhost = false;
                     document.getElementById('stb').style.background = f.color;
                     
-                    // Lógica de Separação Visual (< 10km)
-                    if(f.dist < 10) document.getElementById('card').classList.add('detached');
-                    else document.getElementById('card').classList.remove('detached');
+                    // GATILHO DE SEPARAÇÃO FÍSICA
+                    if(f.dist < 10) {
+                        document.getElementById('card').classList.add('detached');
+                    } else {
+                        document.getElementById('card').classList.remove('detached');
+                    }
 
                     let proximity = "MAINTAINING";
                     if(prevDist !== null) {
@@ -284,20 +269,16 @@ def index():
                     else if(f.vrate < -150) vStatus = "DESCENDING";
 
                     if(!act || act.icao !== f.icao) {
-                        fDate = f.date; fTime = f.time;
-                        playPing();
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
-                        toggleState = true;
-                        document.getElementById('icao-label').innerText = "AIRCRAFT ICAO"; applyFlap('f-icao', f.icao);
-                        document.getElementById('dist-label').innerText = "DISTANCE"; applyFlap('f-dist', f.dist + " KM");
+                        applyFlap('f-icao', f.icao); applyFlap('f-dist', f.dist + " KM");
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                     }
                     
-                    document.getElementById('f-line1').innerText = fDate;
-                    document.getElementById('f-line2').innerText = fTime;
-                    document.getElementById('b-date-line1').innerText = fDate;
-                    document.getElementById('b-date-line2').innerText = fTime;
+                    document.getElementById('f-line1').innerText = f.date;
+                    document.getElementById('f-line2').innerText = f.time;
+                    document.getElementById('b-date-line1').innerText = f.date;
+                    document.getElementById('b-date-line2').innerText = f.time;
                     
                     for(let i=1; i<=5; i++) {
                         const threshold = 190 - ((i-1) * 40);
@@ -327,7 +308,6 @@ def index():
         }
 
         function startSearch() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const v = document.getElementById('in').value.toUpperCase();
             if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
             else { fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v).then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
@@ -335,7 +315,7 @@ def index():
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
         function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 15000); }, 800); }
-        navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => { applyFlap('tk', 'ENTER LOCATION ABOVE', true); }, { timeout: 6000 });
+        navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => { }, { timeout: 6000 });
     </script>
 </body>
 </html>
