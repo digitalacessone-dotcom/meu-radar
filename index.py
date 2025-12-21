@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V97 - Precise Alignment & Color Sync
+# Configurações V94 - Timestamp Freeze on Detection
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -91,46 +91,28 @@ def index():
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
-        
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
-
-        .scene { width: 300px; height: 480px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
-        
-        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; 
-                box-shadow: 0 40px 80px rgba(0,0,0,0.9); outline: 1px solid rgba(255,255,255,0.15); }
-        .face.back { transform: rotateY(180deg); background: #fdfdfd; padding: 15px; }
-
+        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: background 0.5s; }
+        .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-
-        .perfor { height: 2px; border-top: 5px dotted #eee; position: relative; background: #fff; }
+        .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-
-        .main { flex: 1; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; }
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
-        
-        .info-label { font-size: 7px; font-weight: 900; color: #bbb; text-transform: uppercase; display: block; margin-bottom: 2px; }
-
-        /* NOVA ESTRUTURA DE ALINHAMENTO */
-        .grid-top { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 5px; }
-        
-        .footer-zone { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px; align-items: end; margin-top: 10px; }
-        
-        .left-col { display: flex; flex-direction: column; justify-content: flex-end; }
-        .right-col { text-align: right; }
-
-        #arr { font-size: 52px; transition: 1.5s; line-height: 1; margin-top: 5px; color: #444; }
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; }
-        #bc { width: 100%; max-width: 130px; height: 42px; opacity: 0.8; filter: contrast(1.2); cursor: pointer; margin-top: 8px; }
-
+        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; }
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; white-space: pre; }
+        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
 </head>
 <body onclick="handleFlip(event)">
@@ -138,70 +120,53 @@ def index():
         <input type="text" id="in" placeholder="ENTER LOCATION">
         <button onclick="startSearch()">CHECK-IN</button>
     </div>
-    
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
-                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
-                <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0; line-height:1;">19A</div>
-                <div style="display:flex; gap:4px; margin-top:8px;">
+                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING TRAFFIC...</div>
+                <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
+                <div class="dots-container" id="dots">
                     <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
                 </div>
             </div>
-            
             <div class="perfor"></div>
-            
             <div class="main">
-                <div style="color: #333; font-weight: 900; font-size: 12px; border: 1.5px solid #333; padding: 2px 8px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
-                
-                <div class="grid-top">
-                    <div><span id="icao-label" class="info-label">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
-                    <div><span id="dist-label" class="info-label">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
-                    <div style="grid-column: span 2;"><span class="info-label">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
+                <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+                    <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
+                    <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
-
-                <div class="footer-zone">
-                    <div class="left-col">
-                        <span class="info-label">FLIGHT IDENTIFICATION</span>
-                        <div id="f-call" class="flap" style="margin-bottom: 10px;"></div>
-                        <div id="arr">✈</div>
-                    </div>
-                    
-                    <div class="right-col">
-                        <div class="date-visual">
-                            <div id="f-line1" style="font-size: 11px;">-- --- ----</div>
-                            <div id="f-line2" style="font-size: 26px;">--.--</div>
-                        </div>
-                        <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=RADAR&scale=2&includetext=false" onclick="openMap(event)">
-                    </div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
+                    <div class="date-visual"><div id="f-line1">-- --- ----</div><div id="f-line2">--.--</div><img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)"></div>
                 </div>
             </div>
         </div>
-
         <div class="face back">
-            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; justify-content: space-between;">
+            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column;">
                 <div style="display:flex; justify-content:space-between;">
-                    <div><span class="info-label">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
-                    <div><span id="spd-label" class="info-label">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
+                    <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; text-align: center; font-weight: 900;">
+                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V97</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V94</div>
                 </div>
             </div>
         </div>
     </div>
-
     <div class="ticker" id="tk">AWAITING LOCALIZATION...</div>
-
     <script>
         let pos = null, act = null, isTest = false, weather = null;
         let toggleState = true; 
         let tickerMsg = [], tickerIdx = 0;
         let audioCtx = null;
+        let fDate = "-- --- ----", fTime = "--.--"; // Timestamp persistente do voo
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
         function playPing() {
@@ -209,7 +174,8 @@ def index():
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
                 gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
                 osc.connect(gain); gain.connect(audioCtx.destination);
@@ -228,11 +194,11 @@ def index():
                 if(!isTicker) span.className = 'char';
                 span.innerHTML = '&nbsp;';
                 container.appendChild(span);
-                let count = 0, max = 15 + Math.floor(Math.random() * 30); 
+                let count = 0, max = 20 + Math.floor(Math.random() * 50); 
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
                     if (count++ >= max) { clearInterval(interval); span.innerHTML = (char === ' ') ? '&nbsp;' : char; }
-                }, 40); 
+                }, 50); 
             });
         }
 
@@ -246,7 +212,10 @@ def index():
                 document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
                 applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
             }
-        }, 15000);
+        }, 20000);
+
+        function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
+        setInterval(updateTicker, 15000);
 
         async function update() {
             if(!pos) return;
@@ -256,30 +225,36 @@ def index():
                 weather = d.weather;
                 if(d.flight) {
                     const f = d.flight;
-                    document.getElementById('f-line1').innerText = f.date;
-                    document.getElementById('f-line2').innerText = f.time;
-                    document.getElementById('b-date-line1').innerText = f.date;
-                    document.getElementById('b-date-line2').innerText = f.time;
+                    
+                    // LÓGICA DE DETECÇÃO: Se é um voo novo, congela a hora atual
+                    if(!act || act.icao !== f.icao) {
+                        fDate = f.date;
+                        fTime = f.time;
+                        playPing();
+                        document.getElementById('stb').style.background = f.color;
+                        document.getElementById('airl').innerText = f.airline;
+                        applyFlap('f-call', f.call); applyFlap('f-route', f.route);
+                        toggleState = true;
+                        document.getElementById('icao-label').innerText = "AIRCRAFT ICAO"; applyFlap('f-icao', f.icao);
+                        document.getElementById('dist-label').innerText = "DISTANCE"; applyFlap('f-dist', f.dist + " KM");
+                        document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
+                    }
+
+                    // Aplica o timestamp congelado na interface
+                    document.getElementById('f-line1').innerText = fDate;
+                    document.getElementById('f-line2').innerText = fTime;
+                    document.getElementById('b-date-line1').innerText = fDate;
+                    document.getElementById('b-date-line2').innerText = fTime;
                     
                     for(let i=1; i<=5; i++) {
                         const threshold = 250 - (i * 40);
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
 
-                    if(!act || act.icao !== f.icao) {
-                        playPing();
-                        document.getElementById('stb').style.background = f.color;
-                        document.getElementById('arr').style.color = f.color;
-                        document.getElementById('airl').innerText = f.airline;
-                        applyFlap('f-call', f.call); applyFlap('f-route', f.route);
-                        toggleState = true;
-                        applyFlap('f-icao', f.icao); applyFlap('f-dist', f.dist + " KM");
-                        document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2&includetext=false`;
-                    }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
-                    tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN`];
+                    tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN`, `SKY: ${weather.sky}`];
                 } else { 
                     tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
@@ -298,7 +273,6 @@ def index():
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
         function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 15000); }, 800); }
         navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => { applyFlap('tk', 'ENTER LOCATION ABOVE', true); }, { timeout: 6000 });
-        setInterval(() => { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }, 10000);
     </script>
 </body>
 </html>
