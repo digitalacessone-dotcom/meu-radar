@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V101 - Estabilidade e Raridade
+# Configurações V102
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -55,8 +55,9 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            # Sorteio para incluir Blackbird no teste
-            if random.random() > 0.5:
+            # Blackbird misturado no teste
+            is_rare_test = random.random() > 0.5
+            if is_rare_test:
                 f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
             else:
                 f = {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "is_rare": False, "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1500}
@@ -109,9 +110,9 @@ def index():
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #fdfdfd; padding: 15px; }
         
-        /* Stub Dinâmico */
+        /* Stub Inteligente */
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; }
-        .stub.rare { background: #000 !important; color: var(--gold) !important; }
+        .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
         
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
@@ -119,18 +120,20 @@ def index():
         .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
+        
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+        
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
-        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px;}
+        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px; }
         
-        /* Ticker Corrigido */
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 4px; white-space: pre; padding: 0 10px; }
+        /* Ticker com espaçamento real entre palavras */
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
         
-        /* Selo Circular Discreto */
-        .seal { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); width: 100px; height: 100px; border: 4px double #d4af37; border-radius: 50%; display: none; flex-direction: column; align-items: center; justify-content: center; color: #d4af37; font-weight: 900; opacity: 0.8; pointer-events: none; }
-        .seal span { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        /* Selo Metálico Premium */
+        .metal-seal { position: absolute; bottom: 30px; right: 30px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
+        .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
 
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
@@ -156,7 +159,7 @@ def index():
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
                     <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
                     <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENT</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
@@ -170,21 +173,21 @@ def index():
             </div>
         </div>
         <div class="face back">
-            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; position: relative;">
+            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative;">
                 <div style="display:flex; justify-content:space-between;">
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
                     <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                <div id="stamp-area" style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; z-index: 2;">
+                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 30px; text-align: center; font-weight: 900;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V101</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V102</div>
                 </div>
-                <div id="gold-seal" class="seal">
-                    <span style="font-size:6px;">AUTHENTIC</span>
-                    <span style="font-size:10px;">RARE</span>
-                    <span style="font-size:6px;">FOUND</span>
+                <div id="gold-seal" class="metal-seal">
+                    <span>Rare</span>
+                    <span style="font-size:10px;">Aircraft</span>
+                    <span>Found</span>
                 </div>
             </div>
         </div>
@@ -209,36 +212,40 @@ def index():
             } catch(e) {}
         }
 
+        // Lógica de FLAP Aleatória Total e Desequilibrada
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             if(!container) return;
             const limit = isTicker ? 32 : 8;
             const target = text.toUpperCase().padEnd(limit, ' ');
             container.innerHTML = '';
-            [...target].forEach((char, i) => {
+            [...target].forEach((char) => {
                 const span = document.createElement('span');
                 if(!isTicker) span.className = 'char';
                 span.innerHTML = '&nbsp;';
                 container.appendChild(span);
+                
                 let count = 0;
-                // PARADA ALEATORIA: max maior e influenciado pela posição da letra (i)
-                let max = 40 + Math.floor(Math.random() * 60) + (i * 15);
+                // PARADA ALEATORIA: Tempos de 1.5s a 4.5s totalmente desencontrados
+                let max = 50 + Math.floor(Math.random() * 100); 
+                
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
                     if (count++ >= max) { 
                         clearInterval(interval); 
                         span.innerHTML = (char === ' ') ? '&nbsp;' : char; 
                     }
-                }, 30); // Velocidade aumentada
+                }, 20); // Velocidade de giro mais rápida
             });
         }
 
-        function saveRare(f) {
+        function saveHistory(f) {
             if(isTest) return;
-            let history = JSON.parse(localStorage.getItem('radar_collection') || '[]');
+            if(!f.is_rare) return;
+            let history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
             if(!history.find(x => x.icao === f.icao)) {
-                history.push({icao: f.icao, call: f.call, date: f.date});
-                localStorage.setItem('radar_collection', JSON.stringify(history));
+                history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
+                localStorage.setItem('rare_flights', JSON.stringify(history));
             }
         }
 
@@ -260,7 +267,7 @@ def index():
                 tickerIdx = (tickerIdx + 1) % tickerMsg.length; 
             } 
         }
-        setInterval(updateTicker, 15000); // Exibição de 15 segundos
+        setInterval(updateTicker, 15000); // 15 Segundos
 
         async function update() {
             if(!pos) return;
@@ -272,11 +279,11 @@ def index():
                     const f = d.flight;
                     const stub = document.getElementById('stb');
                     const seal = document.getElementById('gold-seal');
-                    
+
                     if(f.is_rare) {
-                        stub.className = 'stub rare';
+                        stub.className = 'stub rare-mode';
                         seal.style.display = 'flex';
-                        saveRare(f);
+                        saveHistory(f);
                     } else {
                         stub.className = 'stub';
                         stub.style.background = f.color;
@@ -301,7 +308,7 @@ def index():
                     }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
-                    tickerMsg = [`V.RATE: ${f.vrate} FPM`, `DIST: ${f.dist}KM`, `SKY: ${weather.sky}`];
+                    tickerMsg = [`V.RATE: ${f.vrate} FPM`, `DIST: ${f.dist} KM`, `SKY: ${weather.sky}`];
                     act = f;
                 } else {
                     tickerMsg = ["SEARCHING TRAFFIC...", `TEMP: ${weather.temp}`, `VIS: ${weather.vis}`];
