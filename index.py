@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Settings V101 - Corrected Proximity Logic & Independent Flaps
+# Settings V102 - Long Spin & Smart Ticker Fix
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -165,7 +165,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V101</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V102</div>
                 </div>
             </div>
         </div>
@@ -205,15 +205,25 @@ def index():
             [...target].forEach((char, i) => {
                 const span = container.children[i];
                 if (!span || span.innerText === char || (char === ' ' && span.innerHTML === '&nbsp;')) return;
-                let count = 0, max = Math.floor(Math.random() * 8) + 8;
+                
+                // MUDANÇA: max aumentado de 8 para 25 para girar por mais tempo
+                let count = 0, max = Math.floor(Math.random() * 15) + 15; 
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
-                    if (count++ >= max) { clearInterval(interval); span.innerHTML = (char === ' ') ? '&nbsp;' : char; }
-                }, 30 + (Math.random() * 20));
+                    if (count++ >= max) { 
+                        clearInterval(interval); 
+                        span.innerHTML = (char === ' ') ? '&nbsp;' : char; 
+                    }
+                }, 40 + (Math.random() * 30)); // Velocidade mais cadenciada
             });
         }
 
-        function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
+        function updateTicker() { 
+            if (tickerMsg.length > 0) { 
+                applyFlap('tk', tickerMsg[tickerIdx], true); 
+                tickerIdx = (tickerIdx + 1) % tickerMsg.length; 
+            } 
+        }
         setInterval(updateTicker, 10000);
 
         async function update() {
@@ -230,6 +240,7 @@ def index():
                         else if(f.dist > lastDist + 0.2) trend = "MOVING AWAY";
                     }
                     lastDist = f.dist;
+                    
                     if(!act || act.icao !== f.icao) {
                         fDate = f.date; fTime = f.time; playPing();
                         document.getElementById('stb').style.background = f.color;
@@ -238,13 +249,15 @@ def index():
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         applyFlap('f-icao', f.icao); applyFlap('f-dist', f.dist + " KM");
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
+                        
+                        // LIMPEZA IMEDIATA DO TICKER AO LOCALIZAR
+                        tickerIdx = 0;
                     }
+                    
                     document.getElementById('f-line1').innerText = fDate; document.getElementById('f-line2').innerText = fTime;
                     document.getElementById('b-date-line1').innerText = fDate; document.getElementById('b-date-line2').innerText = fTime;
                     
-                    // CORREÇÃO: Proximidade acendendo da ESQUERDA para a DIREITA
                     for(let i=1; i<=5; i++) {
-                        // Quanto menor a distância, mais pontos acendem
                         const threshold = (6 - i) * 38; 
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
@@ -253,20 +266,20 @@ def index():
                     if(!act || act.spd !== f.spd) applyFlap('b-spd', f.spd + " KMH");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
+
                     tickerMsg = [
                         `STATUS: ${trend}`,
                         `CAT: ${f.cat} • MACH: ${f.mach}`,
                         `V.RATE: ${f.vrate} FPM • SQK: ${f.squawk}`,
                         `TEMP: ${weather.temp} • SKY: ${weather.sky}`,
-                        `VISIBILITY: ${weather.vis}`,
-                        `SOURCE: ADS-B • GPS: 3D-FIX`
+                        `VISIBILITY: ${weather.vis}`
                     ];
                 } else if (act) {
                     document.getElementById('stb').style.background = "#444"; 
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     tickerMsg = [`SIGNAL LOST: ${act.call}`, `STATUS: GHOST MODE`, `TEMP: ${weather.temp} • ${weather.sky}` ];
                 } else {
-                    tickerMsg = [`SEARCHING TRAFFIC...`, `TEMP: ${weather.temp} • ${weather.sky}`, `SYSTEM READY V101` ];
+                    tickerMsg = [`SEARCHING TRAFFIC...`, `TEMP: ${weather.temp} • ${weather.sky}`, `SYSTEM READY V102` ];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                 }
             } catch(e) {}
@@ -285,4 +298,3 @@ def index():
     </script>
 </body>
 </html>
-''')
