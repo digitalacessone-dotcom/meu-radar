@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Settings V105 - Ghost Mode & Extended Mechanical Flap
-RADIUS_KM = 190 
+# Configurações V110 - Ghost Mode & Extended Spin
+RADIUS_KM = 190
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
 
@@ -136,10 +136,10 @@ def index():
             <div class="main">
                 <div style="font-weight:900; font-size:13px; border:1.5px solid #333; padding:3px 10px; border-radius:4px; align-self:flex-start;">BOARDING PASS</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-                    <div><span style="font-size:7px; color:#bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap" data-limit="8"></div></div>
-                    <div><span style="font-size:7px; color:#bbb;">DISTANCE</span><div id="f-dist" class="flap" data-limit="8"></div></div>
-                    <div><span style="font-size:7px; color:#bbb;">FLIGHT ID</span><div id="f-call" class="flap" data-limit="8"></div></div>
-                    <div><span style="font-size:7px; color:#bbb;">ROUTE</span><div id="f-route" class="flap" data-limit="8"></div></div>
+                    <div><span style="font-size:7px; color:#bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
+                    <div><span style="font-size:7px; color:#bbb;">DISTANCE</span><div id="f-dist" class="flap"></div></div>
+                    <div><span style="font-size:7px; color:#bbb;">FLIGHT ID</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size:7px; color:#bbb;">ROUTE</span><div id="f-route" class="flap"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                     <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
@@ -150,14 +150,14 @@ def index():
         <div class="face back">
             <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column;">
                 <div style="display:flex; justify-content:space-between;">
-                    <div><span style="font-size:7px; color:#bbb;">ALTITUDE</span><div id="b-alt" class="flap" data-limit="8"></div></div>
-                    <div><span style="font-size:7px; color:#bbb;">SPEED</span><div id="b-spd" class="flap" data-limit="8"></div></div>
+                    <div><span style="font-size:7px; color:#bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
+                    <div><span style="font-size:7px; color:#bbb;">SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
                 <div style="border:3px double var(--blue-txt); color:var(--blue-txt); padding:10px; border-radius:10px; transform:rotate(-10deg); align-self:center; margin-top:40px; text-align:center; font-weight:900;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V105</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V110</div>
                 </div>
             </div>
         </div>
@@ -183,11 +183,11 @@ def index():
             [...target].forEach((char, i) => {
                 const span = container.children[i];
                 if (!span || span.innerText === char || (char === ' ' && span.innerHTML === '&nbsp;')) return;
-                let count = 0, max = Math.floor(Math.random() * 60) + 50; // V105: Super Long Mechanical Spin
+                let count = 0, max = Math.floor(Math.random() * 80) + 60; // Ultra Long Mechanical Spin (V110)
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
                     if (count++ >= max) { clearInterval(interval); span.innerHTML = (char === ' ') ? '&nbsp;' : char; }
-                }, 40);
+                }, 35);
             });
         }
 
@@ -221,11 +221,10 @@ def index():
                     act = f;
                     tickerMsg = [`STATUS: ${trend}`, `V.RATE: ${f.vrate} FPM`, `SQK: ${f.squawk}`, `CAT: ${f.cat}`, `SKY: ${d.weather.sky}`];
                 } else if (act) {
-                    // GHOST MODE: Se havia um avião e ele sumiu
                     tickerMsg = [`SIGNAL LOST: ${act.call}`, `STATUS: GHOST MODE`, `TEMP: ${d.weather.temp} • ${d.weather.sky}`];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                 } else {
-                    tickerMsg = [`SEARCHING TRAFFIC...`, `SYSTEM READY V105` ];
+                    tickerMsg = [`SEARCHING TRAFFIC...`, `EST. TEMP: ${d.weather.temp}`, `SKY: ${d.weather.sky}` ];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                 }
             } catch(e) {}
