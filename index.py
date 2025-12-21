@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V94 - Raio atualizado para 190km
+# Configurações V94.3 - Ghost Mode (Sem Blink) & 190km Radius
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -29,7 +29,6 @@ def get_weather(lat, lon):
         return {"temp": "--C", "sky": "METAR ON"}
 
 def fetch_aircrafts(lat, lon):
-    # Mantemos busca em 200 para cobrir o raio de 190 com segurança
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200"
@@ -156,7 +155,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V94</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V94.3</div>
                 </div>
             </div>
         </div>
@@ -165,6 +164,7 @@ def index():
     <script>
         let pos = null, act = null, isTest = false, weather = null;
         let toggleState = true; 
+        let isGhost = false;
         let tickerMsg = [], tickerIdx = 0;
         let audioCtx = null;
         let fDate = "-- --- ----", fTime = "--.--";
@@ -209,9 +209,9 @@ def index():
                 document.getElementById('icao-label').innerText = toggleState ? "AIRCRAFT ICAO" : "REGISTRATION";
                 applyFlap('f-icao', toggleState ? act.icao : act.reg);
                 document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "ESTIMATED CONTACT";
-                applyFlap('f-dist', toggleState ? act.dist + " KM" : "ETA " + act.eta + "M");
+                applyFlap('f-dist', toggleState ? (isGhost ? "---" : act.dist + " KM") : "ETA " + (isGhost ? "?" : act.eta + "M"));
                 document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
-                applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
+                applyFlap('b-spd', toggleState ? (isGhost ? "---" : act.spd + " KMH") : (isGhost ? "---" : act.kts + " KTS"));
             }
         }, 20000);
 
@@ -226,10 +226,9 @@ def index():
                 weather = d.weather;
                 if(d.flight) {
                     const f = d.flight;
-                    
+                    isGhost = false;
                     if(!act || act.icao !== f.icao) {
-                        fDate = f.date;
-                        fTime = f.time;
+                        fDate = f.date; fTime = f.time;
                         playPing();
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('airl').innerText = f.airline;
@@ -239,27 +238,30 @@ def index():
                         document.getElementById('dist-label').innerText = "DISTANCE"; applyFlap('f-dist', f.dist + " KM");
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                     }
-
                     document.getElementById('f-line1').innerText = fDate;
                     document.getElementById('f-line2').innerText = fTime;
                     document.getElementById('b-date-line1').innerText = fDate;
                     document.getElementById('b-date-line2').innerText = fTime;
-                    
-                    // CALIBRAÇÃO 190KM - ESQUERDA PARA DIREITA
-                    // d1 acende em 190, d2 em 150, d3 em 110, d4 em 70, d5 em 30
                     for(let i=1; i<=5; i++) {
                         const threshold = 190 - ((i-1) * 40);
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
-
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     act = f;
                     tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN`, `SKY: ${weather.sky}`];
                 } else { 
-                    tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
-                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
-                    act = null;
+                    if(act) {
+                        isGhost = true;
+                        document.getElementById('stb').style.background = "var(--brand)";
+                        tickerMsg = ["SIGNAL LOST / GHOST MODE", `LAST POS: ${act.icao}`, "RE-SCANNING AREA..."];
+                        for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq'; // APAGADO, SEM BLINK
+                    } else {
+                        document.getElementById('stb').style.background = "var(--brand)";
+                        tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
+                        for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
+                        act = null;
+                    }
                 }
             } catch(e) {}
         }
