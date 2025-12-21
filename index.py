@@ -7,12 +7,13 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V65
+# Configurações V67
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
 
 def get_time_local():
+    # Retorna horário de Brasília (GMT-3)
     return datetime.utcnow() - timedelta(hours=3)
 
 def get_weather(lat, lon):
@@ -46,7 +47,6 @@ def radar():
         lat = float(request.args.get('lat', DEFAULT_LAT))
         lon = float(request.args.get('lon', DEFAULT_LON))
         test = request.args.get('test', 'false').lower() == 'true'
-        
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
@@ -68,21 +68,14 @@ def radar():
                         if call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
-                        
-                        v_rate = s.get('baro_rate') or 0
-                        phase = "CLIMB ↑" if v_rate > 400 else "DESCENT ↓" if v_rate < -400 else "CRUISE ↔"
-                        
                         proc.append({
-                            "icao": s.get('hex', 'UNK').upper(),
-                            "call": call, "airline": airline, "color": color, "dist": round(d, 1),
+                            "icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1),
                             "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
-                            "spd": int(s.get('gs', 0) * 1.852),
-                            "trend": phase, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time
+                            "spd": int(s.get('gs', 0) * 1.852), "trend": "CRUISE ↔", "hd": int(s.get('track', 0)), "date": now_date, "time": now_time
                         })
             if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
         return jsonify({"flight": found, "connected": True, "weather": get_weather(lat, lon), "date": now_date, "time": now_time})
-    except:
-        return jsonify({"flight": None, "connected": False})
+    except: return jsonify({"flight": None})
 
 @app.route('/')
 def index():
@@ -102,73 +95,86 @@ def index():
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
 
-        .scene { width: 290px; height: 440px; position: relative; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        /* BASE DO CARD */
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         
-        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
-        .face.front { transform: translateZ(1px); }
-        .face.back { transform: rotateY(180deg) translateZ(1px); background: #f9f9f9; padding: 22px; }
+        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .face.back { transform: rotateY(180deg); background: #f9f9f9; padding: 22px; }
 
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 22px; position: relative; }
-        .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; margin: 0 10px; }
-        .perfor::before, .perfor::after { content:""; position:absolute; width:36px; height:36px; background:var(--bg); border-radius:50%; top:-18px; }
-        .perfor::before { left:-30px; } .perfor::after { right:-30px; }
-
-        .main { flex: 1; padding: 18px 22px; display: flex; flex-direction: column; justify-content: space-between; }
+        /* SECAO ESCURA (STUB) */
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; position: relative; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; }
         
-        .bp-title { color: #333; font-weight: 900; font-size: 14px; letter-spacing: 3px; border: 1.5px solid #333; padding: 2px 8px; border-radius: 4px; margin-bottom: 15px; align-self: flex-start; }
-
-        .label { font-size: 7px; font-weight: 900; color: #bbb; letter-spacing: 1.2px; text-transform: uppercase; }
-        .flap { font-family: monospace; font-size: 17px; font-weight: 900; color: #000; height: 22px; display: flex; overflow: hidden; }
-        .char { width: 11px; text-align: center; }
-
-        /* QUADRADINHOS RECUPERADOS */
-        .dots { display: flex; gap: 5px; position: absolute; bottom: 15px; right: 20px; }
-        .sq { width: 7px; height: 7px; border: 1px solid rgba(255,255,255,0.2); }
+        /* QUADRADINHOS NO STUB */
+        .dots-container { display: flex; gap: 4px; margin-top: 8px; }
+        .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
 
-        #bc-container { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
-        .date-visual { color: var(--blue-txt); font-weight: 800; line-height: 0.95; text-align: left; margin-bottom: 4px; }
-        .date-visual .line1 { font-size: 19px; }
-        .date-visual .line2 { font-size: 17px; }
+        .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; }
+        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
+        .perfor::before { left:-25px; } .perfor::after { right:-25px; }
 
-        #bc { width: 100px; height: 35px; opacity: 0.1; filter: grayscale(1); transition: 0.5s; cursor: pointer; }
-        #arr { font-size: 42px; transition: 1.5s; }
-        .ticker { width: 290px; height: 22px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 8px; border: 1px solid #333; }
+        /* SECAO BRANCA (MAIN) */
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        .bp-title { color: #333; font-weight: 900; font-size: 13px; letter-spacing: 2px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start; margin-bottom: 10px; }
+
+        .label { font-size: 7px; font-weight: 900; color: #bbb; letter-spacing: 1px; text-transform: uppercase; }
+        .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 22px; display: flex; overflow: hidden; }
+        .char { width: 11px; text-align: center; }
+
+        /* DATA AZUL ESTILO IMAGEM */
+        .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: left; margin-bottom: 4px; }
+        .date-visual .line1 { font-size: 20px; }
+        .date-visual .line2 { font-size: 18px; }
+
+        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); }
+        .ticker { width: 300px; height: 25px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 9px; }
+
+        /* --- FORMATACAO DEITADO (LANDSCAPE) --- */
+        @media (orientation: landscape) {
+            .scene { width: 550px; height: 260px; }
+            .face { flex-direction: row !important; }
+            .stub { width: 30% !important; height: 100% !important; border-right: none; }
+            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; }
+            .perfor::before, .perfor::after { left: -15px !important; top: auto; }
+            .perfor::before { top: -22px !important; } .perfor::after { bottom: -22px !important; }
+            .main { width: 70% !important; }
+            .ticker { width: 550px; }
+        }
     </style>
 </head>
 <body onclick="handleFlip(event)">
 
     <div id="ui">
-        <input type="text" id="in" placeholder="LOCAL (EX: RIO)">
+        <input type="text" id="in" placeholder="DIGITE O LOCAL">
         <button onclick="startSearch()">SCAN</button>
     </div>
 
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
-                <div style="font-size:7px; font-weight:900;" id="stat">RADAR SCANNING</div>
-                <div style="font-size:10px; font-weight:900; opacity:0.8; margin-top:8px;" id="airl">SEARCHING...</div>
-                <div style="font-size:70px; font-weight:900; letter-spacing:-5px; margin:2px 0;">19A</div>
-                <div class="dots">
-                    <div id="d1" class="sq"></div>
-                    <div id="d2" class="sq"></div>
-                    <div id="d3" class="sq"></div>
-                    <div id="d4" class="sq"></div>
-                    <div id="d5" class="sq"></div>
+                <div style="font-size:7px; font-weight:900; opacity:0.7;" id="stat">RADAR SCANNING</div>
+                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
+                <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
+                <div class="dots-container">
+                    <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
                 </div>
             </div>
+
             <div class="perfor"></div>
+
             <div class="main">
                 <div class="bp-title">BOARDING PASS</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                     <div><span class="label">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
                     <div><span class="label">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
                     <div style="grid-column:span 2;"><span class="label">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
                 </div>
+
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr">✈</div>
-                    <div id="bc-container">
+                    <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
+                    <div>
                         <div class="date-visual">
                             <div class="line1" id="f-line1">-- --- ----</div>
                             <div class="line2" id="f-line2">--.--</div>
@@ -178,33 +184,28 @@ def index():
                 </div>
             </div>
         </div>
+
         <div class="face back">
-            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:18px; display:flex; flex-direction:column; gap:15px;">
-                <div style="display:flex; justify-content:space-between; align-items:start;">
-                    <div><span class="label">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
-                    <div style="color:var(--blue-txt); font-weight:900; font-size:11px; text-align:right;" id="b-date">RADAR CONTACT<br>--/--/----</div>
-                </div>
+            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; gap:12px;">
+                <div><span class="label">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
                 <div><span class="label">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
-                <div><span class="label">FLIGHT PHASE</span><div id="b-trend" class="flap"></div></div>
-                <div style="margin-top:auto; font-size:7px; color:#bbb; text-align:center; font-family:monospace;">TRACKED VIA ADS-B NETWORK V65</div>
+                <div style="margin-top:auto; color:var(--blue-txt); font-weight:900; font-size:12px; text-align:right;" id="b-date">
+                    RADAR CONTACT V67
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="ticker" id="tk">CONECTANDO...</div>
+    <div class="ticker" id="tk">AGUARDANDO LOCALIZAÇÃO...</div>
 
     <script>
         let pos = null, act = null, isTest = false;
         const audio = new (window.AudioContext || window.webkitAudioContext)();
 
         function bip() {
-            [0, 0.15].forEach(t => {
-                const o = audio.createOscillator(); const g = audio.createGain();
-                o.connect(g); g.connect(audio.destination);
-                o.type = 'square'; o.frequency.value = 850;
-                g.gain.setValueAtTime(0.04, audio.currentTime + t);
-                o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.08);
-            });
+            const o = audio.createOscillator(); const g = audio.createGain();
+            o.connect(g); g.connect(audio.destination); o.frequency.value = 850;
+            g.gain.setValueAtTime(0.05, audio.currentTime); o.start(); o.stop(audio.currentTime + 0.1);
         }
 
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
@@ -215,10 +216,9 @@ def index():
             el.innerHTML = "";
             [...txt.toUpperCase()].forEach((c, i) => {
                 const s = document.createElement('span'); s.className="char"; el.appendChild(s);
-                let n = 0;
-                const iv = setInterval(() => {
+                let n = 0; const iv = setInterval(() => {
                     s.innerText = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.↑↓↔"[Math.floor(Math.random()*42)];
-                    if(n++ > 10+i) { clearInterval(iv); s.innerText = c; }
+                    if(n++ > 8+i) { clearInterval(iv); s.innerText = c; }
                 }, 30);
             });
         }
@@ -239,24 +239,17 @@ def index():
                         flap('f-icao', f.icao); flap('f-call', f.call);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                         document.getElementById('bc').style.opacity = "0.8";
-                        document.getElementById('bc').style.filter = "none";
                     }
                     flap('f-dist', f.dist + "KM");
-                    flap('b-alt', f.alt + " FT"); flap('b-spd', f.spd + " KMH"); flap('b-trend', f.trend);
-                    document.getElementById('b-date').innerHTML = `RADAR CONTACT<br>${f.date} ${f.time}`;
+                    flap('b-alt', f.alt + " FT"); flap('b-spd', f.spd + " KMH");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
-                    
-                    // Lógica dos quadradinhos
-                    for(let i=1; i<=5; i++) {
-                        document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
-                    }
-                    
+                    for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    document.getElementById('tk').innerText = `RADAR ATIVO: ${f.call}`;
+                    document.getElementById('tk').innerText = `LOCALIZADO: ${f.call} - ${f.dist}KM`;
                 } else {
-                    document.getElementById('tk').innerText = `BUSCANDO... | ${d.weather}`;
+                    document.getElementById('tk').innerText = `BUSCANDO... | ${d.weather || 'OFFLINE'}`;
                 }
-            } catch(e) { document.getElementById('tk').innerText = "ERRO DE SINAL"; }
+            } catch(e) { console.error(e); }
         }
 
         function startSearch() {
@@ -273,7 +266,7 @@ def index():
 
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI();
-        }, () => { document.getElementById('tk').innerText = "GPS OFF - DIGITE CIDADE"; });
+        }, () => { document.getElementById('tk').innerText = "POR FAVOR, DIGITE O LOCAL"; });
     </script>
 </body>
 </html>
