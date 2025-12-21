@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V102
+# Configurações V103
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -55,7 +55,6 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            # Blackbird misturado no teste
             is_rare_test = random.random() > 0.5
             if is_rare_test:
                 f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
@@ -110,7 +109,6 @@ def index():
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #fdfdfd; padding: 15px; }
         
-        /* Stub Inteligente */
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
         
@@ -128,10 +126,8 @@ def index():
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px; }
         
-        /* Ticker com espaçamento real entre palavras */
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
         
-        /* Selo Metálico Premium */
         .metal-seal { position: absolute; bottom: 30px; right: 30px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
 
@@ -182,7 +178,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V102</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V103</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -192,11 +188,12 @@ def index():
             </div>
         </div>
     </div>
-    <div class="ticker" id="tk">AWAITING LOCALIZATION...</div>
+    <div class="ticker" id="tk">WAITING...</div>
 
     <script>
         let pos = null, act = null, isTest = false, weather = null;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
+        let lastDist = null;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
         function playPing() {
@@ -212,7 +209,6 @@ def index():
             } catch(e) {}
         }
 
-        // Lógica de FLAP Aleatória Total e Desequilibrada
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             if(!container) return;
@@ -224,18 +220,15 @@ def index():
                 if(!isTicker) span.className = 'char';
                 span.innerHTML = '&nbsp;';
                 container.appendChild(span);
-                
                 let count = 0;
-                // PARADA ALEATORIA: Tempos de 1.5s a 4.5s totalmente desencontrados
-                let max = 50 + Math.floor(Math.random() * 100); 
-                
+                let max = 40 + Math.floor(Math.random() * 80); 
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
                     if (count++ >= max) { 
                         clearInterval(interval); 
                         span.innerHTML = (char === ' ') ? '&nbsp;' : char; 
                     }
-                }, 20); // Velocidade de giro mais rápida
+                }, 20);
             });
         }
 
@@ -267,7 +260,7 @@ def index():
                 tickerIdx = (tickerIdx + 1) % tickerMsg.length; 
             } 
         }
-        setInterval(updateTicker, 15000); // 15 Segundos
+        setInterval(updateTicker, 15000);
 
         async function update() {
             if(!pos) return;
@@ -275,10 +268,19 @@ def index():
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
                 weather = d.weather;
+                
                 if(d.flight) {
                     const f = d.flight;
                     const stub = document.getElementById('stb');
                     const seal = document.getElementById('gold-seal');
+
+                    // Lógica de Movimento (Aproximando/Afastando)
+                    let trend = "MAINTAINING";
+                    if(lastDist !== null) {
+                        if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
+                        else if(f.dist > lastDist + 0.1) trend = "MOVING AWAY";
+                    }
+                    lastDist = f.dist;
 
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
@@ -308,10 +310,19 @@ def index():
                     }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
-                    tickerMsg = [`V.RATE: ${f.vrate} FPM`, `DIST: ${f.dist} KM`, `SKY: ${weather.sky}`];
+                    
+                    // STATUS 2: Avião Localizado
+                    tickerMsg = ["CONTACT ESTABLISHED", trend];
                     act = f;
+                } else if (act) {
+                    // STATUS 3: Modo Ghost (Tinha um avião e perdeu)
+                    tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
+                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
+                    document.getElementById('stb').className = 'stub';
+                    document.getElementById('stb').style.background = 'var(--brand)';
                 } else {
-                    tickerMsg = ["SEARCHING TRAFFIC...", `TEMP: ${weather.temp}`, `VIS: ${weather.vis}`];
+                    // STATUS 1: Busca Inicial
+                    tickerMsg = ["SEARCHING TRAFFIC..."];
                 }
             } catch(e) {}
         }
@@ -319,6 +330,8 @@ def index():
         function startSearch() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const v = document.getElementById('in').value.toUpperCase();
+            tickerMsg = ["SEARCHING TRAFFIC..."]; // Feedback imediato
+            updateTicker();
             if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
             else { fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v).then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
         }
