@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V94.3 - Ghost Mode (Sem Blink) & 190km Radius
+# Configurações V94.4 - Ghost Recovery & 190km Radius
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -155,7 +155,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V94.3</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V94.4</div>
                 </div>
             </div>
         </div>
@@ -227,10 +227,11 @@ def index():
                 if(d.flight) {
                     const f = d.flight;
                     isGhost = false;
+                    document.getElementById('stb').style.background = f.color; // VOLTA A FICAR COLORIDO
+                    
                     if(!act || act.icao !== f.icao) {
                         fDate = f.date; fTime = f.time;
                         playPing();
-                        document.getElementById('stb').style.background = f.color;
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         toggleState = true;
@@ -253,9 +254,9 @@ def index():
                 } else { 
                     if(act) {
                         isGhost = true;
-                        document.getElementById('stb').style.background = "var(--brand)";
+                        document.getElementById('stb').style.background = "var(--brand)"; // FICA CINZA NO GHOST
                         tickerMsg = ["SIGNAL LOST / GHOST MODE", `LAST POS: ${act.icao}`, "RE-SCANNING AREA..."];
-                        for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq'; // APAGADO, SEM BLINK
+                        for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     } else {
                         document.getElementById('stb').style.background = "var(--brand)";
                         tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`];
