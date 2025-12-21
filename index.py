@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V94 - Timestamp Freeze on Detection
-RADIUS_KM = 200 
+# Configurações V94 - Raio atualizado para 190km
+RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
 
@@ -29,9 +29,10 @@ def get_weather(lat, lon):
         return {"temp": "--C", "sky": "METAR ON"}
 
 def fetch_aircrafts(lat, lon):
+    # Mantemos busca em 200 para cobrir o raio de 190 com segurança
     endpoints = [
-        f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/250",
-        f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/250"
+        f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200"
     ]
     headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     random.shuffle(endpoints)
@@ -166,7 +167,7 @@ def index():
         let toggleState = true; 
         let tickerMsg = [], tickerIdx = 0;
         let audioCtx = null;
-        let fDate = "-- --- ----", fTime = "--.--"; // Timestamp persistente do voo
+        let fDate = "-- --- ----", fTime = "--.--";
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
         function playPing() {
@@ -226,7 +227,6 @@ def index():
                 if(d.flight) {
                     const f = d.flight;
                     
-                    // LÓGICA DE DETECÇÃO: Se é um voo novo, congela a hora atual
                     if(!act || act.icao !== f.icao) {
                         fDate = f.date;
                         fTime = f.time;
@@ -240,14 +240,15 @@ def index():
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                     }
 
-                    // Aplica o timestamp congelado na interface
                     document.getElementById('f-line1').innerText = fDate;
                     document.getElementById('f-line2').innerText = fTime;
                     document.getElementById('b-date-line1').innerText = fDate;
                     document.getElementById('b-date-line2').innerText = fTime;
                     
+                    // CALIBRAÇÃO 190KM - ESQUERDA PARA DIREITA
+                    // d1 acende em 190, d2 em 150, d3 em 110, d4 em 70, d5 em 30
                     for(let i=1; i<=5; i++) {
-                        const threshold = 250 - (i * 40);
+                        const threshold = 190 - ((i-1) * 40);
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
 
@@ -277,3 +278,6 @@ def index():
 </body>
 </html>
 ''')
+
+if __name__ == '__main__':
+    app.run(debug=True)
