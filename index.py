@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V90 - 10s Interleaving Cycle for Front and Back
+# Configurações V91 - 20s Cycle & Aircraft Registration
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -54,7 +54,7 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459}, "weather": w})
+            return jsonify({"flight": {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459}, "weather": w})
         
         data = fetch_aircrafts(lat, lon)
         found = None
@@ -73,7 +73,7 @@ def radar():
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / spd_kmh) * 60) if spd_kmh > 50 else 0
-                        proc.append({"icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta})
+                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta})
             if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
@@ -132,7 +132,7 @@ def index():
             <div class="main">
                 <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
+                    <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
                     <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
@@ -153,7 +153,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V90</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V91</div>
                 </div>
             </div>
         </div>
@@ -161,7 +161,7 @@ def index():
     <div class="ticker" id="tk">AWAITING LOCALIZATION...</div>
     <script>
         let pos = null, act = null, isTest = false, weather = null;
-        let distToggle = true, spdToggle = true;
+        let toggleState = true; 
         let tickerMsg = [], tickerIdx = 0;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
@@ -183,23 +183,24 @@ def index():
             });
         }
 
-        // DISTANCE Toggle (10s)
+        // Master 20s Cycle for all dinamyc fields
         setInterval(() => {
             if(act) {
-                distToggle = !distToggle;
-                document.getElementById('dist-label').innerText = distToggle ? "DISTANCE" : "ESTIMATED CONTACT";
-                applyFlap('f-dist', distToggle ? act.dist + " KM" : "ETA " + act.eta + "M");
-            }
-        }, 10000);
+                toggleState = !toggleState;
+                
+                // Front: ICAO vs REGISTRATION
+                document.getElementById('icao-label').innerText = toggleState ? "AIRCRAFT ICAO" : "REGISTRATION";
+                applyFlap('f-icao', toggleState ? act.icao : act.reg);
 
-        // SPEED Toggle (10s)
-        setInterval(() => {
-            if(act) {
-                spdToggle = !spdToggle;
-                document.getElementById('spd-label').innerText = spdToggle ? "GROUND SPEED" : "AIRSPEED INDICATOR";
-                applyFlap('b-spd', spdToggle ? act.spd + " KMH" : act.kts + " KTS");
+                // Front: DISTANCE vs ETA
+                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "ESTIMATED CONTACT";
+                applyFlap('f-dist', toggleState ? act.dist + " KM" : "ETA " + act.eta + "M");
+
+                // Back: KMH vs KTS
+                document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
+                applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
             }
-        }, 10000);
+        }, 20000);
 
         function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
         setInterval(updateTicker, 15000);
@@ -216,10 +217,15 @@ def index():
                     document.getElementById('f-line2').innerText = f.time;
                     document.getElementById('b-date-line1').innerText = f.date;
                     document.getElementById('b-date-line2').innerText = f.time;
-                    if(!act || act.icao !== f.icao) {
+                    
+                    if(!act || act.call !== f.call) {
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('airl').innerText = f.airline;
-                        applyFlap('f-icao', f.icao); applyFlap('f-call', f.call); applyFlap('f-route', f.route);
+                        applyFlap('f-call', f.call); applyFlap('f-route', f.route);
+                        // Reset dynamic labels to default on new aircraft
+                        toggleState = true;
+                        document.getElementById('icao-label').innerText = "AIRCRAFT ICAO"; applyFlap('f-icao', f.icao);
+                        document.getElementById('dist-label').innerText = "DISTANCE"; applyFlap('f-dist', f.dist + " KM");
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                         document.getElementById('bc').style.opacity = "0.8";
                     }
@@ -227,7 +233,7 @@ def index():
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    tickerMsg = [`SQUAWKING: ${f.call}`, `ROUTE: ${f.route}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN`, `SKY: ${weather.sky}`];
+                    tickerMsg = [`SQUAWKING: ${f.call}`, `REG: ${f.reg}`, `RANGE: ${f.dist} KM`, `ETA: ${f.eta} MIN`, `SKY: ${weather.sky}`];
                 } else { tickerMsg = [`SEARCHING TRAFFIC...`, `ESTIMATED TEMP: ${weather.temp}`, `SKY: ${weather.sky}`]; }
             } catch(e) {}
         }
