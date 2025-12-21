@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V82 - Correção de Espaços e Giro Mecânico Caótico
+# Configurações V84 - Adição de Rota (Origin-Destination)
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -56,8 +56,10 @@ def radar():
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
         w = get_weather(lat, lon)
+        
         if test:
-            return jsonify({"flight": {"icao": "E4953E", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time}, "weather": w})
+            return jsonify({"flight": {"icao": "E4953E", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA"}, "weather": w})
+        
         data = fetch_aircrafts(lat, lon)
         found = None
         if data:
@@ -72,7 +74,11 @@ def radar():
                         if call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
-                        proc.append({"icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": int(s.get('gs', 0) * 1.852), "hd": int(s.get('track', 0)), "date": now_date, "time": now_time})
+                        
+                        # Tenta obter rota (algumas APIs v2 fornecem r)
+                        route = s.get('route', "UNK-UNK")
+                        
+                        proc.append({"icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": int(s.get('gs', 0) * 1.852), "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": route})
             if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
@@ -142,14 +148,19 @@ def index():
             <div class="perfor"></div>
             <div class="main">
                 <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:5px;">
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
                     <div style="grid-column:span 2;"><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
                 </div>
+                
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
+                    <div id="arr" style="font-size:45px; transition:1.5s; padding-bottom:5px;">✈</div>
                     <div class="date-visual">
+                        <div style="margin-bottom:8px;">
+                            <span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (ORG-DES)</span>
+                            <div id="f-route" class="flap"></div>
+                        </div>
                         <div id="f-line1">-- --- ----</div>
                         <div id="f-line2">--.--</div>
                         <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)">
@@ -167,7 +178,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V82</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V84</div>
                 </div>
             </div>
         </div>
@@ -177,33 +188,27 @@ def index():
     <script>
         let pos = null, act = null, isTest = false, weather = null;
         let tickerMsg = [], tickerIdx = 0;
-        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ. ";
+        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             const limit = isTicker ? 25 : 8;
-            // Garante que o texto tenha espaços reais no padding
             const target = text.toUpperCase().padEnd(limit, ' ');
             container.innerHTML = '';
             
             [...target].forEach((char, i) => {
                 const span = document.createElement('span');
                 if(!isTicker) span.className = 'char';
-                // Preserva o espaço visual inicial usando &nbsp; se for o caso
                 span.innerHTML = '&nbsp;';
                 container.appendChild(span);
                 
                 let count = 0;
-                // CAOS ALEATÓRIO: Letras param em tempos totalmente diferentes
                 let max = 20 + Math.floor(Math.random() * 50); 
                 
                 const interval = setInterval(() => {
-                    // Durante o giro, mostra caracteres aleatórios
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
-                    
                     if (count++ >= max) {
                         clearInterval(interval);
-                        // No final, se for espaço, usa &nbsp; para garantir que não colapse
                         span.innerHTML = (char === ' ') ? '&nbsp;' : char;
                     }
                 }, 50); 
@@ -235,7 +240,9 @@ def index():
                     if(!act || act.icao !== f.icao) {
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('airl').innerText = f.airline;
-                        applyFlap('f-icao', f.icao); applyFlap('f-call', f.call);
+                        applyFlap('f-icao', f.icao); 
+                        applyFlap('f-call', f.call);
+                        applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                         document.getElementById('bc').style.opacity = "0.8";
                     }
@@ -246,7 +253,7 @@ def index():
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    tickerMsg = [`VOO: ${f.call}`, `DISTANCIA: ${f.dist} KM`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`, weather.hum];
+                    tickerMsg = [`VOO: ${f.call}`, `ROTA: ${f.route}`, `DISTANCIA: ${f.dist} KM`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`];
                 } else {
                     tickerMsg = [`BUSCANDO AERONAVES...`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`];
                 }
