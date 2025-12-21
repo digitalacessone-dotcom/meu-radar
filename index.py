@@ -7,13 +7,12 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V68
+# Configurações V70 - Estabilidade iOS WebApp
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
 
 def get_time_local():
-    # Horário de Brasília/Rio (GMT-3)
     return datetime.utcnow() - timedelta(hours=3)
 
 def get_weather(lat, lon):
@@ -27,15 +26,19 @@ def get_weather(lat, lon):
         return "METAR: ONLINE"
 
 def fetch_aircrafts(lat, lon):
+    # Endpoints atualizados para maior compatibilidade com WebApps
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/250",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/250"
     ]
-    headers = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)', 'Accept': 'application/json'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15',
+        'Accept': 'application/json'
+    }
     random.shuffle(endpoints)
     for url in endpoints:
         try:
-            r = requests.get(url, headers=headers, timeout=5)
+            r = requests.get(url, headers=headers, timeout=6)
             if r.status_code == 200:
                 return r.json().get('aircraft', [])
         except: continue
@@ -84,6 +87,8 @@ def index():
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <style>
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
@@ -92,7 +97,7 @@ def index():
 
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; }
         #ui.hide { display: none; }
-        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: 2px solid #333; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
 
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
@@ -117,16 +122,13 @@ def index():
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 22px; display: flex; overflow: hidden; }
         .char { width: 11px; text-align: center; }
 
-        /* DATA AZUL */
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: left; }
         .date-visual .line1 { font-size: 20px; }
         .date-visual .line2 { font-size: 18px; }
 
-        /* ESTILO DO VERSO (BACK) */
         .back-content { border: 2px dashed #ddd; height: 100%; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; position: relative; }
         .stamp { border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; }
-        .stamp div { font-size: 14px; }
-
+        
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); }
         .ticker { width: 300px; height: 25px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 9px; }
 
@@ -136,17 +138,16 @@ def index():
             .stub { width: 30% !important; height: 100% !important; }
             .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; }
             .main { width: 70% !important; }
+            .ticker { width: 550px; }
         }
     </style>
 </head>
-<body onclick="handleFlip(event)">
-
+<body>
     <div id="ui">
-        <input type="text" id="in" placeholder="LOCAL ATUAL">
+        <input type="text" id="in" placeholder="DIGITE SUA CIDADE (OBRIGATÓRIO ATALHO)">
         <button onclick="startSearch()">SCAN</button>
     </div>
-
-    <div class="scene" id="card">
+    <div class="scene" id="card" onclick="handleFlip(event)">
         <div class="face front">
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
@@ -176,34 +177,27 @@ def index():
                 </div>
             </div>
         </div>
-
         <div class="face back">
             <div class="back-content">
                 <div style="display:flex; justify-content:space-between;">
                     <div><span class="label">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
                     <div><span class="label">SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                
                 <div class="stamp">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V68</div>
-                </div>
-
-                <div style="margin-top:auto; font-size:7px; color:#bbb; text-align:center;">
-                    ADS-B DATA VERIFIED • RIO DE JANEIRO
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V70</div>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="ticker" id="tk">CONECTANDO...</div>
+    <div class="ticker" id="tk">INICIALIZANDO ATALHO...</div>
 
     <script>
         let pos = null, act = null, isTest = false;
         const audio = new (window.AudioContext || window.webkitAudioContext)();
-
+        
         function bip() {
             const o = audio.createOscillator(); const g = audio.createGain();
             o.connect(g); g.connect(audio.destination); o.frequency.value = 850;
@@ -236,7 +230,6 @@ def index():
                     document.getElementById('f-line2').innerText = f.time;
                     document.getElementById('b-date-line1').innerText = f.date;
                     document.getElementById('b-date-line2').innerText = f.time;
-
                     if(!act || act.icao !== f.icao) {
                         bip();
                         document.getElementById('stb').style.background = f.color;
@@ -250,27 +243,42 @@ def index():
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    document.getElementById('tk').innerText = `RADAR: ${f.call} ATIVO`;
+                    document.getElementById('tk').innerText = `RADAR: ${f.call} - ${f.dist}KM`;
+                } else {
+                    document.getElementById('tk').innerText = `BUSCANDO EM: ${pos.lat.toFixed(2)},${pos.lon.toFixed(2)}`;
                 }
-            } catch(e) { }
+            } catch(e) { 
+                document.getElementById('tk').innerText = "ERRO DE CONEXÃO NO ATALHO";
+            }
         }
 
         function startSearch() {
             const v = document.getElementById('in').value.toUpperCase();
+            if(!v) return;
             if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
             else {
                 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${v}`).then(r=>r.json()).then(d=>{
                     if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); }
+                    else { document.getElementById('tk').innerText = "LOCAL NÃO ENCONTRADO"; }
                 });
             }
         }
 
         function hideUI() { document.getElementById('ui').classList.add('hide'); update(); setInterval(update, 10000); }
+        
+        // No modo Atalho, o iPhone as vezes nega o GPS silenciosamente.
+        // Se após 4 segundos não tivermos posição, forçamos o UI.
+        setTimeout(() => { 
+            if(!pos) { 
+                document.getElementById('tk').innerText = "MODO ATALHO: DIGITE O LOCAL ACIMA";
+            }
+        }, 4000);
 
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI();
-        }, () => { document.getElementById('tk').innerText = "DIGITE A CIDADE"; });
+        }, () => { 
+            document.getElementById('tk').innerText = "GPS BLOQUEADO: DIGITE A CIDADE";
+        }, {timeout: 5000});
     </script>
 </body>
 </html>
-''')
