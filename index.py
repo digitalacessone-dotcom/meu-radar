@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V84 - Adição de Rota (Origin-Destination)
+# Configurações V86 - Otimização e Estabilidade
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -74,10 +74,7 @@ def radar():
                         if call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
-                        
-                        # Tenta obter rota (algumas APIs v2 fornecem r)
-                        route = s.get('route', "UNK-UNK")
-                        
+                        route = s.get('route', "--- ---")
                         proc.append({"icao": s.get('hex', 'UNK').upper(), "call": call, "airline": airline, "color": color, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": int(s.get('gs', 0) * 1.852), "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": route})
             if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
@@ -96,36 +93,27 @@ def index():
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
-
-        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s ease; }
+        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
-
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
-
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; }
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-
         .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
-
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; }
-        .stamp { border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; }
-        
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; }
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 1px; white-space: pre; }
-
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
 </head>
@@ -134,37 +122,26 @@ def index():
         <input type="text" id="in" placeholder="DIGITE O LOCAL">
         <button onclick="startSearch()">SCAN</button>
     </div>
-
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
                 <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
                 <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
-                <div class="dots-container" id="dots">
-                    <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
-                </div>
+                <div class="dots-container" id="dots"><div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div></div>
             </div>
             <div class="perfor"></div>
             <div class="main">
                 <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:5px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
-                    <div style="grid-column:span 2;"><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
-                
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr" style="font-size:45px; transition:1.5s; padding-bottom:5px;">✈</div>
-                    <div class="date-visual">
-                        <div style="margin-bottom:8px;">
-                            <span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (ORG-DES)</span>
-                            <div id="f-route" class="flap"></div>
-                        </div>
-                        <div id="f-line1">-- --- ----</div>
-                        <div id="f-line2">--.--</div>
-                        <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)">
-                    </div>
+                    <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
+                    <div class="date-visual"><div id="f-line1">-- --- ----</div><div id="f-line2">--.--</div><img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)"></div>
                 </div>
             </div>
         </div>
@@ -174,121 +151,77 @@ def index():
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                <div class="stamp">
+                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V84</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V86</div>
                 </div>
             </div>
         </div>
     </div>
     <div class="ticker" id="tk">AGUARDANDO LOCALIZACAO...</div>
-
     <script>
         let pos = null, act = null, isTest = false, weather = null;
         let tickerMsg = [], tickerIdx = 0;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
-
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             const limit = isTicker ? 25 : 8;
             const target = text.toUpperCase().padEnd(limit, ' ');
             container.innerHTML = '';
-            
-            [...target].forEach((char, i) => {
+            [...target].forEach((char) => {
                 const span = document.createElement('span');
                 if(!isTicker) span.className = 'char';
                 span.innerHTML = '&nbsp;';
                 container.appendChild(span);
-                
-                let count = 0;
-                let max = 20 + Math.floor(Math.random() * 50); 
-                
+                let count = 0, max = 20 + Math.floor(Math.random() * 50); 
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
-                    if (count++ >= max) {
-                        clearInterval(interval);
-                        span.innerHTML = (char === ' ') ? '&nbsp;' : char;
-                    }
+                    if (count++ >= max) { clearInterval(interval); span.innerHTML = (char === ' ') ? '&nbsp;' : char; }
                 }, 50); 
             });
         }
-
-        function updateTicker() {
-            if (tickerMsg.length > 0) {
-                applyFlap('tk', tickerMsg[tickerIdx], true);
-                tickerIdx = (tickerIdx + 1) % tickerMsg.length;
-            }
-        }
+        function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
         setInterval(updateTicker, 15000);
-
         async function update() {
             if(!pos) return;
             try {
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
                 weather = d.weather;
-                
                 if(d.flight) {
                     const f = d.flight;
                     document.getElementById('f-line1').innerText = f.date;
                     document.getElementById('f-line2').innerText = f.time;
                     document.getElementById('b-date-line1').innerText = f.date;
                     document.getElementById('b-date-line2').innerText = f.time;
-                    
                     if(!act || act.icao !== f.icao) {
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('airl').innerText = f.airline;
-                        applyFlap('f-icao', f.icao); 
-                        applyFlap('f-call', f.call);
-                        applyFlap('f-route', f.route);
+                        applyFlap('f-icao', f.icao); applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                         document.getElementById('bc').style.opacity = "0.8";
                     }
                     if(!act || act.dist !== f.dist) applyFlap('f-dist', f.dist + " KM");
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     if(!act || act.spd !== f.spd) applyFlap('b-spd', f.spd + " KMH");
-                    
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
-                    tickerMsg = [`VOO: ${f.call}`, `ROTA: ${f.route}`, `DISTANCIA: ${f.dist} KM`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`];
-                } else {
-                    tickerMsg = [`BUSCANDO AERONAVES...`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`];
-                }
+                    tickerMsg = [`VOO: ${f.call}`, `ROTA: ${f.route}`, `DIST: ${f.dist} KM`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`];
+                } else { tickerMsg = [`BUSCANDO AERONAVES...`, `TEMP: ${weather.temp}`, `CEU: ${weather.sky}`]; }
             } catch(e) {}
         }
-
         function startSearch() {
             const v = document.getElementById('in').value.toUpperCase();
             if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
-            else {
-                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${v}`).then(r=>r.json()).then(d=>{
-                    if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); }
-                });
-            }
+            else { fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${v}`).then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
         }
-
-        function handleFlip(e) {
-            if(!e.target.closest('#ui') && !e.target.closest('#bc')) {
-                document.getElementById('card').classList.toggle('flipped');
-            }
-        }
-
-        function openMap(e) {
-            e.stopPropagation();
-            if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank');
-        }
-
-        function hideUI() { 
-            document.getElementById('ui').classList.add('hide'); 
-            setTimeout(() => { update(); setInterval(update, 15000); }, 800);
-        }
-
-        navigator.geolocation.getCurrentPosition(p => {
-            pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI();
-        }, () => { applyFlap('tk', 'DIGITE O LOCAL ACIMA', true); }, { timeout: 6000 });
+        function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
+        function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
+        function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 15000); }, 800); }
+        navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => { applyFlap('tk', 'DIGITE O LOCAL ACIMA', true); }, { timeout: 6000 });
     </script>
 </body>
 </html>
