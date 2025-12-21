@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V74 - Base Estável V73
+# Configurações V75 - Foco no Efeito Placar (Split-Flap)
 RADIUS_KM = 200 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -102,8 +102,6 @@ def index():
         .face.back { transform: rotateY(180deg); background: #f4f4f4; padding: 15px; }
 
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; }
-        
-        /* CORREÇÃO AQUI: Forçado Row para não ficarem em pé */
         .dots-container { display: flex !important; flex-direction: row !important; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
@@ -116,13 +114,12 @@ def index():
         .bp-title { color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start; }
         .label { font-size: 7px; font-weight: 900; color: #bbb; text-transform: uppercase; letter-spacing: 1px; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 22px; display: flex; overflow: hidden; }
-        .char { width: 11px; text-align: center; }
+        .char { width: 11px; text-align: center; background: #eee; margin-right: 1px; border-radius: 2px; }
 
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; }
-        
         .stamp { border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 20px; text-align: center; font-weight: 900; }
         
-        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); }
+        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); transition: 0.5s; }
         .ticker { width: 300px; height: 25px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 9px; }
 
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
@@ -156,8 +153,8 @@ def index():
                     <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
                     <div>
                         <div class="date-visual">
-                            <div class="line1" id="f-line1">-- --- ----</div>
-                            <div class="line2" id="f-line2">--.--</div>
+                            <div id="f-line1">-- --- ----</div>
+                            <div id="f-line2">--.--</div>
                         </div>
                         <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)">
                     </div>
@@ -170,14 +167,12 @@ def index():
                     <div><span class="label">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
                     <div><span class="label">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                
                 <div class="stamp">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V74</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V75</div>
                 </div>
-                
                 <div style="margin-top:auto; color:#ccc; font-size:10px; text-align:right;">BACKSIDE_VERIFICATION</div>
             </div>
         </div>
@@ -187,6 +182,7 @@ def index():
     <script>
         let pos = null, act = null, isTest = false;
         const audio = new (window.AudioContext || window.webkitAudioContext)();
+        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.↑↓↔ ";
 
         function bip() {
             const o = audio.createOscillator(); const g = audio.createGain();
@@ -199,13 +195,15 @@ def index():
 
         function flap(id, txt) {
             const el = document.getElementById(id); if(!el) return;
+            const newTxt = txt.toUpperCase();
             el.innerHTML = "";
-            [...txt.toUpperCase()].forEach((c, i) => {
-                const s = document.createElement('span'); s.className="char"; el.appendChild(s);
-                let n = 0; const iv = setInterval(() => {
-                    s.innerText = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.↑↓↔"[Math.floor(Math.random()*42)];
-                    if(n++ > 8+i) { clearInterval(iv); s.innerText = c; }
-                }, 30);
+            [...newTxt].forEach((c, i) => {
+                const s = document.createElement('span'); s.className="char"; s.innerText = "-"; el.appendChild(s);
+                let n = 0; 
+                const iv = setInterval(() => {
+                    s.innerText = chars[Math.floor(Math.random()*chars.length)];
+                    if(n++ > 10 + i) { clearInterval(iv); s.innerText = c; }
+                }, 40);
             });
         }
 
@@ -220,16 +218,21 @@ def index():
                     document.getElementById('f-line2').innerText = f.time;
                     document.getElementById('b-date-line1').innerText = f.date;
                     document.getElementById('b-date-line2').innerText = f.time;
+                    
                     if(!act || act.icao !== f.icao) {
                         bip();
                         document.getElementById('stb').style.background = f.color;
                         document.getElementById('airl').innerText = f.airline;
-                        flap('f-icao', f.icao); flap('f-call', f.call);
+                        flap('f-icao', f.icao); 
+                        flap('f-call', f.call);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                         document.getElementById('bc').style.opacity = "0.8";
                     }
+                    // Sempre roda flap na distância e verso
                     flap('f-dist', f.dist + "KM");
-                    flap('b-alt', f.alt + " FT"); flap('b-spd', f.spd + " KMH");
+                    flap('b-alt', f.alt + "FT"); 
+                    flap('b-spd', f.spd + "KMH");
+                    
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).classList.toggle('on', f.dist <= (250 - i*40));
                     act = f;
@@ -251,9 +254,7 @@ def index():
         }
 
         function hideUI() { document.getElementById('ui').classList.add('hide'); update(); setInterval(update, 10000); }
-
         setTimeout(() => { if(!pos) document.getElementById('tk').innerText = "IPHONE: DIGITE O LOCAL ACIMA"; }, 5000);
-
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI();
         }, () => { document.getElementById('tk').innerText = "POR FAVOR, DIGITE O LOCAL"; }, { timeout: 6000 });
