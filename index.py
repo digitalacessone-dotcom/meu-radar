@@ -331,6 +331,7 @@ def index():
         }
 
         function handleOrientation(e) {
+            // compassheading para iOS, alpha para Android (ajustado)
             deviceHeading = e.webkitCompassHeading || (360 - e.alpha);
             updatePlaneVisual();
         }
@@ -347,7 +348,12 @@ def index():
         function updatePlaneVisual() {
             if(!act || !pos) return;
             const planeElement = document.getElementById('arr');
+            
+            // Calculamos o ângulo onde o avião está em relação a nós (Norte Geográfico)
             const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
+            
+            // Subtraímos a rotação do celular para que ele aponte sempre para a direção real
+            // -45 é o ajuste do caractere ✈ original
             const finalRotation = (bearingToPlane - deviceHeading - 45);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
