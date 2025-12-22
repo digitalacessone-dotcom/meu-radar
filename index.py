@@ -1,80 +1,42 @@
 # -*- coding: utf-8 -*-
-"""
-RADAR SYSTEM V106.3 - MILITARY & CIVILIAN INTEGRATED
-Desenvolvido para detecção de aeronaves raras e tráfego FAB.
-Data: Dezembro 2025
-"""
-
 from flask import Flask, jsonify, request, render_template_string
 import requests
 import math
 import random
-import json
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# =================================================================
-# CONFIGURAÇÕES GLOBAIS DE SISTEMA
-# =================================================================
+# Configurações V106.2 - ANAC 2025 INTEGRATED
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
-API_TIMEOUT = 5
-
-# =================================================================
-# FUNÇÕES DE UTILIDADE E CÁLCULO
-# =================================================================
 
 def get_time_local():
-    """Retorna o horário atual ajustado para o fuso de Brasília (UTC-3)"""
     return datetime.utcnow() - timedelta(hours=3)
 
 def get_weather_desc(code):
-    """Converte códigos WMO da Open-Meteo em descrições legíveis de radar"""
-    mapping = {
-        0: "CLEAR SKY", 1: "FEW CLOUDS", 2: "SCATTERED", 
-        3: "OVERCAST", 45: "FOG", 48: "DEPOSITS OF FOG",
-        51: "LIGHT DRIZZLE", 53: "MODERATE DRIZZLE", 55: "DENSE DRIZZLE",
-        61: "LIGHT RAIN", 63: "RAIN", 65: "HEAVY RAIN",
-        71: "SNOW FALL", 80: "SHOWERS", 81: "HEAVY SHOWERS",
-        95: "THUNDERSTORM"
-    }
+    mapping = {0: "CLEAR SKY", 1: "FEW CLOUDS", 2: "SCATTERED", 3: "OVERCAST", 45: "FOG", 51: "LIGHT DRIZZLE", 61: "RAIN", 80: "SHOWERS"}
     return mapping.get(code, "CONDITIONS OK")
 
 def get_weather(lat, lon):
-    """Obtém dados meteorológicos em tempo real para as coordenadas do radar"""
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
-        resp = requests.get(url, timeout=API_TIMEOUT).json()
-        curr = resp.get('current', {})
-        temp = curr.get('temperature_2m', '--')
+        resp = requests.get(url, timeout=5).json()
+        curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
-        sky_desc = get_weather_desc(curr.get('weather_code', 0))
-        return {
-            "temp": f"{int(temp)}C" if temp != '--' else "--C",
-            "sky": sky_desc,
-            "vis": f"{vis_km}KM"
-        }
-    except Exception as e:
-        print(f"Erro Weather: {e}")
+        return {"temp": f"{int(curr['temperature_2m'])}C", "sky": get_weather_desc(curr['weather_code']), "vis": f"{vis_km}KM"}
+    except:
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
-# =================================================================
-# INTEGRAÇÃO COM APIs DE TRÁFEGO AÉREO
-# =================================================================
-
 def fetch_aircrafts(lat, lon):
-    """Consulta múltiplos endpoints para garantir máxima cobertura de sinais ADS-B"""
+    # Três servidores para redundância máxima
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
     ]
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Accept': 'application/json'
-    }
+    headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     all_aircraft = []
     
     for url in endpoints:
@@ -82,229 +44,118 @@ def fetch_aircrafts(lat, lon):
             r = requests.get(url, headers=headers, timeout=4)
             if r.status_code == 200:
                 data = r.json().get('aircraft', [])
-                if data:
-                    all_aircraft.extend(data)
-        except Exception as e:
-            continue
-            
-    # Remove duplicatas baseadas no HEX ICAO
+                if data: all_aircraft.extend(data)
+        except: continue
+    
+    # Remove duplicatas baseadas no HEX (ICAO)
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
 
 def fetch_route(callsign):
-    """Busca a rota da aeronave baseada no callsign via API secundária"""
     if not callsign or callsign == "N/A":
         return "--- ---"
     try:
+        # Consulta API para preencher lacuna de rota
         url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
         r = requests.get(url, timeout=3).json()
         if r.get('aircraft'):
-            route_data = r['aircraft'][0].get('route', "EN ROUTE")
-            if route_data:
-                return route_data.replace('-', ' ').upper()
+            route = r['aircraft'][0].get('route', "EN ROUTE")
+            return route.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
         return "EN ROUTE"
 
-# =================================================================
-# ENGINE DE PROCESSAMENTO DO RADAR
-# =================================================================
-
 @app.route('/api/radar')
 def radar():
-    """Endpoint principal que processa a lógica de proximidade e raridade"""
     try:
         lat = float(request.args.get('lat', DEFAULT_LAT))
         lon = float(request.args.get('lon', DEFAULT_LON))
         current_icao = request.args.get('current_icao', None)
-        test_mode = request.args.get('test', 'false').lower() == 'true'
-        
+        test = request.args.get('test', 'false').lower() == 'true'
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
-        weather_info = get_weather(lat, lon)
+        w = get_weather(lat, lon)
         
-        # Modo de Teste para demonstração (SR-71 Blackbird)
-        if test_mode:
-            test_flight = {
-                "icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", 
-                "airline": "SR-71 RARE", "color": "#000", "is_rare": True, 
-                "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, 
-                "date": now_date, "time": now_time, "route": "BEALE-EDW", 
-                "eta": 2, "kts": 1800, "vrate": 0
-            }
-            return jsonify({"flight": test_flight, "weather": weather_info, "date": now_date, "time": now_time})
+        if test:
+            f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
+            return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
         
-        raw_data = fetch_aircrafts(lat, lon)
-        processed_list = []
-        
-        if raw_data:
-            for s in raw_data:
-                s_lat, s_lon = s.get('lat'), s.get('lon')
-                if s_lat and s_lon:
-                    # Fórmula de Haversine para cálculo de distância
-                    dist = 6371 * 2 * math.asin(math.sqrt(
-                        math.sin(math.radians(s_lat-lat)/2)**2 + 
-                        math.cos(math.radians(lat)) * math.cos(math.radians(s_lat)) * math.sin(math.radians(s_lon-lon)/2)**2
-                    ))
-                    
-                    if dist <= RADIUS_KM:
+        data = fetch_aircrafts(lat, lon)
+        found = None
+        if data:
+            proc = []
+            for s in data:
+                slat, slon = s.get('lat'), s.get('lon')
+                if slat and slon:
+                    # Fórmula de Haversine
+                    d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
+                    if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
-                        icao_type = (s.get('t') or 'UNK').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # -----------------------------------------------------
-                        # DB MILITAR EXPANDIDO (OTAN, RÚSSIA, CHINA, FAB)
-                        # -----------------------------------------------------
-                        mil_db = [
-                            'F14', 'F15', 'F16', 'F18', 'F22', 'F35', 'FA18', 'F4', 'F5', 'F117', 'A10', 'AV8B',
-                            'B1', 'B2', 'B52', 'C130', 'C17', 'C5', 'C160', 'A400', 'CN35', 'C295', 'C390', 'C212',
-                            'KC10', 'KC135', 'A332', 'K35R', 'KC76', 'P3', 'P8', 'E3', 'E8', 'E2', 'C2', 'RC135',
-                            'SU24', 'SU25', 'SU27', 'SU30', 'SU33', 'SU34', 'SU35', 'SU57', 
-                            'MIG21', 'MIG23', 'MIG25', 'MIG29', 'MIG31', 'MIG35',
-                            'TU22', 'TU95', 'TU142', 'TU160', 'IL18', 'IL38', 'IL62', 'IL76', 'IL78', 'IL82', 'IL96',
-                            'AN12', 'AN22', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
-                            'J10', 'J11', 'J15', 'J16', 'J20', 'H6', 'KJ200', 'KJ500', 'KJ2000', 'Y8', 'Y9', 'Y20',
-                            'EUFI', 'RAFA', 'GRIP', 'TOR', 'HAWK', 'T38', 'M346', 'L39', 'K8', 'EMB3', 'AT27', 
-                            'C95', 'C97', 'C98', 'U27', 'B350', 'LJ35',
-                            'H60', 'H64', 'H47', 'WA64', 'B412', 'B407', 'UH1', 'EC35', 'EC45', 'AS32', 
-                            'MI8', 'MI17', 'MI24', 'MI28', 'KA50', 'KA52'
-                        ]
-                        
-                        if s.get('mil') or icao_type in mil_db:
+                        # LOGICA DE COMPANHIAS 2025
+                        if s.get('mil') or s.get('t') in ['H60', 'C130', 'F16', 'F35', 'B52']:
                             airline, color, is_rare = "MILITARY", "#000", True
+                        # ANAC
+                        elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
+                        elif call.startswith(("GLO", "G3")): airline, color = "GOL AIRLINES", "#FF6700"
+                        elif call.startswith(("AZU", "AD")): airline, color = "AZUL LINHAS", "#004590"
+                        elif call.startswith(("PTB", "2Z")): airline, color = "VOEPASS", "#F9A825"
+                        elif call.startswith("ABV"): airline, color = "ABAETE AVIAÇÃO", "#003366"
+                        elif call.startswith("ASL"): airline, color = "AEROSUL", "#00BFFF"
+                        elif call.startswith("SUL"): airline, color = "ASTA LINHAS", "#ED1C24"
+                        elif call.startswith("TTL"): airline, color = "TOTAL LINHAS", "#005544"
+                        elif call.startswith("VXP"): airline, color = "AVION EXPRESS", "#701630"
+                        elif call.startswith("OMI"): airline, color = "OMNI TÁXI AÉREO", "#003366"
+                        # GLOBAL
+                        elif call.startswith("RYR"): airline, color = "RYANAIR", "#003399"
+                        elif call.startswith("EZY"): airline, color = "EASYJET", "#FF6600"
+                        elif call.startswith("SWA"): airline, color = "SOUTHWEST AIR", "#FFBF00"
+                        elif call.startswith(("EJA", "NJE")): airline, color, is_rare = "NETJETS", "#000", True
+                        elif "MLBR" in call or "MELI" in call: airline, color, is_rare = "MERCADO LIVRE", "#FFE600", True
+                        elif call.startswith("GTI"): airline, color = "ATLAS AIR", "#003366"
+                        elif call.startswith("CLX"): airline, color = "CARGOLUX", "#ED1C24"
+                        elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
+                        elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
+                        elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
+                        elif call.startswith("UAE"): airline, color = "EMIRATES", "#FF0000"
+                        elif call.startswith("ANA"): airline, color = "ANA NIPPON", "#003192"
+                        elif call.startswith("THY"): airline, color = "TURKISH AIR", "#C8102E"
+                        elif call.startswith("KAL"): airline, color = "KOREAN AIR", "#003399"
+                        elif call.startswith("AFR"): airline, color = "AIR FRANCE", "#002395"
+                        elif call.startswith("AAL"): airline, color = "AMERICAN AIR", "#12316E"
+                        elif call.startswith("DAL"): airline, color = "DELTA LINES", "#E01933"
+                        elif call.startswith("UAL"): airline, color = "UNITED AIR", "#1B3E93"
+                        elif call.startswith("DLH"): airline, color = "LUFTHANSA", "#002F5B"
+                        elif call.startswith("CSN"): airline, color = "CHINA SOUTHERN", "#007AC1"
                         
-                        # -----------------------------------------------------
-                        # REGRAS DE IDENTIFICAÇÃO DE COMPANHIAS (EXTENDED)
-                        # -----------------------------------------------------
-                        elif call.startswith(("TAM", "JJ", "LA")): 
-                            airline, color = "LATAM BRASIL", "#E6004C"
-                        elif call.startswith(("GLO", "G3")): 
-                            airline, color = "GOL AIRLINES", "#FF6700"
-                        elif call.startswith(("AZU", "AD")): 
-                            airline, color = "AZUL LINHAS", "#004590"
-                        elif call.startswith(("PTB", "2Z")): 
-                            airline, color = "VOEPASS", "#F9A825"
-                        elif call.startswith("ABV"): 
-                            airline, color = "ABAETE AVIAÇÃO", "#003366"
-                        elif call.startswith("ASL"): 
-                            airline, color = "AEROSUL", "#00BFFF"
-                        elif call.startswith("SUL"): 
-                            airline, color = "ASTA LINHAS", "#ED1C24"
-                        elif call.startswith("TTL"): 
-                            airline, color = "TOTAL LINHAS", "#005544"
-                        elif call.startswith("VXP"): 
-                            airline, color = "AVION EXPRESS", "#701630"
-                        elif call.startswith("OMI"): 
-                            airline, color = "OMNI TÁXI AÉREO", "#003366"
-                        elif call.startswith("RYR"): 
-                            airline, color = "RYANAIR", "#003399"
-                        elif call.startswith("EZY"): 
-                            airline, color = "EASYJET", "#FF6600"
-                        elif call.startswith("SWA"): 
-                            airline, color = "SOUTHWEST AIR", "#FFBF00"
-                        elif call.startswith(("EJA", "NJE")): 
-                            airline, color, is_rare = "NETJETS", "#000", True
-                        elif "MLBR" in call or "MELI" in call: 
-                            airline, color, is_rare = "MERCADO LIVRE", "#FFE600", True
-                        elif call.startswith("GTI"): 
-                            airline, color = "ATLAS AIR", "#003366"
-                        elif call.startswith("CLX"): 
-                            airline, color = "CARGOLUX", "#ED1C24"
-                        elif call.startswith("QTR"): 
-                            airline, color = "QATAR AIRWAYS", "#5A0225"
-                        elif call.startswith("SIA"): 
-                            airline, color = "SINGAPORE AIR", "#11264B"
-                        elif call.startswith("CPA"): 
-                            airline, color = "CATHAY PACIFIC", "#00656B"
-                        elif call.startswith("UAE"): 
-                            airline, color = "EMIRATES", "#FF0000"
-                        elif call.startswith("ANA"): 
-                            airline, color = "ANA NIPPON", "#003192"
-                        elif call.startswith("THY"): 
-                            airline, color = "TURKISH AIR", "#C8102E"
-                        elif call.startswith("KAL"): 
-                            airline, color = "KOREAN AIR", "#003399"
-                        elif call.startswith("AFR"): 
-                            airline, color = "AIR FRANCE", "#002395"
-                        elif call.startswith("BAW"):
-                            airline, color = "BRITISH AIRWAYS", "#00247D"
-                        elif call.startswith("DLH"): 
-                            airline, color = "LUFTHANSA", "#002F5B"
-                        elif call.startswith("IBE"):
-                            airline, color = "IBERIA", "#D21034"
-                        elif call.startswith("TAP"):
-                            airline, color = "TAP PORTUGAL", "#ED1C24"
-                        elif call.startswith("ARG"):
-                            airline, color = "AEROLINEAS ARG", "#00AEEF"
-                        
-                        # -----------------------------------------------------
-                        # CÁLCULOS TÉCNICOS DE VOO
-                        # -----------------------------------------------------
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
-                        eta_val = round((dist / (spd_kmh or 1)) * 60)
-                        
-                        route_info = s.get('route')
-                        if not route_info or route_info == "--- ---":
-                            route_info = fetch_route(call)
+                        eta = round((d / (spd_kmh or 1)) * 60)
 
-                        processed_list.append({
-                            "icao": s.get('hex', 'UNK').upper(),
-                            "reg": s.get('r', 'N/A').upper(),
-                            "call": call,
-                            "airline": airline,
-                            "color": color,
-                            "is_rare": is_rare,
-                            "dist": round(dist, 1),
-                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
-                            "spd": spd_kmh,
-                            "kts": spd_kts,
-                            "hd": int(s.get('track', 0)),
-                            "date": now_date,
-                            "time": now_time,
-                            "route": route_info,
-                            "eta": eta_val,
-                            "vrate": int(s.get('baro_rate', 0))
-                        })
+                        # LOGICA DE ROTA EXTERNA
+                        r_info = s.get('route')
+                        if not r_info or r_info == "--- ---":
+                            r_info = fetch_route(call)
+
+                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": r_info, "eta": eta, "vrate": int(s.get('baro_rate', 0))})
             
-            # Ordenação e Seleção do Alvo
-            if processed_list:
-                processed_list.sort(key=lambda x: x['dist'])
-                target = processed_list[0]
-                
+            if proc:
+                proc.sort(key=lambda x: x['dist'])
+                new_closest = proc[0]
                 if current_icao:
-                    current_on_radar = next((x for x in processed_list if x['icao'] == current_icao), None)
+                    current_on_radar = next((x for x in proc if x['icao'] == current_icao), None)
                     if current_on_radar:
-                        # Mantém o atual a menos que o novo esteja muito mais perto (histerese)
-                        if target['dist'] < (current_on_radar['dist'] - 5):
-                            found_flight = target
-                        else:
-                            found_flight = current_on_radar
-                    else:
-                        found_flight = target
-                else:
-                    found_flight = target
-                
-                return jsonify({
-                    "flight": found_flight, 
-                    "weather": weather_info, 
-                    "date": now_date, 
-                    "time": now_time
-                })
-                
-        return jsonify({"flight": None, "weather": weather_info, "date": now_date, "time": now_time})
-    except Exception as e:
-        print(f"Erro Master Radar: {e}")
-        return jsonify({"flight": None})
+                        found = new_closest if new_closest['dist'] < (current_on_radar['dist'] - 5) else current_on_radar
+                    else: found = new_closest
+                else: found = new_closest
 
-# =================================================================
-# INTERFACE FRONT-END (HTML5/CSS3/JS)
-# =================================================================
+        return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
+    except: return jsonify({"flight": None})
 
 @app.route('/')
 def index():
-    """Renderiza a interface visual do cartão de embarque digital"""
     return render_template_string('''
 <!DOCTYPE html>
 <html lang="en">
@@ -312,68 +163,47 @@ def index():
     <meta charset="UTF-8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>MIL-RADAR V106.3</title>
     <style>
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
-        
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
-        
-        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; border: 1px solid #333; }
-        button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
-        
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
+        button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
-        
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #fdfdfd; padding: 15px; }
-        
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
-        
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-        
         .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-        
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
-        .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 4px rgba(0,0,0,0.1); }
-        
+        .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px; }
-        
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; border: 1px solid #333; }
-        
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
         .metal-seal { position: absolute; bottom: 30px; right: 30px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
-
-        @media (orientation: landscape) {
-            .scene { width: 550px; height: 260px; }
-            .face { flex-direction: row !important; }
-            .stub { width: 30% !important; height: 100% !important; }
-            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; }
-            .main { width: 70% !important; }
-            .ticker { width: 550px; }
-        }
+        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
 </head>
 <body onclick="handleFlip(event)">
     <div id="ui">
-        <input type="text" id="in" placeholder="ENTER LOCATION (CITY/AIRPORT)">
-        <button onclick="startSearch()">SCAN</button>
+        <input type="text" id="in" placeholder="ENTER LOCATION">
+        <button onclick="startSearch()">CHECK-IN</button>
     </div>
-
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
-                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">IDLE...</div>
+                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
                 <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
                 <div class="dots-container" id="dots">
                     <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
@@ -382,28 +212,14 @@ def index():
             <div class="perfor"></div>
             <div class="main">
                 <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
-                
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-                    <div>
-                        <span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span>
-                        <div id="f-icao" class="flap"></div>
-                    </div>
-                    <div>
-                        <span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span>
-                        <div id="f-dist" class="flap" style="color:#666"></div>
-                    </div>
-                    <div>
-                        <span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span>
-                        <div id="f-call" class="flap"></div>
-                    </div>
-                    <div>
-                        <span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span>
-                        <div id="f-route" class="flap"></div>
-                    </div>
+                    <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
+                    <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
-
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr" style="font-size:45px; transition:1.5s; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));">✈</div>
+                    <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
                     <div class="date-visual">
                         <div id="f-line1">-- --- ----</div>
                         <div id="f-line2">--.--</div>
@@ -412,27 +228,18 @@ def index():
                 </div>
             </div>
         </div>
-
         <div class="face back">
             <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative;">
                 <div style="display:flex; justify-content:space-between;">
-                    <div>
-                        <span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span>
-                        <div id="b-alt" class="flap"></div>
-                    </div>
-                    <div>
-                        <span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span>
-                        <div id="b-spd" class="flap"></div>
-                    </div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
+                    <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-
                 <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 30px; text-align: center; font-weight: 900;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.3</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
                 </div>
-
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
                     <span style="font-size:10px;">Aircraft</span>
@@ -441,8 +248,7 @@ def index():
             </div>
         </div>
     </div>
-
-    <div class="ticker" id="tk">WAITING FOR COORDINATES...</div>
+    <div class="ticker" id="tk">WAITING...</div>
 
     <script>
         let pos = null, act = null, isTest = false;
@@ -455,8 +261,7 @@ def index():
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
                 gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
                 osc.connect(gain); gain.connect(audioCtx.destination);
@@ -470,15 +275,13 @@ def index():
             const limit = isTicker ? 32 : 8;
             const target = text.toUpperCase().padEnd(limit, ' ');
             container.innerHTML = '';
-            
             [...target].forEach((char) => {
                 const span = document.createElement('span');
                 if(!isTicker) span.className = 'char';
                 span.innerHTML = '&nbsp;';
                 container.appendChild(span);
-                
                 let count = 0;
-                let max = 30 + Math.floor(Math.random() * 50); 
+                let max = 40 + Math.floor(Math.random() * 80); 
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
                     if (count++ >= max) { 
@@ -489,15 +292,23 @@ def index():
             });
         }
 
+        function saveHistory(f) {
+            if(isTest) return;
+            if(!f.is_rare) return;
+            let history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
+            if(!history.find(x => x.icao === f.icao)) {
+                history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
+                localStorage.setItem('rare_flights', JSON.stringify(history));
+            }
+        }
+
         setInterval(() => {
             if(act) {
                 toggleState = !toggleState;
                 document.getElementById('icao-label').innerText = toggleState ? "AIRCRAFT ICAO" : "REGISTRATION";
                 applyFlap('f-icao', toggleState ? act.icao : act.reg);
-                
                 document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "ESTIMATED CONTACT";
                 applyFlap('f-dist', toggleState ? act.dist + " KM" : "ETA " + act.eta + "M");
-                
                 document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
                 applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
             }
@@ -522,93 +333,72 @@ def index():
                     const f = d.flight;
                     const stub = document.getElementById('stb');
                     const seal = document.getElementById('gold-seal');
+
                     let trend = "MAINTAINING";
-                    
                     if(lastDist !== null) {
                         if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
                         else if(f.dist > lastDist + 0.1) trend = "MOVING AWAY";
                     }
                     lastDist = f.dist;
-                    
+
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
                         seal.style.display = 'flex';
+                        saveHistory(f);
                     } else {
                         stub.className = 'stub';
                         stub.style.background = f.color;
                         seal.style.display = 'none';
                     }
-                    
+
                     if(!act || act.icao !== f.icao) {
                         playPing();
                         document.getElementById('airl').innerText = f.airline;
-                        applyFlap('f-call', f.call); 
-                        applyFlap('f-route', f.route);
+                        applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
-                        document.getElementById('f-line1').innerText = f.date;
-                        document.getElementById('f-line2').innerText = f.time;
-                        document.getElementById('b-date-line1').innerText = f.date;
-                        document.getElementById('b-date-line2').innerText = f.time;
                     }
                     
+                    document.getElementById('f-line1').innerText = d.date;
+                    document.getElementById('f-line2').innerText = d.time;
+                    document.getElementById('b-date-line1').innerText = d.date;
+                    document.getElementById('b-date-line2').innerText = d.time;
+
                     for(let i=1; i<=5; i++) {
                         const threshold = 190 - ((i-1) * 40);
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
-                    
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
+                    
                     tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
                     act = f;
+                } else if (act) {
+                    tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
+                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
+                    document.getElementById('stb').className = 'stub';
+                    document.getElementById('stb').style.background = 'var(--brand)';
                 } else {
-                    tickerMsg = ["SEARCHING TRAFFIC...", d.weather.temp + " " + d.weather.sky];
+                    tickerMsg = ["SEARCHING TRAFFIC..."];
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) {}
         }
 
         function startSearch() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const v = document.getElementById('in').value.toUpperCase();
-            tickerMsg = ["INITIALIZING SCAN..."];
+            tickerMsg = ["SEARCHING TRAFFIC..."];
             updateTicker();
-            if(v === "TEST") { 
-                isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); 
-            } else { 
-                fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v)
-                .then(r=>r.json()).then(d=>{ 
-                    if(d[0]) { 
-                        pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; 
-                        hideUI(); 
-                    } 
-                }); 
-            }
+            if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
+            else { fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v).then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
         }
-        
-        function handleFlip(e) { 
-            if(!e.target.closest('#ui') && !e.target.closest('#bc')) 
-                document.getElementById('card').classList.toggle('flipped'); 
-        }
-        
-        function openMap(e) { 
-            e.stopPropagation(); 
-            if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); 
-        }
-        
-        function hideUI() { 
-            document.getElementById('ui').classList.add('hide'); 
-            update(); 
-            setInterval(update, 20000); 
-        }
-        
-        navigator.geolocation.getCurrentPosition(p => { 
-            pos = {lat:p.coords.latitude, lon:p.coords.longitude}; 
-            hideUI(); 
-        }, () => {}, { timeout: 6000 });
+        function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
+        function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
+        function hideUI() { document.getElementById('ui').classList.add('hide'); update(); setInterval(update, 20000); }
+        navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => {}, { timeout: 6000 });
     </script>
 </body>
 </html>
 ''')
 
 if __name__ == '__main__':
-    # Inicialização do servidor Flask em modo produção
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(debug=True)
