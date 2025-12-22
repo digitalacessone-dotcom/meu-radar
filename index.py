@@ -51,6 +51,20 @@ def fetch_aircrafts(lat, lon):
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
 
+def fetch_route(callsign):
+    if not callsign or callsign == "N/A":
+        return "--- ---"
+    try:
+        # Consulta API para preencher lacuna de rota
+        url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
+        r = requests.get(url, timeout=3).json()
+        if r.get('aircraft'):
+            route = r['aircraft'][0].get('route', "EN ROUTE")
+            return route.replace('-', ' ').upper()
+        return "EN ROUTE"
+    except:
+        return "EN ROUTE"
+
 @app.route('/api/radar')
 def radar():
     try:
@@ -119,7 +133,13 @@ def radar():
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
-                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta, "vrate": int(s.get('baro_rate', 0))})
+
+                        # LOGICA DE ROTA EXTERNA
+                        r_info = s.get('route')
+                        if not r_info or r_info == "--- ---":
+                            r_info = fetch_route(call)
+
+                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": r_info, "eta": eta, "vrate": int(s.get('baro_rate', 0))})
             
             if proc:
                 proc.sort(key=lambda x: x['dist'])
