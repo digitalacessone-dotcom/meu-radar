@@ -7,12 +7,12 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V106.2 - ANAC 2025 INTEGRATED
+# Configurações V106.3 - ANAC 2025 INTEGRATED (ROUTE FIX)
 RADIUS_KM = 190 
 DEFAULT_LAT = 37.24804
 DEFAULT_LON = -115.800155
 
-# LISTA DE MILITARES SOLICITADA
+# LISTA DE MILITARES
 MIL_RARE = [
     'F14', 'F15', 'F16', 'F18', 'F22', 'F35', 'FA18', 'F4', 'F5', 'F117', 'A10', 'AV8B',
     'B1', 'B2', 'B52', 'C130', 'C17', 'C5', 'C160', 'A400', 'CN35', 'C295', 'C390', 'C212',
@@ -61,14 +61,17 @@ def fetch_aircrafts(lat, lon):
     return list(unique_data)
 
 def fetch_route(callsign):
-    if not callsign or callsign == "N/A":
-        return "--- ---"
+    if not callsign or callsign == "N/A" or len(callsign.strip()) < 3:
+        return "EN ROUTE"
     try:
-        url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
+        clean_call = callsign.strip().upper()
+        url = f"https://api.adsb.one/v2/callsign/{clean_call}"
         r = requests.get(url, timeout=3).json()
         if r.get('aircraft'):
-            route = r['aircraft'][0].get('route', "EN ROUTE")
-            return route.replace('-', ' ').upper()
+            a = r['aircraft'][0]
+            route = a.get('route') or a.get('r_route')
+            if route:
+                return route.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
         return "EN ROUTE"
@@ -86,7 +89,7 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0, "lat": lat + 0.1, "lon": lon + 0.1}
+            f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
             return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
@@ -102,7 +105,6 @@ def radar():
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS E RARIDADE
                         if s.get('mil') or type_code in MIL_RARE:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
@@ -159,6 +161,7 @@ def radar():
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
+                        
                         r_info = s.get('route') or fetch_route(call)
 
                         proc.append({
@@ -170,7 +173,6 @@ def radar():
                             "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), 
                             "spd": spd_kmh, "kts": spd_kts, 
                             "hd": int(s.get('track', 0)), 
-                            "lat": slat, "lon": slon,
                             "date": now_date, "time": now_time, 
                             "route": r_info, "eta": eta, 
                             "vrate": int(s.get('baro_rate', 0))
@@ -202,11 +204,13 @@ def index():
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
-        #ui.hide { opacity: 0; pointer-events: none; }
-        .ui-row { display: flex; gap: 6px; }
+        
+        #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; height: 40px; }
+        #ui.hide { opacity: 0; pointer-events: none; margin-bottom: 0; height: 0; overflow: hidden; }
+        
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
-        button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
+        button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
+        
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         
@@ -223,8 +227,8 @@ def index():
         .face.back { transform: rotateY(180deg); padding: 15px; }
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
-        .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
         
+        .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
@@ -239,23 +243,25 @@ def index():
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
         
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: margin 0.5s; }
         
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
-        #compass-btn { font-size: 9px; background: #222; color: #fff; margin-top: 5px; padding: 5px; opacity: 0.6; }
-
-        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
+        @media (orientation: landscape) { 
+            .scene { width: 550px; height: 260px; } 
+            .face { flex-direction: row !important; } 
+            .stub { width: 30% !important; height: 100% !important; } 
+            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } 
+            .main { width: 70% !important; } 
+            .ticker { width: 550px; margin-top: 10px; } 
+        }
     </style>
 </head>
 <body onclick="handleFlip(event)">
     <div id="ui">
-        <div class="ui-row">
-            <input type="text" id="in" placeholder="ENTER LOCATION">
-            <button onclick="startSearch()">CHECK-IN</button>
-        </div>
-        <button id="compass-btn" onclick="initCompass()">ENABLE LIVE TRACKING SENSORS</button>
+        <input type="text" id="in" placeholder="ENTER LOCATION">
+        <button onclick="startSearch()">CHECK-IN</button>
     </div>
     <div class="scene" id="card">
         <div class="face front">
@@ -277,7 +283,7 @@ def index():
                     <div><span style="font-size: 7px; font-weight: 900; color: #888;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr" style="font-size:45px; transition: transform 0.2s cubic-bezier(0.17, 0.67, 0.83, 0.67); filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));">✈</div>
+                    <div id="arr" style="font-size:45px; transition:1.5s; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));">✈</div>
                     <div class="date-visual">
                         <div id="f-line1">-- --- ----</div>
                         <div id="f-line2">--.--</div>
@@ -312,51 +318,7 @@ def index():
         let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
-        let deviceHeading = 0;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
-
-        function initCompass() {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(state => {
-                        if (state === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation);
-                            document.getElementById('compass-btn').style.display = 'none';
-                        }
-                    });
-            } else {
-                window.addEventListener('deviceorientation', handleOrientation);
-                document.getElementById('compass-btn').style.display = 'none';
-            }
-        }
-
-        function handleOrientation(e) {
-            // compassheading para iOS, alpha para Android (ajustado)
-            deviceHeading = e.webkitCompassHeading || (360 - e.alpha);
-            updatePlaneVisual();
-        }
-
-        function calculateBearing(lat1, lon1, lat2, lon2) {
-            const l1 = lat1 * Math.PI / 180;
-            const l2 = lat2 * Math.PI / 180;
-            const dl = (lon2 - lon1) * Math.PI / 180;
-            const y = Math.sin(dl) * Math.cos(l2);
-            const x = Math.cos(l1) * Math.sin(l2) - Math.sin(l1) * Math.cos(l2) * Math.cos(dl);
-            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-        }
-
-        function updatePlaneVisual() {
-            if(!act || !pos) return;
-            const planeElement = document.getElementById('arr');
-            
-            // Calculamos o ângulo onde o avião está em relação a nós (Norte Geográfico)
-            const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
-            
-            // Subtraímos a rotação do celular para que ele aponte sempre para a direção real
-            // -45 é o ajuste do caractere ✈ original
-            const finalRotation = (bearingToPlane - deviceHeading - 45);
-            planeElement.style.transform = `rotate(${finalRotation}deg)`;
-        }
 
         function playPing() {
             try {
@@ -392,16 +354,6 @@ def index():
                     }
                 }, 20);
             });
-        }
-
-        function saveHistory(f) {
-            if(isTest) return;
-            if(!f.is_rare) return;
-            let history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
-            if(!history.find(x => x.icao === f.icao)) {
-                history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
-                localStorage.setItem('rare_flights', JSON.stringify(history));
-            }
         }
 
         setInterval(() => {
@@ -446,7 +398,6 @@ def index():
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
                         seal.style.display = 'flex';
-                        saveHistory(f);
                     } else {
                         stub.className = 'stub';
                         stub.style.background = f.color;
@@ -458,7 +409,6 @@ def index():
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
-                        
                         document.getElementById('f-line1').innerText = f.date;
                         document.getElementById('f-line2').innerText = f.time;
                         document.getElementById('b-date-line1').innerText = f.date;
@@ -470,15 +420,10 @@ def index():
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
+                    document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     
                     tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
                     act = f;
-                    updatePlaneVisual();
-                } else if (act) {
-                    tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
-                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
-                    document.getElementById('stb').className = 'stub';
-                    document.getElementById('stb').style.background = 'var(--brand)';
                 } else {
                     tickerMsg = ["SEARCHING TRAFFIC..."];
                 }
