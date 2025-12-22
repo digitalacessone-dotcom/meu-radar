@@ -18,7 +18,7 @@ MIL_RARE = [
     'KC10', 'KC135', 'A332', 'K35R', 'KC76', 'P3', 'P8', 'E3', 'E8', 'E2', 'C2', 'RC135',
     'SU24', 'SU25', 'SU27', 'SU30', 'SU33', 'SU34', 'SU35', 'SU57', 'MIG21', 'MIG23', 'MIG25', 
     'MIG29', 'MIG31', 'MIG35', 'TU22', 'TU95', 'TU142', 'TU160', 'IL18', 'IL38', 'IL62', 'IL76', 
-    'IL78', 'IL82', 'IL96', 'AN12', 'AN22', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
+    'IL78', 'IL82', 'IL96', 'AN12', 'AN22', 'AN24', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
     'J10', 'J11', 'J15', 'J16', 'J20', 'H6', 'KJ200', 'KJ500', 'KJ2000', 'Y8', 'Y9', 'Y20',
     'EUFI', 'RAFA', 'GRIP', 'TOR', 'HAWK', 'T38', 'M346', 'L39', 'K8', 'EMB3', 'AT27', 'C95', 
     'C97', 'C98', 'U27', 'R99', 'E99', 'P95', 'KC390', 'AMX', 'A1', 'A29'
@@ -202,40 +202,14 @@ def index():
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px; }
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
         
-        /* NOVO SISTEMA DE SELOS ACUMULATIVOS */
-        #stamp-collection { 
-            position: absolute; 
-            top: 20px; 
-            right: 15px; 
-            bottom: 20px; 
-            left: 155px; /* Deixa espaço para o carimbo de segurança */
-            display: flex; 
-            flex-wrap: wrap; 
-            align-content: flex-start; 
-            gap: 10px; 
-            pointer-events: none;
-        }
-        .metal-seal { 
-            width: 50px; 
-            height: 50px; 
-            border-radius: 50%; 
-            background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); 
-            border: 1.5px solid #8a6d3b; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2), inset 0 0 5px rgba(255,255,255,0.4); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            border-style: double; 
-            border-width: 3px;
-            animation: stampIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .metal-seal span { color: #5c4412; font-size: 5px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; }
+        /* SELO ORIGINAL */
+        .metal-seal { position: absolute; bottom: 30px; left: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
+        .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
-        @keyframes stampIn {
-            from { transform: scale(2) rotate(30deg); opacity: 0; }
-            to { transform: scale(1) rotate(var(--rot)); opacity: 1; }
-        }
+        /* MURAL DE SELOS COLEÇÃO */
+        .seal-collection { position: absolute; right: 15px; top: 15px; bottom: 15px; width: 45%; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow-y: auto; padding: 5px; pointer-events: none; }
+        .mini-seal { width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 1.5px solid #8a6d3b; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; flex-direction: column; transform: rotate(var(--r)); }
+        .mini-seal span { font-size: 4px; color: #5c4412; font-weight: 900; text-transform: uppercase; line-height: 1; }
 
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
@@ -276,18 +250,25 @@ def index():
         </div>
         <div class="face back">
             <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative;">
-                <div style="display:flex; justify-content:space-between; width: 60%;">
+                <div style="display:flex; justify-content:space-between;">
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
                     <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 10px; border-radius: 10px; transform: rotate(-10deg); align-self: flex-start; margin-top: 30px; text-align: center; font-weight: 900; width: 140px;">
-                    <div style="font-size:7px;">SECURITY CHECKED</div>
-                    <div id="b-date-line1" style="font-size: 11px;">-- --- ----</div>
-                    <div id="b-date-line2" style="font-size:18px;">--.--</div>
-                    <div style="font-size:7px; margin-top:3px;">RADAR CONTACT V106.2</div>
-                </div>
                 
-                <div id="stamp-collection"></div>
+                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: flex-start; margin-top: 30px; text-align: center; font-weight: 900; width: 140px;">
+                    <div style="font-size:8px;">SECURITY CHECKED</div>
+                    <div id="b-date-line1">-- --- ----</div>
+                    <div id="b-date-line2" style="font-size:22px;">--.--</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
+                </div>
+
+                <div id="mural" class="seal-collection"></div>
+
+                <div id="gold-seal" class="metal-seal">
+                    <span>Rare</span>
+                    <span style="font-size:10px;">Aircraft</span>
+                    <span>Found</span>
+                </div>
             </div>
         </div>
     </div>
@@ -335,30 +316,6 @@ def index():
             });
         }
 
-        function renderStamp(icao) {
-            const container = document.getElementById('stamp-collection');
-            if (document.getElementById('stamp-' + icao)) return;
-            
-            const seal = document.createElement('div');
-            seal.id = 'stamp-' + icao;
-            seal.className = 'metal-seal';
-            const randomRot = (Math.random() * 30 - 15).toFixed(2);
-            seal.style.setProperty('--rot', randomRot + 'deg');
-            seal.style.transform = `rotate(${randomRot}deg)`;
-            
-            seal.innerHTML = `
-                <span>Rare</span>
-                <span style="font-size:7px;">${icao}</span>
-                <span>Found</span>
-            `;
-            container.appendChild(seal);
-        }
-
-        function loadHistory() {
-            const history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
-            history.forEach(f => renderStamp(f.icao));
-        }
-
         function saveHistory(f) {
             if(isTest) return;
             if(!f.is_rare) return;
@@ -366,8 +323,22 @@ def index():
             if(!history.find(x => x.icao === f.icao)) {
                 history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
                 localStorage.setItem('rare_flights', JSON.stringify(history));
-                renderStamp(f.icao);
+                renderMural();
             }
+        }
+
+        function renderMural() {
+            const mural = document.getElementById('mural');
+            const history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
+            mural.innerHTML = '';
+            history.forEach(item => {
+                const s = document.createElement('div');
+                s.className = 'mini-seal';
+                const rot = (Math.random() * 20 - 10).toFixed(1);
+                s.style.setProperty('--r', rot + 'deg');
+                s.innerHTML = `<span>RARE</span><span style="font-size:6px">${item.icao}</span><span>FOUND</span>`;
+                mural.appendChild(s);
+            });
         }
 
         setInterval(() => {
@@ -400,6 +371,7 @@ def index():
                 if(d.flight) {
                     const f = d.flight;
                     const stub = document.getElementById('stb');
+                    const seal = document.getElementById('gold-seal');
 
                     let trend = "MAINTAINING";
                     if(lastDist !== null) {
@@ -410,10 +382,12 @@ def index():
 
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
+                        seal.style.display = 'flex';
                         saveHistory(f);
                     } else {
                         stub.className = 'stub';
                         stub.style.background = f.color;
+                        seal.style.display = 'none';
                     }
 
                     if(!act || act.icao !== f.icao) {
@@ -421,7 +395,6 @@ def index():
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
-                        
                         document.getElementById('f-line1').innerText = f.date;
                         document.getElementById('f-line2').innerText = f.time;
                         document.getElementById('b-date-line1').innerText = f.date;
@@ -458,12 +431,7 @@ def index():
         }
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
-        function hideUI() { 
-            document.getElementById('ui').classList.add('hide'); 
-            loadHistory();
-            update(); 
-            setInterval(update, 20000); 
-        }
+        function hideUI() { document.getElementById('ui').classList.add('hide'); renderMural(); update(); setInterval(update, 20000); }
         navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => {}, { timeout: 6000 });
     </script>
 </body>
