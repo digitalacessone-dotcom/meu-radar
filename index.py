@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V103
+# Configurações V106.2 - ANAC 2025 INTEGRATED
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -47,7 +47,7 @@ def fetch_aircrafts(lat, lon):
                 if data: all_aircraft.extend(data)
         except: continue
     
-    # Remove duplicatas baseadas no HEX (ICAO) para não processar o mesmo avião 3 vezes
+    # Remove duplicatas baseadas no HEX (ICAO)
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
 
@@ -74,16 +74,39 @@ def radar():
             for s in data:
                 slat, slon = s.get('lat'), s.get('lon')
                 if slat and slon:
-                    # Fórmula de Haversine para distância precisa
+                    # Fórmula de Haversine
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
-                        call = (s.get('flight') or s.get('call') or 'N/A').strip()
+                        call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
+                        
+                        # LOGICA DE COMPANHIAS 2025
                         if s.get('mil') or s.get('t') in ['H60', 'C130', 'F16', 'F35', 'B52']:
                             airline, color, is_rare = "MILITARY", "#000", True
-                        elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
-                        elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
-                        elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
+                        # ANAC
+                        elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
+                        elif call.startswith(("GLO", "G3")): airline, color = "GOL AIRLINES", "#FF6700"
+                        elif call.startswith(("AZU", "AD")): airline, color = "AZUL LINHAS", "#004590"
+                        elif call.startswith(("PTB", "2Z")): airline, color = "VOEPASS", "#F9A825"
+                        elif call.startswith("ABV"): airline, color = "ABAETE AVIAÇÃO", "#003366"
+                        elif call.startswith("ASL"): airline, color = "AEROSUL", "#00BFFF"
+                        elif call.startswith("SUL"): airline, color = "ASTA LINHAS", "#ED1C24"
+                        elif call.startswith("TTL"): airline, color = "TOTAL LINHAS", "#005544"
+                        elif call.startswith("VXP"): airline, color = "AVION EXPRESS", "#701630"
+                        # GLOBAL
+                        elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
+                        elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
+                        elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
+                        elif call.startswith("UAE"): airline, color = "EMIRATES", "#FF0000"
+                        elif call.startswith("ANA"): airline, color = "ANA NIPPON", "#003192"
+                        elif call.startswith("THY"): airline, color = "TURKISH AIR", "#C8102E"
+                        elif call.startswith("KAL"): airline, color = "KOREAN AIR", "#003399"
+                        elif call.startswith("AFR"): airline, color = "AIR FRANCE", "#002395"
+                        elif call.startswith("AAL"): airline, color = "AMERICAN AIR", "#12316E"
+                        elif call.startswith("DAL"): airline, color = "DELTA LINES", "#E01933"
+                        elif call.startswith("UAL"): airline, color = "UNITED AIR", "#1B3E93"
+                        elif call.startswith("DLH"): airline, color = "LUFTHANSA", "#002F5B"
+                        elif call.startswith("CSN"): airline, color = "CHINA SOUTHERN", "#007AC1"
                         
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
@@ -91,20 +114,14 @@ def radar():
                         proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta, "vrate": int(s.get('baro_rate', 0))})
             
             if proc:
-                # Ordena todos os aviões captados pela distância
                 proc.sort(key=lambda x: x['dist'])
                 new_closest = proc[0]
-                
-                # Lógica de Persistência: Mantém o atual se ele ainda estiver no radar e for o mais próximo ou razoavelmente perto
                 if current_icao:
                     current_on_radar = next((x for x in proc if x['icao'] == current_icao), None)
                     if current_on_radar:
-                        # Troca apenas se o novo avião estiver mais perto que o atual
-                        found = new_closest if new_closest['dist'] < current_on_radar['dist'] else current_on_radar
-                    else:
-                        found = new_closest
-                else:
-                    found = new_closest
+                        found = new_closest if new_closest['dist'] < (current_on_radar['dist'] - 5) else current_on_radar
+                    else: found = new_closest
+                else: found = new_closest
 
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
@@ -193,7 +210,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V103</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -325,7 +342,7 @@ def index():
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     
-                    tickerMsg = ["CONTACT ESTABLISHED", trend];
+                    tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
                     act = f;
                 } else if (act) {
                     tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
