@@ -61,14 +61,13 @@ def fetch_aircrafts(lat, lon):
     return list(unique_data)
 
 def fetch_route(callsign):
-    if not callsign or callsign == "N/A" or len(callsign.strip()) < 3:
+    if not callsign or callsign == "N/A":
         return "EN ROUTE"
     try:
-        # Tentativa na API adsb.one para buscar rota vinculada ao callsign
+        # Chamada específica para buscar a rota baseada no callsign
         url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
         r = requests.get(url, timeout=3).json()
-        if r.get('aircraft'):
-            # Algumas APIs retornam 'route', outras apenas o trajeto bruto
+        if r.get('aircraft') and len(r['aircraft']) > 0:
             route = r['aircraft'][0].get('route')
             if route:
                 return route.replace('-', ' ').upper()
@@ -89,7 +88,7 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
+            f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE EDW", "eta": 2, "kts": 1800, "vrate": 0}
             return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
@@ -105,7 +104,6 @@ def radar():
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS E RARIDADE
                         if s.get('mil') or type_code in MIL_RARE:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
@@ -163,8 +161,12 @@ def radar():
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
                         
-                        # PRIORIZA ROTA DA API PRINCIPAL, SENÃO BUSCA EXTERNA
-                        r_info = s.get('route') or fetch_route(call)
+                        # Tenta pegar rota do objeto, se não houver, chama a função fetch_route
+                        r_info = s.get('route')
+                        if not r_info:
+                            r_info = fetch_route(call)
+                        else:
+                            r_info = r_info.replace('-', ' ').upper()
 
                         proc.append({
                             "icao": s.get('hex', 'UNK').upper(), 
@@ -213,21 +215,18 @@ def index():
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         
-        /* EFEITO DE PAPEL REAL */
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; 
-            background: #fdfaf0; /* Cor creme de papel antigo */
+            background: #fdfaf0; 
             background-image: 
                 linear-gradient(to right, rgba(0,0,0,0.03) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.03) 100%),
-                url('https://www.transparenttextures.com/patterns/paper-fibers.png'); /* Textura de fibra */
+                url('https://www.transparenttextures.com/patterns/paper-fibers.png');
             display: flex; flex-direction: column; overflow: hidden; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
         }
 
         .face.back { transform: rotateY(180deg); padding: 15px; }
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
-        
-        /* Overlays para o Stub para manter textura mesmo com cor */
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
         
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
