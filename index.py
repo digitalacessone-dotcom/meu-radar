@@ -34,7 +34,7 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}/longitude={lon}&current=temperature_2m,weather_code,visibility"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
@@ -64,16 +64,13 @@ def fetch_route(callsign):
     if not callsign or callsign == "N/A" or len(callsign.strip()) < 3:
         return "EN ROUTE"
     try:
-        # Removendo espaços para a busca na API
-        clean_call = callsign.strip().upper()
-        url = f"https://api.adsb.one/v2/callsign/{clean_call}"
-        r = requests.get(url, timeout=3).json()
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        url = f"https://api.adsb.one/v2/callsign/{callsign.strip().upper()}"
+        r = requests.get(url, headers=headers, timeout=3).json()
         if r.get('aircraft'):
-            # Procura por rota nos dados da aeronave
-            for ac in r['aircraft']:
-                route = ac.get('route')
-                if route:
-                    return route.replace('-', ' ').upper()
+            route = r['aircraft'][0].get('route')
+            if route:
+                return route.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
         return "EN ROUTE"
@@ -133,6 +130,7 @@ def radar():
                         elif "MLBR" in call or "MELI" in call: airline, color, is_rare = "MERCADO LIVRE", "#FFE600", True
                         elif call.startswith("GTI"): airline, color = "ATLAS AIR", "#003366"
                         elif call.startswith("CLX"): airline, color = "CARGOLUX", "#ED1C24"
+                        elif call.startswith("ACA"): airline, color = "AIR CANADA", "#FF0000"
                         elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
                         elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
                         elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
@@ -163,11 +161,7 @@ def radar():
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
-                        
-                        # Tenta pegar rota nativa antes de chamar a função externa
-                        r_info = s.get('route')
-                        if not r_info:
-                            r_info = fetch_route(call)
+                        r_info = s.get('route') or fetch_route(call)
 
                         proc.append({
                             "icao": s.get('hex', 'UNK').upper(), 
@@ -215,44 +209,33 @@ def index():
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
-        
-        /* EFEITO DE PAPEL REAL */
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; 
-            background: #fdfaf0; /* Cor creme de papel antigo */
+            background: #fdfaf0; 
             background-image: 
                 linear-gradient(to right, rgba(0,0,0,0.03) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.03) 100%),
-                url('https://www.transparenttextures.com/patterns/paper-fibers.png'); /* Textura de fibra */
+                url('https://www.transparenttextures.com/patterns/paper-fibers.png');
             display: flex; flex-direction: column; overflow: hidden; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
         }
-
         .face.back { transform: rotateY(180deg); padding: 15px; }
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
-        
-        /* Overlays para o Stub para manter textura mesmo com cor */
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
-        
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-        
         .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-        
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #1a1a1a; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: rgba(0,0,0,0.05); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
-        
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
-        
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
-        
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
 </head>
@@ -390,19 +373,16 @@ def index():
                 const current_icao = act ? act.icao : '';
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&current_icao=${current_icao}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
-                
                 if(d.flight) {
                     const f = d.flight;
                     const stub = document.getElementById('stb');
                     const seal = document.getElementById('gold-seal');
-
                     let trend = "MAINTAINING";
                     if(lastDist !== null) {
                         if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
                         else if(f.dist > lastDist + 0.1) trend = "MOVING AWAY";
                     }
                     lastDist = f.dist;
-
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
                         seal.style.display = 'flex';
@@ -412,26 +392,22 @@ def index():
                         stub.style.background = f.color;
                         seal.style.display = 'none';
                     }
-
                     if(!act || act.icao !== f.icao) {
                         playPing();
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
-                        
                         document.getElementById('f-line1').innerText = f.date;
                         document.getElementById('f-line2').innerText = f.time;
                         document.getElementById('b-date-line1').innerText = f.date;
                         document.getElementById('b-date-line2').innerText = f.time;
                     }
-
                     for(let i=1; i<=5; i++) {
                         const threshold = 190 - ((i-1) * 40);
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
-                    
                     tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
                     act = f;
                 } else if (act) {
