@@ -102,7 +102,6 @@ def radar():
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS E RARIDADE
                         if s.get('mil') or type_code in MIL_RARE:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
@@ -314,6 +313,23 @@ def index():
         let lastDist = null;
         let deviceHeading = 0;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
+        let wakeLock = null;
+
+        // FUNÇÃO PARA BLOQUEAR O DESLIGAMENTO DA TELA
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
+        };
+
+        // REATIVA O WAKE LOCK SE O USUARIO VOLTAR PARA A PAGINA
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
+        });
 
         function initCompass() {
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -331,7 +347,6 @@ def index():
         }
 
         function handleOrientation(e) {
-            // compassheading para iOS, alpha para Android (ajustado)
             deviceHeading = e.webkitCompassHeading || (360 - e.alpha);
             updatePlaneVisual();
         }
@@ -348,12 +363,7 @@ def index():
         function updatePlaneVisual() {
             if(!act || !pos) return;
             const planeElement = document.getElementById('arr');
-            
-            // Calculamos o ângulo onde o avião está em relação a nós (Norte Geográfico)
             const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
-            
-            // Subtraímos a rotação do celular para que ele aponte sempre para a direção real
-            // -45 é o ajuste do caractere ✈ original
             const finalRotation = (bearingToPlane - deviceHeading - 45);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
@@ -486,6 +496,7 @@ def index():
         }
 
         function startSearch() {
+            requestWakeLock(); // SOLICITA BLOQUEIO DE TELA AO INICIAR
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const v = document.getElementById('in').value.toUpperCase();
             tickerMsg = ["SEARCHING TRAFFIC..."];
@@ -496,7 +507,11 @@ def index():
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
         function hideUI() { document.getElementById('ui').classList.add('hide'); update(); setInterval(update, 20000); }
-        navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => {}, { timeout: 6000 });
+        navigator.geolocation.getCurrentPosition(p => { 
+            requestWakeLock(); // SOLICITA BLOQUEIO DE TELA AO RECEBER GPS
+            pos = {lat:p.coords.latitude, lon:p.coords.longitude}; 
+            hideUI(); 
+        }, () => {}, { timeout: 6000 });
     </script>
 </body>
 </html>
