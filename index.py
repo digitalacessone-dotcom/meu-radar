@@ -178,9 +178,20 @@ def index():
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <style>
-        :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
+        :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; --splash-bg: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
+        
+        /* SPLASH SCREEN CSS */
+        #splash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--splash-bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; transition: opacity 1s ease, visibility 1s;
+        }
+        #splash img { width: 90%; max-width: 500px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .splash-hidden { opacity: 0; visibility: hidden; }
+
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
@@ -188,21 +199,18 @@ def index():
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         
-        /* EFEITO DE PAPEL REAL */
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; 
-            background: #fdfaf0; /* Cor creme de papel antigo */
+            background: #fdfaf0; 
             background-image: 
                 linear-gradient(to right, rgba(0,0,0,0.03) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.03) 100%),
-                url('https://www.transparenttextures.com/patterns/paper-fibers.png'); /* Textura de fibra */
+                url('https://www.transparenttextures.com/patterns/paper-fibers.png');
             display: flex; flex-direction: column; overflow: hidden; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
         }
 
         .face.back { transform: rotateY(180deg); padding: 15px; }
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
-        
-        /* Overlays para o Stub para manter textura mesmo com cor */
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
         
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
@@ -229,6 +237,12 @@ def index():
     </style>
 </head>
 <body onclick="handleFlip(event)">
+
+    <div id="splash">
+        <img src="https://i.ibb.co/3ykXvN5m/2CB9-A850-9289-4046-9-B4-E-F9035-A238-F87.png" alt="Splash Image">
+        <div style="color: white; margin-top: 20px; font-weight: 900; letter-spacing: 3px;">LOADING RADAR...</div>
+    </div>
+
     <div id="ui">
         <input type="text" id="in" placeholder="ENTER LOCATION">
         <button onclick="startSearch()">CHECK-IN</button>
@@ -285,6 +299,13 @@ def index():
     <div class="ticker" id="tk">WAITING...</div>
 
     <script>
+        // LOGICA DA SPLASH SCREEN
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('splash').classList.add('splash-hidden');
+            }, 4000);
+        });
+
         let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
