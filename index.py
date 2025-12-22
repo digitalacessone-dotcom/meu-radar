@@ -30,7 +30,6 @@ def get_weather(lat, lon):
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
 def fetch_aircrafts(lat, lon):
-    # Três servidores para redundância máxima
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
@@ -47,7 +46,6 @@ def fetch_aircrafts(lat, lon):
                 if data: all_aircraft.extend(data)
         except: continue
     
-    # Remove duplicatas baseadas no HEX (ICAO)
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
 
@@ -55,7 +53,6 @@ def fetch_route(callsign):
     if not callsign or callsign == "N/A":
         return "--- ---"
     try:
-        # Consulta API para preencher lacuna de rota
         url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
         r = requests.get(url, timeout=3).json()
         if r.get('aircraft'):
@@ -72,9 +69,11 @@ def radar():
         lon = float(request.args.get('lon', DEFAULT_LON))
         current_icao = request.args.get('current_icao', None)
         test = request.args.get('test', 'false').lower() == 'true'
+        
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
+        
         w = get_weather(lat, lon)
         
         if test:
@@ -83,21 +82,19 @@ def radar():
         
         data = fetch_aircrafts(lat, lon)
         found = None
+        
         if data:
             proc = []
             for s in data:
                 slat, slon = s.get('lat'), s.get('lon')
                 if slat and slon:
-                    # Fórmula de Haversine
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS 2025
                         if s.get('mil') or s.get('t') in ['H60', 'C130', 'F16', 'F35', 'B52']:
                             airline, color, is_rare = "MILITARY", "#000", True
-                        # ANAC
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL AIRLINES", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL LINHAS", "#004590"
@@ -108,7 +105,6 @@ def radar():
                         elif call.startswith("TTL"): airline, color = "TOTAL LINHAS", "#005544"
                         elif call.startswith("VXP"): airline, color = "AVION EXPRESS", "#701630"
                         elif call.startswith("OMI"): airline, color = "OMNI TÁXI AÉREO", "#003366"
-                        # GLOBAL
                         elif call.startswith("RYR"): airline, color = "RYANAIR", "#003399"
                         elif call.startswith("EZY"): airline, color = "EASYJET", "#FF6600"
                         elif call.startswith("SWA"): airline, color = "SOUTHWEST AIR", "#FFBF00"
@@ -134,12 +130,28 @@ def radar():
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
 
-                        # LOGICA DE ROTA EXTERNA
                         r_info = s.get('route')
                         if not r_info or r_info == "--- ---":
                             r_info = fetch_route(call)
 
-                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": r_info, "eta": eta, "vrate": int(s.get('baro_rate', 0))})
+                        proc.append({
+                            "icao": s.get('hex', 'UNK').upper(), 
+                            "reg": s.get('r', 'N/A').upper(), 
+                            "call": call, 
+                            "airline": airline, 
+                            "color": color, 
+                            "is_rare": is_rare, 
+                            "dist": round(d, 1), 
+                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), 
+                            "spd": spd_kmh, 
+                            "kts": spd_kts, 
+                            "hd": int(s.get('track', 0)), 
+                            "date": now_date, 
+                            "time": now_time, 
+                            "route": r_info, 
+                            "eta": eta, 
+                            "vrate": int(s.get('baro_rate', 0))
+                        })
             
             if proc:
                 proc.sort(key=lambda x: x['dist'])
@@ -356,13 +368,13 @@ def index():
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
+                        
+                        document.getElementById('f-line1').innerText = f.date;
+                        document.getElementById('f-line2').innerText = f.time;
+                        document.getElementById('b-date-line1').innerText = f.date;
+                        document.getElementById('b-date-line2').innerText = f.time;
                     }
                     
-                    document.getElementById('f-line1').innerText = d.date;
-                    document.getElementById('f-line2').innerText = d.time;
-                    document.getElementById('b-date-line1').innerText = d.date;
-                    document.getElementById('b-date-line2').innerText = d.time;
-
                     for(let i=1; i<=5; i++) {
                         const threshold = 190 - ((i-1) * 40);
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
