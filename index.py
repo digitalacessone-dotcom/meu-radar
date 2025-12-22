@@ -102,7 +102,6 @@ def radar():
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS E RARIDADE
                         if s.get('mil') or type_code in MIL_RARE:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
@@ -178,19 +177,30 @@ def index():
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <style>
-        :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; --splash-bg: #34a8c9; }
+        :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        /* SPLASH SCREEN CSS */
+        /* SPLASH SCREEN CONFIGURADA PARA TAMANHO EXATO DA INTERFACE */
         #splash {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--splash-bg);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9999; transition: opacity 1s ease, visibility 1s;
+            position: fixed;
+            width: 300px;
+            height: 460px;
+            background: #0b0e11;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s ease-out;
+            border-radius: 20px;
         }
-        #splash img { width: 90%; max-width: 500px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .splash-hidden { opacity: 0; visibility: hidden; }
+        #splash img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 20px;
+        }
+        .splash-hidden { opacity: 0; pointer-events: none; }
 
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
@@ -233,14 +243,20 @@ def index():
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
-        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
+        @media (orientation: landscape) { 
+            #splash { width: 550px; height: 260px; }
+            .scene { width: 550px; height: 260px; } 
+            .face { flex-direction: row !important; } 
+            .stub { width: 30% !important; height: 100% !important; } 
+            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } 
+            .main { width: 70% !important; } 
+            .ticker { width: 550px; } 
+        }
     </style>
 </head>
 <body onclick="handleFlip(event)">
-
     <div id="splash">
-        <img src="https://i.ibb.co/3ykXvN5m/2CB9-A850-9289-4046-9-B4-E-F9035-A238-F87.png" alt="Splash Image">
-        <div style="color: white; margin-top: 20px; font-weight: 900; letter-spacing: 3px;">LOADING RADAR...</div>
+        <img src="https://i.ibb.co/6R2M6m9H/4937293b-e1b9-4670-87a4-9721666e850b.png" alt="Splash">
     </div>
 
     <div id="ui">
@@ -299,10 +315,11 @@ def index():
     <div class="ticker" id="tk">WAITING...</div>
 
     <script>
-        // LOGICA DA SPLASH SCREEN
+        // LOGICA DA SPLASH SCREEN (4 SEGUNDOS + FADE)
         window.addEventListener('load', () => {
             setTimeout(() => {
-                document.getElementById('splash').classList.add('splash-hidden');
+                const splash = document.getElementById('splash');
+                splash.classList.add('splash-hidden');
             }, 4000);
         });
 
