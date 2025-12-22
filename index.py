@@ -7,22 +7,10 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V106.3 - ANAC 2025 INTEGRATED
+# Configurações V106.2 - ANAC 2025 INTEGRATED
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
-
-MILITARY_RARE = [
-    'F14', 'F15', 'F16', 'F18', 'F22', 'F35', 'FA18', 'F4', 'F5', 'F117', 'A10', 'AV8B',
-    'B1', 'B2', 'B52', 'C130', 'C17', 'C5', 'C160', 'A400', 'CN35', 'C295', 'C390', 'C212',
-    'KC10', 'KC135', 'A332', 'K35R', 'KC76', 'P3', 'P8', 'E3', 'E8', 'E2', 'C2', 'RC135',
-    'SU24', 'SU25', 'SU27', 'SU30', 'SU33', 'SU34', 'SU35', 'SU57', 'MIG21', 'MIG23', 'MIG25', 
-    'MIG29', 'MIG31', 'MIG35', 'TU22', 'TU95', 'TU142', 'TU160', 'IL18', 'IL38', 'IL62', 'IL76', 
-    'IL78', 'IL82', 'IL96', 'AN12', 'AN22', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
-    'J10', 'J11', 'J15', 'J16', 'J20', 'H6', 'KJ200', 'KJ500', 'KJ2000', 'Y8', 'Y9', 'Y20',
-    'EUFI', 'RAFA', 'GRIP', 'TOR', 'HAWK', 'T38', 'M346', 'L39', 'K8', 'EMB3', 'AT27', 'C95', 
-    'C97', 'C98', 'U27', 'R99', 'E99', 'P95', 'KC390', 'AMX', 'A1', 'A29'
-]
 
 def get_time_local():
     return datetime.utcnow() - timedelta(hours=3)
@@ -49,7 +37,6 @@ def fetch_aircrafts(lat, lon):
     ]
     headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     all_aircraft = []
-    
     for url in endpoints:
         try:
             r = requests.get(url, headers=headers, timeout=4)
@@ -57,7 +44,6 @@ def fetch_aircrafts(lat, lon):
                 data = r.json().get('aircraft', [])
                 if data: all_aircraft.extend(data)
         except: continue
-    
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
 
@@ -94,19 +80,31 @@ def radar():
         found = None
         if data:
             proc = []
+            # Lista de aeronaves militares raras solicitada
+            rare_models = [
+                'F14', 'F15', 'F16', 'F18', 'F22', 'F35', 'FA18', 'F4', 'F5', 'F117', 'A10', 'AV8B',
+                'B1', 'B2', 'B52', 'C130', 'C17', 'C5', 'C160', 'A400', 'CN35', 'C295', 'C390', 'C212',
+                'KC10', 'KC135', 'A332', 'K35R', 'KC76', 'P3', 'P8', 'E3', 'E8', 'E2', 'C2', 'RC135',
+                'SU24', 'SU25', 'SU27', 'SU30', 'SU33', 'SU34', 'SU35', 'SU57', 'MIG21', 'MIG23', 'MIG25', 
+                'MIG29', 'MIG31', 'MIG35', 'TU22', 'TU95', 'TU142', 'TU160', 'IL18', 'IL38', 'IL62', 'IL76', 
+                'IL78', 'IL82', 'IL96', 'AN12', 'AN22', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
+                'J10', 'J11', 'J15', 'J16', 'J20', 'H6', 'KJ200', 'KJ500', 'KJ2000', 'Y8', 'Y9', 'Y20',
+                'EUFI', 'RAFA', 'GRIP', 'TOR', 'HAWK', 'T38', 'M346', 'L39', 'K8', 'EMB3', 'AT27', 'C95', 
+                'C97', 'C98', 'U27', 'R99', 'E99', 'P95', 'KC390', 'AMX', 'A1', 'A29'
+            ]
+
             for s in data:
                 slat, slon = s.get('lat'), s.get('lon')
                 if slat and slon:
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
-                        atype = (s.get('t') or '').upper()
+                        model = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS E MILITARES
-                        if s.get('mil') or any(m in atype for m in MILITARY_RARE) or any(m in call for m in MILITARY_RARE):
+                        # LOGICA DE COMPANHIAS E RARIDADE
+                        if s.get('mil') or any(m in model for m in rare_models):
                             airline, color, is_rare = "MILITARY", "#000", True
-                        
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL AIRLINES", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL LINHAS", "#004590"
@@ -141,10 +139,7 @@ def radar():
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
-
-                        r_info = s.get('route')
-                        if not r_info or r_info == "--- ---":
-                            r_info = fetch_route(call)
+                        r_info = s.get('route') or fetch_route(call)
 
                         proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": r_info, "eta": eta, "vrate": int(s.get('baro_rate', 0))})
             
@@ -153,9 +148,7 @@ def radar():
                 new_closest = proc[0]
                 if current_icao:
                     current_on_radar = next((x for x in proc if x['icao'] == current_icao), None)
-                    if current_on_radar:
-                        found = new_closest if new_closest['dist'] < (current_on_radar['dist'] - 5) else current_on_radar
-                    else: found = new_closest
+                    found = current_on_radar if current_on_radar and new_closest['dist'] >= (current_on_radar['dist'] - 5) else new_closest
                 else: found = new_closest
 
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
@@ -196,7 +189,7 @@ def index():
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px; }
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
-        .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
+        .metal-seal { position: absolute; top: 50%; right: 15px; transform: translateY(-50%) rotate(15deg); width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 4px double #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
@@ -237,15 +230,15 @@ def index():
         </div>
         <div class="face back">
             <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative;">
-                <div style="display:flex; justify-content:space-between;">
+                <div style="display:flex; justify-content:space-between; width: 70%;">
                     <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
                     <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 30px; text-align: center; font-weight: 900;">
+                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: flex-start; margin-top: 30px; text-align: center; font-weight: 900;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.3</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -299,6 +292,16 @@ def index():
             });
         }
 
+        function saveHistory(f) {
+            if(isTest) return; // Só grava no modo real
+            if(!f.is_rare) return;
+            let history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
+            if(!history.find(x => x.icao === f.icao)) {
+                history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
+                localStorage.setItem('rare_flights', JSON.stringify(history));
+            }
+        }
+
         setInterval(() => {
             if(act) {
                 toggleState = !toggleState;
@@ -340,14 +343,12 @@ def index():
 
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
-                        // Selo perpétuo à direita, exceto em modo teste
-                        if(!isTest) seal.style.display = 'flex';
-                        else seal.style.display = 'none';
+                        seal.style.display = 'flex';
+                        saveHistory(f);
                     } else {
                         stub.className = 'stub';
                         stub.style.background = f.color;
-                        // Não remove o selo se já foi encontrado um raro anteriormente (Perpétuo)
-                        if(seal.style.display !== 'flex') seal.style.display = 'none';
+                        seal.style.display = 'none';
                     }
 
                     if(!act || act.icao !== f.icao) {
