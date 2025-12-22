@@ -30,21 +30,26 @@ def get_weather(lat, lon):
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
 def fetch_aircrafts(lat, lon):
+    # Três servidores para redundância máxima
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
-        f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200"
+        f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
     ]
     headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     all_aircraft = []
-    # Consolida dados de todas as fontes antes de processar
+    
     for url in endpoints:
         try:
-            r = requests.get(url, headers=headers, timeout=5)
+            r = requests.get(url, headers=headers, timeout=4)
             if r.status_code == 200:
                 data = r.json().get('aircraft', [])
                 if data: all_aircraft.extend(data)
         except: continue
-    return all_aircraft
+    
+    # Remove duplicatas baseadas no HEX (ICAO) para não processar o mesmo avião 3 vezes
+    unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
+    return list(unique_data)
 
 @app.route('/api/radar')
 def radar():
@@ -59,11 +64,7 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            is_rare_test = random.random() > 0.5
-            if is_rare_test:
-                f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
-            else:
-                f = {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "is_rare": False, "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1500}
+            f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
             return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
@@ -73,6 +74,7 @@ def radar():
             for s in data:
                 slat, slon = s.get('lat'), s.get('lon')
                 if slat and slon:
+                    # Fórmula de Haversine para distância precisa
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip()
@@ -89,15 +91,15 @@ def radar():
                         proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta, "vrate": int(s.get('baro_rate', 0))})
             
             if proc:
-                # Alteração 1: Ordenação obrigatória por distância após analisar tudo
+                # Ordena todos os aviões captados pela distância
                 proc.sort(key=lambda x: x['dist'])
                 new_closest = proc[0]
                 
-                # Alteração 2: Lógica de Substituição/Persistência
+                # Lógica de Persistência: Mantém o atual se ele ainda estiver no radar e for o mais próximo ou razoavelmente perto
                 if current_icao:
                     current_on_radar = next((x for x in proc if x['icao'] == current_icao), None)
                     if current_on_radar:
-                        # Só troca se o novo estiver mais perto que o atual
+                        # Troca apenas se o novo avião estiver mais perto que o atual
                         found = new_closest if new_closest['dist'] < current_on_radar['dist'] else current_on_radar
                     else:
                         found = new_closest
@@ -128,29 +130,22 @@ def index():
         .scene.flipped { transform: rotateY(180deg); }
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .face.back { transform: rotateY(180deg); background: #fdfdfd; padding: 15px; }
-        
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
-        
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
         .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-        
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
-        
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px; }
-        
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
-        
         .metal-seal { position: absolute; bottom: 30px; right: 30px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
-
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
 </head>
@@ -211,7 +206,7 @@ def index():
     <div class="ticker" id="tk">WAITING...</div>
 
     <script>
-        let pos = null, act = null, isTest = false, weather = null;
+        let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
@@ -285,11 +280,9 @@ def index():
         async function update() {
             if(!pos) return;
             try {
-                // Alteração 2: Envia o ICAO atual para comparação na API
                 const current_icao = act ? act.icao : '';
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&current_icao=${current_icao}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
-                weather = d.weather;
                 
                 if(d.flight) {
                     const f = d.flight;
