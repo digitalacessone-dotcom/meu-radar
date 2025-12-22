@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V106.2 - ANAC 2025 INTEGRATED
+# Configurações V106.3 - ANAC 2025 INTEGRATED
 RADIUS_KM = 190 
 DEFAULT_LAT = 37.24804
 DEFAULT_LON = -115.800155
@@ -18,7 +18,7 @@ MIL_RARE = [
     'KC10', 'KC135', 'A332', 'K35R', 'KC76', 'P3', 'P8', 'E3', 'E8', 'E2', 'C2', 'RC135',
     'SU24', 'SU25', 'SU27', 'SU30', 'SU33', 'SU34', 'SU35', 'SU57', 'MIG21', 'MIG23', 'MIG25', 
     'MIG29', 'MIG31', 'MIG35', 'TU22', 'TU95', 'TU142', 'TU160', 'IL18', 'IL38', 'IL62', 'IL76', 
-    'IL78', 'IL82', 'IL96', 'AN12', 'AN22', 'AN24', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
+    'IL78', 'IL82', 'IL96', 'AN12', 'AN22', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
     'J10', 'J11', 'J15', 'J16', 'J20', 'H6', 'KJ200', 'KJ500', 'KJ2000', 'Y8', 'Y9', 'Y20',
     'EUFI', 'RAFA', 'GRIP', 'TOR', 'HAWK', 'T38', 'M346', 'L39', 'K8', 'EMB3', 'AT27', 'C95', 
     'C97', 'C98', 'U27', 'R99', 'E99', 'P95', 'KC390', 'AMX', 'A1', 'A29'
@@ -180,22 +180,15 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        /* SPLASH SCREEN FIXA */
+        /* SPLASH SCREEN CONFIG */
         #splash {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg); z-index: 9999;
+            background: #2396bb url('https://i.ibb.co/LzdXp9Yj/6677-EAB2-A101-4-A88-B1-AA-B68-F88-ED9328.png') no-repeat center center;
+            background-size: contain; z-index: 9999;
+            transition: opacity 1.5s ease-in-out;
             display: flex; align-items: center; justify-content: center;
-            transition: opacity 0.8s ease-out;
         }
-        #splash-content {
-            width: 300px; height: 460px; /* MESMO TAMANHO DO CARD */
-            background: #34a8c9; border-radius: 20px;
-            display: flex; align-items: center; justify-content: center;
-            overflow: hidden;
-        }
-        #splash-content img {
-            width: 100%; height: 100%; object-fit: cover;
-        }
+        #splash.fade-out { opacity: 0; pointer-events: none; }
 
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
@@ -206,7 +199,7 @@ def index():
         
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; 
-            background: #fdfaf0; 
+            background: #fdfaf0;
             background-image: 
                 linear-gradient(to right, rgba(0,0,0,0.03) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.03) 100%),
                 url('https://www.transparenttextures.com/patterns/paper-fibers.png');
@@ -218,48 +211,31 @@ def index():
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
-        
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-        
         .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-        
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #1a1a1a; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: rgba(0,0,0,0.05); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
-        
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
-        
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
-        @media (orientation: landscape) { 
-            .scene, #splash-content { width: 550px; height: 260px; } 
-            .face { flex-direction: row !important; } 
-            .stub { width: 30% !important; height: 100% !important; } 
-            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } 
-            .main { width: 70% !important; } 
-            .ticker { width: 550px; } 
-        }
+        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
 </head>
 <body onclick="handleFlip(event)">
-    <div id="splash">
-        <div id="splash-content">
-            <img src="https://i.ibb.co/Xfq6XnCH/2-CB9-A850-9289-4046-9-B4-E-F9035-A238-F87.png" alt="Splash Image">
-        </div>
-    </div>
+    <div id="splash"></div>
 
     <div id="ui">
         <input type="text" id="in" placeholder="ENTER LOCATION">
         <button onclick="startSearch()">CHECK-IN</button>
     </div>
-    
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
@@ -299,7 +275,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.3</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -312,19 +288,18 @@ def index():
     <div class="ticker" id="tk">WAITING...</div>
 
     <script>
-        // LÓGICA DA SPLASH SCREEN (4 SEGUNDOS)
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                const splash = document.getElementById('splash');
-                splash.style.opacity = '0';
-                setTimeout(() => { splash.style.display = 'none'; }, 800);
-            }, 4000);
-        });
-
         let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
+
+        // SPLASH SCREEN LOGIC
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash');
+                splash.classList.add('fade-out');
+            }, 4000); // 4 Segundos exatos
+        });
 
         function playPing() {
             try {
@@ -362,16 +337,6 @@ def index():
             });
         }
 
-        function saveHistory(f) {
-            if(isTest) return;
-            if(!f.is_rare) return;
-            let history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
-            if(!history.find(x => x.icao === f.icao)) {
-                history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
-                localStorage.setItem('rare_flights', JSON.stringify(history));
-            }
-        }
-
         setInterval(() => {
             if(act) {
                 toggleState = !toggleState;
@@ -403,7 +368,6 @@ def index():
                     const f = d.flight;
                     const stub = document.getElementById('stb');
                     const seal = document.getElementById('gold-seal');
-
                     let trend = "MAINTAINING";
                     if(lastDist !== null) {
                         if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
@@ -414,7 +378,6 @@ def index():
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
                         seal.style.display = 'flex';
-                        saveHistory(f);
                     } else {
                         stub.className = 'stub';
                         stub.style.background = f.color;
@@ -426,7 +389,6 @@ def index():
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
-                        
                         document.getElementById('f-line1').innerText = f.date;
                         document.getElementById('f-line2').innerText = f.time;
                         document.getElementById('b-date-line1').innerText = f.date;
@@ -439,25 +401,17 @@ def index():
                     }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
-                    
                     tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
                     act = f;
                 } else if (act) {
-                    tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
+                    tickerMsg = ["SIGNAL LOST", "SEARCHING TRAFFIC..."];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
-                    document.getElementById('stb').className = 'stub';
-                    document.getElementById('stb').style.background = 'var(--brand)';
-                } else {
-                    tickerMsg = ["SEARCHING TRAFFIC..."];
                 }
             } catch(e) {}
         }
 
         function startSearch() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const v = document.getElementById('in').value.toUpperCase();
-            tickerMsg = ["SEARCHING TRAFFIC..."];
-            updateTicker();
             if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
             else { fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v).then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
         }
