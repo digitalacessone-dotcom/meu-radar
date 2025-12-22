@@ -93,15 +93,7 @@ def radar():
                         elif call.startswith("SUL"): airline, color = "ASTA LINHAS", "#ED1C24"
                         elif call.startswith("TTL"): airline, color = "TOTAL LINHAS", "#005544"
                         elif call.startswith("VXP"): airline, color = "AVION EXPRESS", "#701630"
-                        elif call.startswith("OMI"): airline, color = "OMNI TÁXI AÉREO", "#003366"
-                        # GLOBAL & CARGO
-                        elif call.startswith("RYR"): airline, color = "RYANAIR", "#003399"
-                        elif call.startswith("EZY"): airline, color = "EASYJET", "#FF6600"
-                        elif call.startswith("SWA"): airline, color = "SOUTHWEST AIR", "#FFBF00"
-                        elif call.startswith(("EJA", "NJE")): airline, color, is_rare = "NETJETS", "#000", True
-                        elif "MLBR" in call or "MELI" in call: airline, color, is_rare = "MERCADO LIVRE", "#FFE600", True
-                        elif call.startswith("GTI"): airline, color = "ATLAS AIR", "#003366"
-                        elif call.startswith("CLX"): airline, color = "CARGOLUX", "#ED1C24"
+                        # GLOBAL
                         elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
                         elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
                         elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
@@ -229,11 +221,13 @@ def index():
         </div>
     </div>
     <div class="ticker" id="tk">WAITING...</div>
+
     <script>
         let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
+
         function playPing() {
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -246,6 +240,7 @@ def index():
                 osc.start(); osc.stop(audioCtx.currentTime + 0.5);
             } catch(e) {}
         }
+
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             if(!container) return;
@@ -268,6 +263,7 @@ def index():
                 }, 20);
             });
         }
+
         function saveHistory(f) {
             if(isTest) return;
             if(!f.is_rare) return;
@@ -277,6 +273,7 @@ def index():
                 localStorage.setItem('rare_flights', JSON.stringify(history));
             }
         }
+
         setInterval(() => {
             if(act) {
                 toggleState = !toggleState;
@@ -288,6 +285,7 @@ def index():
                 applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
             }
         }, 12000);
+
         function updateTicker() { 
             if (tickerMsg.length > 0) { 
                 applyFlap('tk', tickerMsg[tickerIdx], true); 
@@ -295,22 +293,26 @@ def index():
             } 
         }
         setInterval(updateTicker, 15000);
+
         async function update() {
             if(!pos) return;
             try {
                 const current_icao = act ? act.icao : '';
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&current_icao=${current_icao}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
+                
                 if(d.flight) {
                     const f = d.flight;
                     const stub = document.getElementById('stb');
                     const seal = document.getElementById('gold-seal');
+
                     let trend = "MAINTAINING";
                     if(lastDist !== null) {
                         if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
                         else if(f.dist > lastDist + 0.1) trend = "MOVING AWAY";
                     }
                     lastDist = f.dist;
+
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
                         seal.style.display = 'flex';
@@ -320,22 +322,26 @@ def index():
                         stub.style.background = f.color;
                         seal.style.display = 'none';
                     }
+
                     if(!act || act.icao !== f.icao) {
                         playPing();
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                     }
+                    
                     document.getElementById('f-line1').innerText = d.date;
                     document.getElementById('f-line2').innerText = d.time;
                     document.getElementById('b-date-line1').innerText = d.date;
                     document.getElementById('b-date-line2').innerText = d.time;
+
                     for(let i=1; i<=5; i++) {
                         const threshold = 190 - ((i-1) * 40);
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
+                    
                     tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
                     act = f;
                 } else if (act) {
@@ -348,6 +354,7 @@ def index():
                 }
             } catch(e) {}
         }
+
         function startSearch() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const v = document.getElementById('in').value.toUpperCase();
