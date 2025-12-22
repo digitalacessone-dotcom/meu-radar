@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# TERMINAL RADAR SYSTEM - VERSION 106.5
+# OFFICIAL BRAND CALIBRATION - DEC 2025
 from flask import Flask, jsonify, request, render_template_string
 import requests
 import math
@@ -7,30 +9,41 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V106.2 - ANAC 2025 INTEGRATED
+# --- CONFIGURAÇÕES DE RADAR ---
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
 
 def get_time_local():
+    """Retorna o horário de Brasília"""
     return datetime.utcnow() - timedelta(hours=3)
 
 def get_weather_desc(code):
-    mapping = {0: "CLEAR SKY", 1: "FEW CLOUDS", 2: "SCATTERED", 3: "OVERCAST", 45: "FOG", 51: "LIGHT DRIZZLE", 61: "RAIN", 80: "SHOWERS"}
+    """Mapeamento de códigos meteorológicos"""
+    mapping = {
+        0: "CLEAR SKY", 1: "FEW CLOUDS", 2: "SCATTERED", 
+        3: "OVERCAST", 45: "FOG", 51: "LIGHT DRIZZLE", 
+        61: "RAIN", 80: "SHOWERS"
+    }
     return mapping.get(code, "CONDITIONS OK")
 
 def get_weather(lat, lon):
+    """Consulta API de clima em tempo real"""
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
-        return {"temp": f"{int(curr['temperature_2m'])}C", "sky": get_weather_desc(curr['weather_code']), "vis": f"{vis_km}KM"}
+        return {
+            "temp": f"{int(curr['temperature_2m'])}C", 
+            "sky": get_weather_desc(curr['weather_code']), 
+            "vis": f"{vis_km}KM"
+        }
     except:
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
 def fetch_aircrafts(lat, lon):
-    # Três servidores para redundância máxima
+    """Busca tráfego aéreo real em múltiplos endpoints"""
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
@@ -45,73 +58,84 @@ def fetch_aircrafts(lat, lon):
             if r.status_code == 200:
                 data = r.json().get('aircraft', [])
                 if data: all_aircraft.extend(data)
-        except: continue
-    
-    # Remove duplicatas baseadas no HEX (ICAO)
+        except:
+            continue
+            
+    # Remove duplicatas por HEX ICAO
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
 
 @app.route('/api/radar')
 def radar():
+    """Processa dados do radar para o frontend"""
     try:
         lat = float(request.args.get('lat', DEFAULT_LAT))
         lon = float(request.args.get('lon', DEFAULT_LON))
         current_icao = request.args.get('current_icao', None)
         test = request.args.get('test', 'false').lower() == 'true'
+        
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
         w = get_weather(lat, lon)
         
         if test:
-            f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
+            f = {
+                "icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", 
+                "airline": "SR-71 RARE", "color": "#000", "is_rare": True, 
+                "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, 
+                "date": now_date, "time": now_time, "route": "BEALE-EDW", 
+                "eta": 2, "kts": 1800, "vrate": 0
+            }
             return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
         found = None
+        
         if data:
             proc = []
             for s in data:
                 slat, slon = s.get('lat'), s.get('lon')
                 if slat and slon:
-                    # Fórmula de Haversine
+                    # Cálculo de distância Haversine
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
+                    
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS 2025
+                        # FILTRO DE COMPANHIAS - CORES REAIS 2025
                         if s.get('mil') or s.get('t') in ['H60', 'C130', 'F16', 'F35', 'B52']:
                             airline, color, is_rare = "MILITARY", "#000", True
-                        # ANAC
-                        elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
-                        elif call.startswith(("GLO", "G3")): airline, color = "GOL AIRLINES", "#FF6700"
-                        elif call.startswith(("AZU", "AD")): airline, color = "AZUL LINHAS", "#004590"
-                        elif call.startswith(("PTB", "2Z")): airline, color = "VOEPASS", "#F9A825"
-                        elif call.startswith("ABV"): airline, color = "ABAETE AVIAÇÃO", "#003366"
-                        elif call.startswith("ASL"): airline, color = "AEROSUL", "#00BFFF"
-                        elif call.startswith("SUL"): airline, color = "ASTA LINHAS", "#ED1C24"
-                        elif call.startswith("TTL"): airline, color = "TOTAL LINHAS", "#005544"
-                        elif call.startswith("VXP"): airline, color = "AVION EXPRESS", "#701630"
-                        # GLOBAL
-                        elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
-                        elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
-                        elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
-                        elif call.startswith("UAE"): airline, color = "EMIRATES", "#FF0000"
-                        elif call.startswith("ANA"): airline, color = "ANA NIPPON", "#003192"
-                        elif call.startswith("THY"): airline, color = "TURKISH AIR", "#C8102E"
-                        elif call.startswith("KAL"): airline, color = "KOREAN AIR", "#003399"
-                        elif call.startswith("AFR"): airline, color = "AIR FRANCE", "#002395"
-                        elif call.startswith("AAL"): airline, color = "AMERICAN AIR", "#12316E"
-                        elif call.startswith("DAL"): airline, color = "DELTA LINES", "#E01933"
-                        elif call.startswith("UAL"): airline, color = "UNITED AIR", "#1B3E93"
-                        elif call.startswith("DLH"): airline, color = "LUFTHANSA", "#002F5B"
-                        elif call.startswith("CSN"): airline, color = "CHINA SOUTHERN", "#007AC1"
+                        elif call.startswith(("TAM", "JJ", "LA")): 
+                            airline, color = "LATAM BRASIL", "#1b0088" # Indigo Real
+                        elif call.startswith(("GLO", "G3")): 
+                            airline, color = "GOL AIRLINES", "#FF5A00" # Laranja Real
+                        elif call.startswith(("AZU", "AD")): 
+                            airline, color = "AZUL LINHAS", "#00205B" # Azul Marinho
+                        elif call.startswith(("PTB", "2Z")): 
+                            airline, color = "VOEPASS", "#F9A825"
+                        elif call.startswith("QTR"): 
+                            airline, color = "QATAR AIRWAYS", "#5A0225"
+                        elif call.startswith("UAE"): 
+                            airline, color = "EMIRATES", "#FF0000"
                         
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
-                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta, "vrate": int(s.get('baro_rate', 0))})
+                        
+                        proc.append({
+                            "icao": s.get('hex', 'UNK').upper(), 
+                            "reg": s.get('r', 'N/A').upper(), 
+                            "call": call, "airline": airline, 
+                            "color": color, "is_rare": is_rare, 
+                            "dist": round(d, 1), 
+                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), 
+                            "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), 
+                            "date": now_date, "time": now_time, 
+                            "route": s.get('route', "--- ---"), "eta": eta, 
+                            "vrate": int(s.get('baro_rate', 0))
+                        })
             
             if proc:
                 proc.sort(key=lambda x: x['dist'])
@@ -119,15 +143,18 @@ def radar():
                 if current_icao:
                     current_on_radar = next((x for x in proc if x['icao'] == current_icao), None)
                     if current_on_radar:
+                        # Mantém o atual a menos que o novo esteja muito mais perto
                         found = new_closest if new_closest['dist'] < (current_on_radar['dist'] - 5) else current_on_radar
                     else: found = new_closest
                 else: found = new_closest
-
+                
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
-    except: return jsonify({"flight": None})
+    except:
+        return jsonify({"flight": None})
 
 @app.route('/')
 def index():
+    """Interface Principal (HTML/CSS/JS)"""
     return render_template_string('''
 <!DOCTYPE html>
 <html lang="en">
@@ -210,7 +237,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.5</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -221,7 +248,6 @@ def index():
         </div>
     </div>
     <div class="ticker" id="tk">WAITING...</div>
-
     <script>
         let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
@@ -300,19 +326,16 @@ def index():
                 const current_icao = act ? act.icao : '';
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&current_icao=${current_icao}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
-                
                 if(d.flight) {
                     const f = d.flight;
                     const stub = document.getElementById('stb');
                     const seal = document.getElementById('gold-seal');
-
                     let trend = "MAINTAINING";
                     if(lastDist !== null) {
                         if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
                         else if(f.dist > lastDist + 0.1) trend = "MOVING AWAY";
                     }
                     lastDist = f.dist;
-
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
                         seal.style.display = 'flex';
@@ -322,36 +345,30 @@ def index():
                         stub.style.background = f.color;
                         seal.style.display = 'none';
                     }
-
                     if(!act || act.icao !== f.icao) {
                         playPing();
                         document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                     }
-                    
                     document.getElementById('f-line1').innerText = d.date;
                     document.getElementById('f-line2').innerText = d.time;
                     document.getElementById('b-date-line1').innerText = d.date;
                     document.getElementById('b-date-line2').innerText = d.time;
-
                     for(let i=1; i<=5; i++) {
                         const threshold = 190 - ((i-1) * 40);
                         document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
                     }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
-                    
                     tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
                     act = f;
                 } else if (act) {
-                    tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
+                    tickerMsg = ["SIGNAL LOST", "SEARCHING TRAFFIC..."];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     document.getElementById('stb').className = 'stub';
                     document.getElementById('stb').style.background = 'var(--brand)';
-                } else {
-                    tickerMsg = ["SEARCHING TRAFFIC..."];
-                }
+                } else { tickerMsg = ["SEARCHING TRAFFIC..."]; }
             } catch(e) {}
         }
 
