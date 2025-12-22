@@ -93,7 +93,15 @@ def radar():
                         elif call.startswith("SUL"): airline, color = "ASTA LINHAS", "#ED1C24"
                         elif call.startswith("TTL"): airline, color = "TOTAL LINHAS", "#005544"
                         elif call.startswith("VXP"): airline, color = "AVION EXPRESS", "#701630"
+                        elif call.startswith("OMI"): airline, color = "OMNI TÁXI AÉREO", "#003366"
                         # GLOBAL
+                        elif call.startswith("RYR"): airline, color = "RYANAIR", "#003399"
+                        elif call.startswith("EZY"): airline, color = "EASYJET", "#FF6600"
+                        elif call.startswith("SWA"): airline, color = "SOUTHWEST AIR", "#FFBF00"
+                        elif call.startswith(("EJA", "NJE")): airline, color, is_rare = "NETJETS", "#000", True
+                        elif "MLBR" in call or "MELI" in call: airline, color, is_rare = "MERCADO LIVRE", "#FFE600", True
+                        elif call.startswith("GTI"): airline, color = "ATLAS AIR", "#003366"
+                        elif call.startswith("CLX"): airline, color = "CARGOLUX", "#ED1C24"
                         elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
                         elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
                         elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
