@@ -102,6 +102,7 @@ def radar():
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
+                        # LOGICA DE COMPANHIAS E RARIDADE
                         if s.get('mil') or type_code in MIL_RARE:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
@@ -200,33 +201,13 @@ def index():
     <style>
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { 
-            background: var(--bg); 
-            font-family: -apple-system, sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            min-height: -webkit-fill-available;
-            height: 100vh;
-            margin: 0; 
-            perspective: 1500px; 
-            overflow: hidden; 
-        }
-        
+        body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         .ui-row { display: flex; gap: 6px; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
-        
-        .scene { 
-            width: 300px; 
-            height: 460px; 
-            position: relative; 
-            transform-style: preserve-3d; 
-            transition: transform 0.8s, width 0.5s ease-in-out, height 0.5s ease-in-out; 
-        }
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         
         .face { 
@@ -237,7 +218,6 @@ def index():
                 url('https://www.transparenttextures.com/patterns/paper-fibers.png');
             display: flex; flex-direction: column; overflow: hidden; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
-            transition: all 0.5s ease-in-out;
         }
 
         .face.back { transform: rotateY(180deg); padding: 15px; }
@@ -249,7 +229,7 @@ def index():
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
         
-        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; transition: all 0.5s; }
+        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
         
@@ -259,21 +239,14 @@ def index():
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
         
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: width 0.5s; }
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
         
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
         #compass-btn { font-size: 9px; background: #222; color: #fff; margin-top: 5px; padding: 5px; opacity: 0.6; }
 
-        @media (orientation: landscape) { 
-            .scene { width: 550px; height: 260px; } 
-            .face { flex-direction: row !important; } 
-            .stub { width: 30% !important; height: 100% !important; } 
-            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } 
-            .main { width: 70% !important; } 
-            .ticker { width: 550px; } 
-        }
+        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
 </head>
 <body onclick="handleFlip(event)">
@@ -358,6 +331,7 @@ def index():
         }
 
         function handleOrientation(e) {
+            // compassheading para iOS, alpha para Android (ajustado)
             deviceHeading = e.webkitCompassHeading || (360 - e.alpha);
             updatePlaneVisual();
         }
@@ -374,7 +348,12 @@ def index():
         function updatePlaneVisual() {
             if(!act || !pos) return;
             const planeElement = document.getElementById('arr');
+            
+            // Calculamos o ângulo onde o avião está em relação a nós (Norte Geográfico)
             const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
+            
+            // Subtraímos a rotação do celular para que ele aponte sempre para a direção real
+            // -45 é o ajuste do caractere ✈ original
             const finalRotation = (bearingToPlane - deviceHeading - 45);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
@@ -524,4 +503,4 @@ def index():
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=Tru
