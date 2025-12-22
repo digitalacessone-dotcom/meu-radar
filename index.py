@@ -12,7 +12,6 @@ RADIUS_KM = 190
 DEFAULT_LAT = 37.24804
 DEFAULT_LON = -115.800155
 
-# LISTA DE MILITARES SOLICITADA
 MIL_RARE = [
     'F14', 'F15', 'F16', 'F18', 'F22', 'F35', 'FA18', 'F4', 'F5', 'F117', 'A10', 'AV8B',
     'B1', 'B2', 'B52', 'C130', 'C17', 'C5', 'C160', 'A400', 'CN35', 'C295', 'C390', 'C212',
@@ -181,26 +180,22 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        /* SPLASH SCREEN CONFIGURADA PARA TAMANHO EXATO DA INTERFACE */
+        /* SPLASH SCREEN FIXA */
         #splash {
-            position: fixed;
-            width: 300px;
-            height: 460px;
-            background: #0b0e11;
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 1s ease-out;
-            border-radius: 20px;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.8s ease-out;
         }
-        #splash img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 20px;
+        #splash-content {
+            width: 300px; height: 460px; /* MESMO TAMANHO DO CARD */
+            background: #34a8c9; border-radius: 20px;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
         }
-        .splash-hidden { opacity: 0; pointer-events: none; }
+        #splash-content img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
 
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
@@ -222,8 +217,8 @@ def index():
         .face.back { transform: rotateY(180deg); padding: 15px; }
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
-        
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
+        
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
@@ -244,8 +239,7 @@ def index():
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
         @media (orientation: landscape) { 
-            #splash { width: 550px; height: 260px; }
-            .scene { width: 550px; height: 260px; } 
+            .scene, #splash-content { width: 550px; height: 260px; } 
             .face { flex-direction: row !important; } 
             .stub { width: 30% !important; height: 100% !important; } 
             .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } 
@@ -256,13 +250,16 @@ def index():
 </head>
 <body onclick="handleFlip(event)">
     <div id="splash">
-        <img src="https://i.ibb.co/6R2M6m9H/4937293b-e1b9-4670-87a4-9721666e850b.png" alt="Splash">
+        <div id="splash-content">
+            <img src="https://i.ibb.co/Xfq6XnCH/2-CB9-A850-9289-4046-9-B4-E-F9035-A238-F87.png" alt="Splash Image">
+        </div>
     </div>
 
     <div id="ui">
         <input type="text" id="in" placeholder="ENTER LOCATION">
         <button onclick="startSearch()">CHECK-IN</button>
     </div>
+    
     <div class="scene" id="card">
         <div class="face front">
             <div class="stub" id="stb">
@@ -315,11 +312,12 @@ def index():
     <div class="ticker" id="tk">WAITING...</div>
 
     <script>
-        // LOGICA DA SPLASH SCREEN (4 SEGUNDOS + FADE)
+        // LÓGICA DA SPLASH SCREEN (4 SEGUNDOS)
         window.addEventListener('load', () => {
             setTimeout(() => {
                 const splash = document.getElementById('splash');
-                splash.classList.add('splash-hidden');
+                splash.style.opacity = '0';
+                setTimeout(() => { splash.style.display = 'none'; }, 800);
             }, 4000);
         });
 
