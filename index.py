@@ -61,31 +61,53 @@ def radar():
             else:
                 f = {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "is_rare": False, "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1500}
             return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
-        
+
         data = fetch_aircrafts(lat, lon)
         found = None
+        
         if data:
             proc = []
             for s in data:
                 slat, slon = s.get('lat'), s.get('lon')
                 if slat and slon:
+                    # Cálculo de distância
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
+                    
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip()
                         airline, color, is_rare = "PRIVATE", "#444", False
+                        
                         if s.get('mil') or s.get('t') in ['H60', 'C130', 'F16', 'F35', 'B52']:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
                         
-                        spd_kts = int(s.get('gs', 0))
-                        spd_kmh = int(spd_kts * 1.852)
-                        eta = round((d / (spd_kmh or 1)) * 60)
-                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta, "vrate": int(s.get('baro_rate', 0))})
-            if proc: found = sorted(proc, key=lambda x: x['dist'])[0]
+                        spd_kmh = int(int(s.get('gs', 0)) * 1.852)
+                        
+                        proc.append({
+                            "icao": s.get('hex', 'UNK').upper(),
+                            "reg": s.get('r', 'N/A').upper(),
+                            "call": call,
+                            "airline": airline,
+                            "color": color,
+                            "is_rare": is_rare,
+                            "dist": round(d, 1),
+                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
+                            "spd": spd_kmh,
+                            "hd": int(s.get('track', 0)),
+                            "route": s.get('route', "--- ---"),
+                            "vrate": int(s.get('baro_rate', 0))
+                        })
+            
+            if proc:
+                proc.sort(key=lambda x: x['dist'])
+                found = proc[0]
+
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
-    except: return jsonify({"flight": None})
+
+    except:
+        return jsonify({"flight": None})
 
 @app.route('/')
 def index():
@@ -247,10 +269,10 @@ def index():
                 toggleState = !toggleState;
                 document.getElementById('icao-label').innerText = toggleState ? "AIRCRAFT ICAO" : "REGISTRATION";
                 applyFlap('f-icao', toggleState ? act.icao : act.reg);
-                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "ESTIMATED CONTACT";
-                applyFlap('f-dist', toggleState ? act.dist + " KM" : "ETA " + act.eta + "M");
+                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "CONTACT STATUS";
+                applyFlap('f-dist', toggleState ? act.dist + " KM" : "ACTIVE");
                 document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
-                applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
+                applyFlap('b-spd', act.spd + " KMH");
             }
         }, 12000);
 
@@ -274,7 +296,6 @@ def index():
                     const stub = document.getElementById('stb');
                     const seal = document.getElementById('gold-seal');
 
-                    // Lógica de Movimento (Aproximando/Afastando)
                     let trend = "MAINTAINING";
                     if(lastDist !== null) {
                         if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
@@ -311,17 +332,14 @@ def index():
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
                     
-                    // STATUS 2: Avião Localizado
                     tickerMsg = ["CONTACT ESTABLISHED", trend];
                     act = f;
                 } else if (act) {
-                    // STATUS 3: Modo Ghost (Tinha um avião e perdeu)
                     tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     document.getElementById('stb').className = 'stub';
                     document.getElementById('stb').style.background = 'var(--brand)';
                 } else {
-                    // STATUS 1: Busca Inicial
                     tickerMsg = ["SEARCHING TRAFFIC..."];
                 }
             } catch(e) {}
@@ -330,7 +348,7 @@ def index():
         function startSearch() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const v = document.getElementById('in').value.toUpperCase();
-            tickerMsg = ["SEARCHING TRAFFIC..."]; // Feedback imediato
+            tickerMsg = ["SEARCHING TRAFFIC..."];
             updateTicker();
             if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
             else { fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v).then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
