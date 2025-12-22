@@ -102,7 +102,6 @@ def radar():
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS E RARIDADE
                         if s.get('mil') or type_code in MIL_RARE:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
@@ -178,41 +177,78 @@ def index():
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <style>
-        :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
+        :root { 
+            --gold: #FFD700; 
+            --bg: #0b0e11; 
+            --brand: #444; 
+            --blue-txt: #34a8c9;
+            /* Textura de papel real */
+            --paper-texture: 
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0) 0%, rgba(240,230,210,0.1) 100%),
+                repeating-linear-gradient(45deg, rgba(0,0,0,0.01) 0px, rgba(0,0,0,0.01) 1px, transparent 1px, transparent 10px),
+                linear-gradient(to bottom, #ffffff 0%, #f7f3eb 100%);
+        }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
+        
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
+        
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
-        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .face.back { transform: rotateY(180deg); background: #fdfdfd; padding: 15px; }
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; }
+        
+        /* Face Estilizada como Papel Real */
+        .face { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+            backface-visibility: hidden; 
+            border-radius: 20px; 
+            background: var(--paper-texture);
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 15px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .face.back { transform: rotateY(180deg); padding: 15px; }
+        
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
+        .stub::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.05); pointer-events: none; }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
+        
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-        .perfor { height: 2px; border-top: 5px dotted #ccc; position: relative; background: #fff; }
+        
+        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.15); position: relative; background: transparent; margin: 0 5px; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+        
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #000; height: 24px; display: flex; gap: 1px; }
-        .char { width: 14px; height: 22px; background: #f0f0f0; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+        .char { width: 14px; height: 22px; background: rgba(0,0,0,0.05); border-radius: 3px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
-        #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px; }
+        #bc { width: 110px; height: 35px; opacity: 0.4; filter: contrast(1.2) grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
+        
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
         
-        /* CONTAINER DE SELOS À DIREITA */
-        #rare-collection { position: absolute; top: 15px; right: 15px; bottom: 15px; width: 100px; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: flex-end; gap: 8px; z-index: 5; pointer-events: none; }
+        .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
+        .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
-        .metal-seal { width: 45px; height: 45px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 1px solid #8a6d3b; box-shadow: 0 2px 5px rgba(0,0,0,0.2), inset 0 0 5px rgba(255,255,255,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(10deg); border-style: double; border-width: 2px; animation: sealEntry 0.5s ease-out; }
-        .metal-seal span { color: #5c4412; font-size: 4px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; pointer-events: none; }
-        
-        @keyframes sealEntry { from { transform: scale(0.1) rotate(45deg); opacity: 0; } to { transform: scale(1) rotate(10deg); opacity: 1; } }
-
-        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } #rare-collection { width: 150px; } }
+        @media (orientation: landscape) { 
+            .scene { width: 550px; height: 260px; } 
+            .face { flex-direction: row !important; } 
+            .stub { width: 30% !important; height: 100% !important; } 
+            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.15) !important; border-top: none !important; } 
+            .main { width: 70% !important; } 
+            .ticker { width: 550px; } 
+        }
     </style>
 </head>
 <body onclick="handleFlip(event)">
@@ -234,13 +270,13 @@ def index():
             <div class="main">
                 <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-                    <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #bbb;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
-                    <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #bbb;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
+                    <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #888;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
+                    <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #888;">DISTANCE</span><div id="f-dist" class="flap" style="color:#666"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #888;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #888;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr" style="font-size:45px; transition:1.5s;">✈</div>
+                    <div id="arr" style="font-size:45px; transition:1.5s; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));">✈</div>
                     <div class="date-visual">
                         <div id="f-line1">-- --- ----</div>
                         <div id="f-line2">--.--</div>
@@ -250,20 +286,21 @@ def index():
             </div>
         </div>
         <div class="face back">
-            <div style="height:100%; border:1px dashed #ccc; border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative;">
+            <div style="height:100%; border:1px dashed rgba(0,0,0,0.1); border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative;">
                 <div style="display:flex; justify-content:space-between;">
-                    <div><span style="font-size: 7px; font-weight: 900; color: #bbb;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
-                    <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #bbb;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #888;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
+                    <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #888;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                
-                <div id="rare-collection">
-                    </div>
-
-                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: flex-start; margin-top: 30px; text-align: center; font-weight: 900; width: 140px;">
+                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 30px; text-align: center; font-weight: 900; background: rgba(255,255,255,0.4);">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
                     <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
+                </div>
+                <div id="gold-seal" class="metal-seal">
+                    <span>Rare</span>
+                    <span style="font-size:10px;">Aircraft</span>
+                    <span>Found</span>
                 </div>
             </div>
         </div>
@@ -319,20 +356,7 @@ def index():
             if(!history.find(x => x.icao === f.icao)) {
                 history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
                 localStorage.setItem('rare_flights', JSON.stringify(history));
-                renderSeals();
             }
-        }
-
-        function renderSeals() {
-            const container = document.getElementById('rare-collection');
-            const history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
-            container.innerHTML = '';
-            history.forEach(f => {
-                const seal = document.createElement('div');
-                seal.className = 'metal-seal';
-                seal.innerHTML = `<span>RARE</span><span style="font-size:6px;">${f.icao}</span><span>FOUND</span>`;
-                container.appendChild(seal);
-            });
         }
 
         setInterval(() => {
@@ -365,6 +389,7 @@ def index():
                 if(d.flight) {
                     const f = d.flight;
                     const stub = document.getElementById('stb');
+                    const seal = document.getElementById('gold-seal');
 
                     let trend = "MAINTAINING";
                     if(lastDist !== null) {
@@ -375,10 +400,12 @@ def index():
 
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
+                        seal.style.display = 'flex';
                         saveHistory(f);
                     } else {
                         stub.className = 'stub';
                         stub.style.background = f.color;
+                        seal.style.display = 'none';
                     }
 
                     if(!act || act.icao !== f.icao) {
@@ -424,9 +451,6 @@ def index():
         function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
         function hideUI() { document.getElementById('ui').classList.add('hide'); update(); setInterval(update, 20000); }
-        
-        // Inicialização
-        renderSeals();
         navigator.geolocation.getCurrentPosition(p => { pos = {lat:p.coords.latitude, lon:p.coords.longitude}; hideUI(); }, () => {}, { timeout: 6000 });
     </script>
 </body>
