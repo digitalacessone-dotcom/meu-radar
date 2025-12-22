@@ -34,7 +34,7 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}/longitude={lon}/current=temperature_2m,weather_code,visibility"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
@@ -61,14 +61,17 @@ def fetch_aircrafts(lat, lon):
     return list(unique_data)
 
 def fetch_route(callsign):
-    if not callsign or callsign == "N/A":
-        return "--- ---"
+    if not callsign or callsign == "N/A" or len(callsign.strip()) < 3:
+        return "EN ROUTE"
     try:
+        # Tentativa na API adsb.one para buscar rota vinculada ao callsign
         url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
         r = requests.get(url, timeout=3).json()
         if r.get('aircraft'):
-            route = r['aircraft'][0].get('route', "EN ROUTE")
-            return route.replace('-', ' ').upper()
+            # Algumas APIs retornam 'route', outras apenas o trajeto bruto
+            route = r['aircraft'][0].get('route')
+            if route:
+                return route.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
         return "EN ROUTE"
@@ -159,6 +162,8 @@ def radar():
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
+                        
+                        # PRIORIZA ROTA DA API PRINCIPAL, SENÃO BUSCA EXTERNA
                         r_info = s.get('route') or fetch_route(call)
 
                         proc.append({
