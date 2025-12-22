@@ -61,14 +61,19 @@ def fetch_aircrafts(lat, lon):
     return list(unique_data)
 
 def fetch_route(callsign):
-    if not callsign or callsign == "N/A":
-        return "--- ---"
+    if not callsign or callsign == "N/A" or len(callsign.strip()) < 3:
+        return "EN ROUTE"
     try:
-        url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
+        # Removendo espaços para a busca na API
+        clean_call = callsign.strip().upper()
+        url = f"https://api.adsb.one/v2/callsign/{clean_call}"
         r = requests.get(url, timeout=3).json()
         if r.get('aircraft'):
-            route = r['aircraft'][0].get('route', "EN ROUTE")
-            return route.replace('-', ' ').upper()
+            # Procura por rota nos dados da aeronave
+            for ac in r['aircraft']:
+                route = ac.get('route')
+                if route:
+                    return route.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
         return "EN ROUTE"
@@ -102,6 +107,7 @@ def radar():
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
+                        # LOGICA DE COMPANHIAS E RARIDADE
                         if s.get('mil') or type_code in MIL_RARE:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
@@ -157,7 +163,11 @@ def radar():
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
-                        r_info = s.get('route') or fetch_route(call)
+                        
+                        # Tenta pegar rota nativa antes de chamar a função externa
+                        r_info = s.get('route')
+                        if not r_info:
+                            r_info = fetch_route(call)
 
                         proc.append({
                             "icao": s.get('hex', 'UNK').upper(), 
@@ -206,18 +216,21 @@ def index():
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         
+        /* EFEITO DE PAPEL REAL */
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; 
-            background: #fdfaf0; 
+            background: #fdfaf0; /* Cor creme de papel antigo */
             background-image: 
                 linear-gradient(to right, rgba(0,0,0,0.03) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.03) 100%),
-                url('https://www.transparenttextures.com/patterns/paper-fibers.png');
+                url('https://www.transparenttextures.com/patterns/paper-fibers.png'); /* Textura de fibra */
             display: flex; flex-direction: column; overflow: hidden; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
         }
 
         .face.back { transform: rotateY(180deg); padding: 15px; }
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
+        
+        /* Overlays para o Stub para manter textura mesmo com cor */
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
         
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
