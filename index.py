@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V106.3 - ANAC 2025 INTEGRATED
+# Configurações V106.2 - ANAC 2025 INTEGRATED
 RADIUS_KM = 190 
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
@@ -30,6 +30,7 @@ def get_weather(lat, lon):
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
 def fetch_aircrafts(lat, lon):
+    # Três servidores para redundância máxima
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
@@ -37,14 +38,16 @@ def fetch_aircrafts(lat, lon):
     ]
     headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     all_aircraft = []
+    
     for url in endpoints:
         try:
             r = requests.get(url, headers=headers, timeout=4)
             if r.status_code == 200:
                 data = r.json().get('aircraft', [])
                 if data: all_aircraft.extend(data)
-                break
         except: continue
+    
+    # Remove duplicatas baseadas no HEX (ICAO)
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
 
@@ -59,9 +62,11 @@ def radar():
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
         w = get_weather(lat, lon)
+        
         if test:
             f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0}
             return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
+        
         data = fetch_aircrafts(lat, lon)
         found = None
         if data:
@@ -69,13 +74,16 @@ def radar():
             for s in data:
                 slat, slon = s.get('lat'), s.get('lon')
                 if slat and slon:
+                    # Fórmula de Haversine
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
+                        
+                        # LOGICA DE COMPANHIAS 2025
                         if s.get('mil') or s.get('t') in ['H60', 'C130', 'F16', 'F35', 'B52']:
                             airline, color, is_rare = "MILITARY", "#000", True
-                        # ANAC & REGIONAIS
+                        # ANAC
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL AIRLINES", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL LINHAS", "#004590"
@@ -86,31 +94,33 @@ def radar():
                         elif call.startswith("TTL"): airline, color = "TOTAL LINHAS", "#005544"
                         elif call.startswith("VXP"): airline, color = "AVION EXPRESS", "#701630"
                         elif call.startswith("OMI"): airline, color = "OMNI TÁXI AÉREO", "#003366"
-                        # GLOBAL & LOW-COST
-                        elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
-                        elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
-                        elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
-                        elif call.startswith("UAE"): airline, color = "EMIRATES", "#FF0000"
+                        # GLOBAL & CARGO
                         elif call.startswith("RYR"): airline, color = "RYANAIR", "#003399"
                         elif call.startswith("EZY"): airline, color = "EASYJET", "#FF6600"
                         elif call.startswith("SWA"): airline, color = "SOUTHWEST AIR", "#FFBF00"
-                        # CARGO & LUXO
                         elif call.startswith(("EJA", "NJE")): airline, color, is_rare = "NETJETS", "#000", True
                         elif "MLBR" in call or "MELI" in call: airline, color, is_rare = "MERCADO LIVRE", "#FFE600", True
                         elif call.startswith("GTI"): airline, color = "ATLAS AIR", "#003366"
                         elif call.startswith("CLX"): airline, color = "CARGOLUX", "#ED1C24"
-                        # MAIS GLOBAIS
+                        elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
+                        elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
+                        elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
+                        elif call.startswith("UAE"): airline, color = "EMIRATES", "#FF0000"
                         elif call.startswith("ANA"): airline, color = "ANA NIPPON", "#003192"
                         elif call.startswith("THY"): airline, color = "TURKISH AIR", "#C8102E"
+                        elif call.startswith("KAL"): airline, color = "KOREAN AIR", "#003399"
                         elif call.startswith("AFR"): airline, color = "AIR FRANCE", "#002395"
                         elif call.startswith("AAL"): airline, color = "AMERICAN AIR", "#12316E"
                         elif call.startswith("DAL"): airline, color = "DELTA LINES", "#E01933"
                         elif call.startswith("UAL"): airline, color = "UNITED AIR", "#1B3E93"
+                        elif call.startswith("DLH"): airline, color = "LUFTHANSA", "#002F5B"
+                        elif call.startswith("CSN"): airline, color = "CHINA SOUTHERN", "#007AC1"
                         
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
                         proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta, "vrate": int(s.get('baro_rate', 0))})
+            
             if proc:
                 proc.sort(key=lambda x: x['dist'])
                 new_closest = proc[0]
@@ -120,6 +130,7 @@ def radar():
                         found = new_closest if new_closest['dist'] < (current_on_radar['dist'] - 5) else current_on_radar
                     else: found = new_closest
                 else: found = new_closest
+
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
 
@@ -139,7 +150,7 @@ def index():
         #ui { width: 280px; display: flex; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
         #ui.hide { opacity: 0; pointer-events: none; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
-        button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
+        button { background: #fff; border: none; padding: 0 15px; border-radius: 12px; font-weight: 900; }
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
@@ -160,6 +171,7 @@ def index():
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
         .metal-seal { position: absolute; bottom: 30px; right: 30px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
+        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
 </head>
 <body onclick="handleFlip(event)">
@@ -206,7 +218,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.3</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -235,19 +247,35 @@ def index():
             } catch(e) {}
         }
         function applyFlap(id, text, isTicker = false) {
-            const container = document.getElementById(id); if(!container) return;
+            const container = document.getElementById(id);
+            if(!container) return;
             const limit = isTicker ? 32 : 8;
             const target = text.toUpperCase().padEnd(limit, ' ');
             container.innerHTML = '';
             [...target].forEach((char) => {
-                const span = document.createElement('span'); if(!isTicker) span.className = 'char';
-                span.innerHTML = '&nbsp;'; container.appendChild(span);
-                let count = 0, max = 40 + Math.floor(Math.random() * 80); 
+                const span = document.createElement('span');
+                if(!isTicker) span.className = 'char';
+                span.innerHTML = '&nbsp;';
+                container.appendChild(span);
+                let count = 0;
+                let max = 40 + Math.floor(Math.random() * 80); 
                 const interval = setInterval(() => {
                     span.innerText = chars[Math.floor(Math.random() * chars.length)];
-                    if (count++ >= max) { clearInterval(interval); span.innerHTML = (char === ' ') ? '&nbsp;' : char; }
+                    if (count++ >= max) { 
+                        clearInterval(interval); 
+                        span.innerHTML = (char === ' ') ? '&nbsp;' : char; 
+                    }
                 }, 20);
             });
+        }
+        function saveHistory(f) {
+            if(isTest) return;
+            if(!f.is_rare) return;
+            let history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
+            if(!history.find(x => x.icao === f.icao)) {
+                history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
+                localStorage.setItem('rare_flights', JSON.stringify(history));
+            }
         }
         setInterval(() => {
             if(act) {
@@ -260,7 +288,12 @@ def index():
                 applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
             }
         }, 12000);
-        function updateTicker() { if (tickerMsg.length > 0) { applyFlap('tk', tickerMsg[tickerIdx], true); tickerIdx = (tickerIdx + 1) % tickerMsg.length; } }
+        function updateTicker() { 
+            if (tickerMsg.length > 0) { 
+                applyFlap('tk', tickerMsg[tickerIdx], true); 
+                tickerIdx = (tickerIdx + 1) % tickerMsg.length; 
+            } 
+        }
         setInterval(updateTicker, 15000);
         async function update() {
             if(!pos) return;
@@ -269,29 +302,57 @@ def index():
                 const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&current_icao=${current_icao}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
                 if(d.flight) {
-                    const f = d.flight, stub = document.getElementById('stb'), seal = document.getElementById('gold-seal');
+                    const f = d.flight;
+                    const stub = document.getElementById('stb');
+                    const seal = document.getElementById('gold-seal');
                     let trend = "MAINTAINING";
-                    if(lastDist !== null) { if(f.dist < lastDist - 0.1) trend = "CLOSING IN"; else if(f.dist > lastDist + 0.1) trend = "MOVING AWAY"; }
+                    if(lastDist !== null) {
+                        if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
+                        else if(f.dist > lastDist + 0.1) trend = "MOVING AWAY";
+                    }
                     lastDist = f.dist;
-                    if(f.is_rare) { stub.className = 'stub rare-mode'; seal.style.display = 'flex'; } 
-                    else { stub.className = 'stub'; stub.style.background = f.color; seal.style.display = 'none'; }
+                    if(f.is_rare) {
+                        stub.className = 'stub rare-mode';
+                        seal.style.display = 'flex';
+                        saveHistory(f);
+                    } else {
+                        stub.className = 'stub';
+                        stub.style.background = f.color;
+                        seal.style.display = 'none';
+                    }
                     if(!act || act.icao !== f.icao) {
-                        playPing(); document.getElementById('airl').innerText = f.airline;
+                        playPing();
+                        document.getElementById('airl').innerText = f.airline;
                         applyFlap('f-call', f.call); applyFlap('f-route', f.route);
                         document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
                     }
-                    document.getElementById('f-line1').innerText = d.date; document.getElementById('f-line2').innerText = d.time;
-                    document.getElementById('b-date-line1').innerText = d.date; document.getElementById('b-date-line2').innerText = d.time;
-                    for(let i=1; i<=5; i++) { const threshold = 190 - ((i-1) * 40); document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq'; }
+                    document.getElementById('f-line1').innerText = d.date;
+                    document.getElementById('f-line2').innerText = d.time;
+                    document.getElementById('b-date-line1').innerText = d.date;
+                    document.getElementById('b-date-line2').innerText = d.time;
+                    for(let i=1; i<=5; i++) {
+                        const threshold = 190 - ((i-1) * 40);
+                        document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
+                    }
                     if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
                     document.getElementById('arr').style.transform = `rotate(${f.hd-45}deg)`;
-                    tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky]; act = f;
-                } else { tickerMsg = ["SEARCHING TRAFFIC..."]; }
+                    tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
+                    act = f;
+                } else if (act) {
+                    tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
+                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
+                    document.getElementById('stb').className = 'stub';
+                    document.getElementById('stb').style.background = 'var(--brand)';
+                } else {
+                    tickerMsg = ["SEARCHING TRAFFIC..."];
+                }
             } catch(e) {}
         }
         function startSearch() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const v = document.getElementById('in').value.toUpperCase(); tickerMsg = ["SEARCHING TRAFFIC..."]; updateTicker();
+            const v = document.getElementById('in').value.toUpperCase();
+            tickerMsg = ["SEARCHING TRAFFIC..."];
+            updateTicker();
             if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
             else { fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v).then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } }); }
         }
