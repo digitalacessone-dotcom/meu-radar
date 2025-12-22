@@ -35,19 +35,23 @@ def fetch_aircrafts(lat, lon):
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200"
     ]
     headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
-    random.shuffle(endpoints)
+    all_aircraft = []
+    # Consolida dados de todas as fontes antes de processar
     for url in endpoints:
         try:
             r = requests.get(url, headers=headers, timeout=5)
-            if r.status_code == 200: return r.json().get('aircraft', [])
+            if r.status_code == 200:
+                data = r.json().get('aircraft', [])
+                if data: all_aircraft.extend(data)
         except: continue
-    return []
+    return all_aircraft
 
 @app.route('/api/radar')
 def radar():
     try:
         lat = float(request.args.get('lat', DEFAULT_LAT))
         lon = float(request.args.get('lon', DEFAULT_LON))
+        current_icao = request.args.get('current_icao', None)
         test = request.args.get('test', 'false').lower() == 'true'
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
@@ -61,53 +65,47 @@ def radar():
             else:
                 f = {"icao": "E4953E", "reg": "PT-MDS", "call": "TEST777", "airline": "LOCAL TEST", "color": "#34a8c9", "is_rare": False, "dist": 10.5, "alt": 35000, "spd": 850, "hd": 120, "date": now_date, "time": now_time, "route": "GIG-MIA", "eta": 1, "kts": 459, "vrate": 1500}
             return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
-
+        
         data = fetch_aircrafts(lat, lon)
         found = None
-        
         if data:
             proc = []
             for s in data:
                 slat, slon = s.get('lat'), s.get('lon')
                 if slat and slon:
-                    # Cálculo de distância
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
-                    
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip()
                         airline, color, is_rare = "PRIVATE", "#444", False
-                        
                         if s.get('mil') or s.get('t') in ['H60', 'C130', 'F16', 'F35', 'B52']:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM", "#E6004C"
                         elif call.startswith(("GLO", "G3")): airline, color = "GOL", "#FF6700"
                         elif call.startswith(("AZU", "AD")): airline, color = "AZUL", "#004590"
                         
-                        spd_kmh = int(int(s.get('gs', 0)) * 1.852)
-                        
-                        proc.append({
-                            "icao": s.get('hex', 'UNK').upper(),
-                            "reg": s.get('r', 'N/A').upper(),
-                            "call": call,
-                            "airline": airline,
-                            "color": color,
-                            "is_rare": is_rare,
-                            "dist": round(d, 1),
-                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
-                            "spd": spd_kmh,
-                            "hd": int(s.get('track', 0)),
-                            "route": s.get('route', "--- ---"),
-                            "vrate": int(s.get('baro_rate', 0))
-                        })
+                        spd_kts = int(s.get('gs', 0))
+                        spd_kmh = int(spd_kts * 1.852)
+                        eta = round((d / (spd_kmh or 1)) * 60)
+                        proc.append({"icao": s.get('hex', 'UNK').upper(), "reg": s.get('r', 'N/A').upper(), "call": call, "airline": airline, "color": color, "is_rare": is_rare, "dist": round(d, 1), "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), "spd": spd_kmh, "kts": spd_kts, "hd": int(s.get('track', 0)), "date": now_date, "time": now_time, "route": s.get('route', "--- ---"), "eta": eta, "vrate": int(s.get('baro_rate', 0))})
             
             if proc:
+                # Alteração 1: Ordenação obrigatória por distância após analisar tudo
                 proc.sort(key=lambda x: x['dist'])
-                found = proc[0]
+                new_closest = proc[0]
+                
+                # Alteração 2: Lógica de Substituição/Persistência
+                if current_icao:
+                    current_on_radar = next((x for x in proc if x['icao'] == current_icao), None)
+                    if current_on_radar:
+                        # Só troca se o novo estiver mais perto que o atual
+                        found = new_closest if new_closest['dist'] < current_on_radar['dist'] else current_on_radar
+                    else:
+                        found = new_closest
+                else:
+                    found = new_closest
 
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
-
-    except:
-        return jsonify({"flight": None})
+    except: return jsonify({"flight": None})
 
 @app.route('/')
 def index():
@@ -269,10 +267,10 @@ def index():
                 toggleState = !toggleState;
                 document.getElementById('icao-label').innerText = toggleState ? "AIRCRAFT ICAO" : "REGISTRATION";
                 applyFlap('f-icao', toggleState ? act.icao : act.reg);
-                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "CONTACT STATUS";
-                applyFlap('f-dist', toggleState ? act.dist + " KM" : "ACTIVE");
+                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "ESTIMATED CONTACT";
+                applyFlap('f-dist', toggleState ? act.dist + " KM" : "ETA " + act.eta + "M");
                 document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
-                applyFlap('b-spd', act.spd + " KMH");
+                applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
             }
         }, 12000);
 
@@ -287,7 +285,9 @@ def index():
         async function update() {
             if(!pos) return;
             try {
-                const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&test=${isTest}&_=${Date.now()}`);
+                // Alteração 2: Envia o ICAO atual para comparação na API
+                const current_icao = act ? act.icao : '';
+                const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&current_icao=${current_icao}&test=${isTest}&_=${Date.now()}`);
                 const d = await r.json();
                 weather = d.weather;
                 
