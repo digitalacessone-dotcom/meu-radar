@@ -43,29 +43,42 @@ def get_weather(lat, lon):
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
 def fetch_aircrafts(lat, lon):
-    # Endpoints atualizados para 2025 (maior estabilidade)
+    # Endpoints atualizados para máxima compatibilidade em 2025
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
-        f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200"
+        f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
     ]
-    headers = {'User-Agent': 'Mozilla/5.0'}
+    headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     all_aircraft = []
+    
     for url in endpoints:
         try:
-            r = requests.get(url, headers=headers, timeout=5)
+            r = requests.get(url, headers=headers, timeout=6)
             if r.status_code == 200:
                 data = r.json().get('aircraft', [])
-                if data: all_aircraft.extend(data)
-        except: continue
+                if data: 
+                    all_aircraft.extend(data)
+                    # Se conseguirmos dados de um, já podemos tentar processar
+                    break 
+        except:
+            continue
     
-    unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
-    return list(unique_data)
+    # Normalização de dados: Unificando HEX e ICAO
+    unique_data = {}
+    for a in all_aircraft:
+        # Tenta pegar o identificador único (hex ou icao)
+        icao_id = a.get('hex') or a.get('icao')
+        if icao_id and 'lat' in a and 'lon' in a:
+            unique_data[icao_id.lower()] = a
+            
+    return list(unique_data.values())
 
 def fetch_route(callsign):
     if not callsign or callsign == "N/A":
         return "--- ---"
     try:
-        url = f"https://api.adsb.lol/v2/callsign/{callsign.strip()}"
+        url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
         r = requests.get(url, timeout=3).json()
         if r.get('aircraft'):
             route = r['aircraft'][0].get('route', "EN ROUTE")
@@ -95,69 +108,68 @@ def radar():
         if data:
             proc = []
             for s in data:
-                try:
-                    slat = float(s.get('lat', 0))
-                    slon = float(s.get('lon', 0))
-                    if slat and slon:
-                        d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
-                        if d <= RADIUS_KM:
-                            call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
-                            type_code = (s.get('t') or '').upper()
-                            airline, color, is_rare = "PRIVATE", "#444", False
-                            
-                            # LOGICA DE COMPANHIAS E RARIDADE
-                            if s.get('mil') or type_code in MIL_RARE:
-                                airline, color, is_rare = "MILITARY", "#000", True
-                            elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
-                            elif call.startswith(("GLO", "G3")): airline, color = "GOL AIRLINES", "#FF6700"
-                            elif call.startswith(("AZU", "AD")): airline, color = "AZUL LINHAS", "#004590"
-                            elif call.startswith(("PTB", "2Z")): airline, color = "VOEPASS", "#F9A825"
-                            elif call.startswith("ABV"): airline, color = "ABAETE AVIAÇÃO", "#003366"
-                            elif call.startswith("ASL"): airline, color = "AEROSUL", "#00BFFF"
-                            elif call.startswith("SUL"): airline, color = "ASTA LINHAS", "#ED1C24"
-                            elif call.startswith("TTL"): airline, color = "TOTAL LINHAS", "#005544"
-                            elif call.startswith("VXP"): airline, color = "AVION EXPRESS", "#701630"
-                            elif call.startswith("OMI"): airline, color = "OMNI TÁXI AÉREO", "#003366"
-                            elif call.startswith("RYR"): airline, color = "RYANAIR", "#003399"
-                            elif call.startswith("EZY"): airline, color = "EASYJET", "#FF6600"
-                            elif call.startswith("SWA"): airline, color = "SOUTHWEST AIR", "#FFBF00"
-                            elif call.startswith(("EJA", "NJE")): airline, color, is_rare = "NETJETS", "#000", True
-                            elif "MLBR" in call or "MELI" in call: airline, color, is_rare = "MERCADO LIVRE", "#FFE600", True
-                            elif call.startswith("GTI"): airline, color = "ATLAS AIR", "#003366"
-                            elif call.startswith("CLX"): airline, color = "CARGOLUX", "#ED1C24"
-                            elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
-                            elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
-                            elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
-                            elif call.startswith("UAE"): airline, color = "EMIRATES", "#FF0000"
-                            elif call.startswith("ANA"): airline, color = "ANA NIPPON", "#003192"
-                            elif call.startswith("THY"): airline, color = "TURKISH AIR", "#C8102E"
-                            elif call.startswith("KAL"): airline, color = "KOREAN AIR", "#003399"
-                            elif call.startswith("AFR"): airline, color = "AIR FRANCE", "#002395"
-                            elif call.startswith("AAL"): airline, color = "AMERICAN AIR", "#12316E"
-                            elif call.startswith("DAL"): airline, color = "DELTA LINES", "#E01933"
-                            elif call.startswith("UAL"): airline, color = "UNITED AIR", "#1B3E93"
-                            elif call.startswith("DLH"): airline, color = "LUFTHANSA", "#002F5B"
-                            elif call.startswith("CSN"): airline, color = "CHINA SOUTHERN", "#007AC1"
-                            
-                            spd_kts = int(s.get('gs', 0))
-                            spd_kmh = int(spd_kts * 1.852)
-                            eta = round((d / (spd_kmh or 1)) * 60)
-                            r_info = s.get('route') or fetch_route(call)
+                slat, slon = s.get('lat'), s.get('lon')
+                if slat is not None and slon is not None:
+                    # Fórmula de Haversine para distância
+                    d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
+                    
+                    if d <= RADIUS_KM:
+                        call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
+                        type_code = (s.get('t') or '').upper()
+                        airline, color, is_rare = "PRIVATE", "#444", False
+                        
+                        # LOGICA DE COMPANHIAS E RARIDADE
+                        if s.get('mil') or type_code in MIL_RARE:
+                            airline, color, is_rare = "MILITARY", "#000", True
+                        elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
+                        elif call.startswith(("GLO", "G3")): airline, color = "GOL AIRLINES", "#FF6700"
+                        elif call.startswith(("AZU", "AD")): airline, color = "AZUL LINHAS", "#004590"
+                        elif call.startswith(("PTB", "2Z")): airline, color = "VOEPASS", "#F9A825"
+                        elif call.startswith("ABV"): airline, color = "ABAETE AVIAÇÃO", "#003366"
+                        elif call.startswith("ASL"): airline, color = "AEROSUL", "#00BFFF"
+                        elif call.startswith("SUL"): airline, color = "ASTA LINHAS", "#ED1C24"
+                        elif call.startswith("TTL"): airline, color = "TOTAL LINHAS", "#005544"
+                        elif call.startswith("VXP"): airline, color = "AVION EXPRESS", "#701630"
+                        elif call.startswith("OMI"): airline, color = "OMNI TÁXI AÉREO", "#003366"
+                        elif call.startswith("RYR"): airline, color = "RYANAIR", "#003399"
+                        elif call.startswith("EZY"): airline, color = "EASYJET", "#FF6600"
+                        elif call.startswith("SWA"): airline, color = "SOUTHWEST AIR", "#FFBF00"
+                        elif call.startswith(("EJA", "NJE")): airline, color, is_rare = "NETJETS", "#000", True
+                        elif "MLBR" in call or "MELI" in call: airline, color, is_rare = "MERCADO LIVRE", "#FFE600", True
+                        elif call.startswith("GTI"): airline, color = "ATLAS AIR", "#003366"
+                        elif call.startswith("CLX"): airline, color = "CARGOLUX", "#ED1C24"
+                        elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
+                        elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
+                        elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
+                        elif call.startswith("UAE"): airline, color = "EMIRATES", "#FF0000"
+                        elif call.startswith("ANA"): airline, color = "ANA NIPPON", "#003192"
+                        elif call.startswith("THY"): airline, color = "TURKISH AIR", "#C8102E"
+                        elif call.startswith("KAL"): airline, color = "KOREAN AIR", "#003399"
+                        elif call.startswith("AFR"): airline, color = "AIR FRANCE", "#002395"
+                        elif call.startswith("AAL"): airline, color = "AMERICAN AIR", "#12316E"
+                        elif call.startswith("DAL"): airline, color = "DELTA LINES", "#E01933"
+                        elif call.startswith("UAL"): airline, color = "UNITED AIR", "#1B3E93"
+                        elif call.startswith("DLH"): airline, color = "LUFTHANSA", "#002F5B"
+                        elif call.startswith("CSN"): airline, color = "CHINA SOUTHERN", "#007AC1"
+                        
+                        spd_kts = int(s.get('gs', 0))
+                        spd_kmh = int(spd_kts * 1.852)
+                        eta = round((d / (spd_kmh or 1)) * 60)
+                        r_info = s.get('route') or fetch_route(call)
 
-                            proc.append({
-                                "icao": s.get('hex', 'UNK').upper(), 
-                                "reg": s.get('r', 'N/A').upper(), 
-                                "call": call, "airline": airline, 
-                                "color": color, "is_rare": is_rare, 
-                                "dist": round(d, 1), 
-                                "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), 
-                                "spd": spd_kmh, "kts": spd_kts, 
-                                "hd": int(s.get('track', 0)), 
-                                "date": now_date, "time": now_time, 
-                                "route": r_info, "eta": eta, 
-                                "vrate": int(s.get('baro_rate', 0))
-                            })
-                except: continue
+                        proc.append({
+                            "icao": (s.get('hex') or s.get('icao') or 'UNK').upper(), 
+                            "reg": s.get('r', 'N/A').upper(), 
+                            "call": call, "airline": airline, 
+                            "color": color, "is_rare": is_rare, 
+                            "dist": round(d, 1), 
+                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), 
+                            "spd": spd_kmh, "kts": spd_kts, 
+                            "hd": int(s.get('track', 0)), 
+                            "date": now_date, "time": now_time, 
+                            "route": r_info, "eta": eta, 
+                            "vrate": int(s.get('baro_rate', 0))
+                        })
             
             if proc:
                 proc.sort(key=lambda x: x['dist'])
@@ -192,43 +204,34 @@ def index():
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
         .scene.flipped { transform: rotateY(180deg); }
         
-        /* EFEITO DE PAPEL REAL */
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; 
-            background: #fdfaf0; /* Cor creme de papel antigo */
+            background: #fdfaf0;
             background-image: 
                 linear-gradient(to right, rgba(0,0,0,0.03) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.03) 100%),
-                url('https://www.transparenttextures.com/patterns/paper-fibers.png'); /* Textura de fibra */
+                url('https://www.transparenttextures.com/patterns/paper-fibers.png');
             display: flex; flex-direction: column; overflow: hidden; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
         }
 
         .face.back { transform: rotateY(180deg); padding: 15px; }
         .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
-        
-        /* Overlays para o Stub para manter textura mesmo com cor */
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
-        
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-        
         .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-        
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #1a1a1a; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: rgba(0,0,0,0.05); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
-        
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
-        
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
-        
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
 </head>
