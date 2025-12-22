@@ -12,6 +12,19 @@ RADIUS_KM = 190
 DEFAULT_LAT = -22.9068
 DEFAULT_LON = -43.1729
 
+# LISTA DE AERONAVES MILITARES SOLICITADAS
+MILITARY_TYPES = (
+    'F14', 'F15', 'F16', 'F18', 'F22', 'F35', 'FA18', 'F4', 'F5', 'F117', 'A10', 'AV8B',
+    'B1', 'B2', 'B52', 'C130', 'C17', 'C5', 'C160', 'A400', 'CN35', 'C295', 'C390', 'C212',
+    'KC10', 'KC135', 'A332', 'K35R', 'KC76', 'P3', 'P8', 'E3', 'E8', 'E2', 'C2', 'RC135',
+    'SU24', 'SU25', 'SU27', 'SU30', 'SU33', 'SU34', 'SU35', 'SU57', 'MIG21', 'MIG23', 'MIG25', 
+    'MIG29', 'MIG31', 'MIG35', 'TU22', 'TU95', 'TU142', 'TU160', 'IL18', 'IL38', 'IL62', 'IL76', 
+    'IL78', 'IL82', 'IL96', 'AN12', 'AN22', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
+    'J10', 'J11', 'J15', 'J16', 'J20', 'H6', 'KJ200', 'KJ500', 'KJ2000', 'Y8', 'Y9', 'Y20',
+    'EUFI', 'RAFA', 'GRIP', 'TOR', 'HAWK', 'T38', 'M346', 'L39', 'K8', 'EMB3', 'AT27', 'C95', 
+    'C97', 'C98', 'U27', 'R99', 'E99', 'P95', 'KC390', 'AMX', 'A1', 'A29'
+)
+
 def get_time_local():
     return datetime.utcnow() - timedelta(hours=3)
 
@@ -30,7 +43,6 @@ def get_weather(lat, lon):
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
 def fetch_aircrafts(lat, lon):
-    # Três servidores para redundância máxima
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
@@ -47,7 +59,6 @@ def fetch_aircrafts(lat, lon):
                 if data: all_aircraft.extend(data)
         except: continue
     
-    # Remove duplicatas baseadas no HEX (ICAO)
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
 
@@ -55,7 +66,6 @@ def fetch_route(callsign):
     if not callsign or callsign == "N/A":
         return "--- ---"
     try:
-        # Consulta API para preencher lacuna de rota
         url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
         r = requests.get(url, timeout=3).json()
         if r.get('aircraft'):
@@ -88,14 +98,14 @@ def radar():
             for s in data:
                 slat, slon = s.get('lat'), s.get('lon')
                 if slat and slon:
-                    # Fórmula de Haversine
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
+                        type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS 2025
-                        if s.get('mil') or s.get('t') in ['H60', 'C130', 'F16', 'F35', 'B52']:
+                        # LOGICA DE COMPANHIAS E AERONAVES RARA MILITAR
+                        if s.get('mil') or type_code in MILITARY_TYPES:
                             airline, color, is_rare = "MILITARY", "#000", True
                         # ANAC
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
@@ -134,7 +144,6 @@ def radar():
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
 
-                        # LOGICA DE ROTA EXTERNA
                         r_info = s.get('route')
                         if not r_info or r_info == "--- ---":
                             r_info = fetch_route(call)
@@ -189,7 +198,7 @@ def index():
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.15; filter: grayscale(1); cursor: pointer; margin-top: 5px; }
         .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
-        .metal-seal { position: absolute; bottom: 30px; right: 30px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
+        .metal-seal { position: absolute; bottom: 30px; right: 30px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted #ccc !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
     </style>
@@ -343,13 +352,14 @@ def index():
 
                     if(f.is_rare) {
                         stub.className = 'stub rare-mode';
-                        seal.style.display = 'flex';
                         saveHistory(f);
                     } else {
                         stub.className = 'stub';
                         stub.style.background = f.color;
-                        seal.style.display = 'none';
                     }
+
+                    // Selo perpétuo, oculto apenas em modo teste identificado
+                    seal.style.display = isTest ? 'none' : 'flex';
 
                     if(!act || act.icao !== f.icao) {
                         playPing();
