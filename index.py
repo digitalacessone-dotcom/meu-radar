@@ -373,10 +373,10 @@ def index():
         function updatePlaneVisual() {
             if(!act || !pos) return;
             const planeElement = document.getElementById('arr');
-            const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
-            let finalRotation = (bearingToPlane - deviceHeading);
+            const aircraftHeading = act.hd;
             const iconOffset = -45
-            planeElement.style.transform = `rotate(${finalRotation + iconOffset}deg)`;
+            const finalRotation = aircraftHeading + iconAdjustment;
+            planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
 
         function playPing() {
