@@ -34,7 +34,7 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}/longitude={lon}&current=temperature_2m,weather_code,visibility"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
@@ -102,7 +102,6 @@ def radar():
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
-                        # LOGICA DE COMPANHIAS E RARIDADE
                         if s.get('mil') or type_code in MIL_RARE:
                             airline, color, is_rare = "MILITARY", "#000", True
                         elif call.startswith(("TAM", "JJ", "LA")): airline, color = "LATAM BRASIL", "#E6004C"
@@ -202,14 +201,25 @@ def index():
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s; }
-        #ui.hide { opacity: 0; pointer-events: none; }
+        
+        /* Ajuste de transição da Pesquisa - Indo para baixo do cartão */
+        #ui { 
+            width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; 
+            z-index: 1; /* Menor que o cartão */
+            transition: opacity 0.8s ease-in-out, transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        #ui.hide { opacity: 0; transform: translateY(100px); pointer-events: none; }
+        
         .ui-row { display: flex; gap: 6px; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
         
-        /* TRANSICAO FLUIDA PARA O GIRO */
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease-in-out, height 0.5s ease-in-out; }
+        /* Cena e faces com transição de tamanho fluida para rotação */
+        .scene { 
+            width: 300px; height: 460px; position: relative; transform-style: preserve-3d; 
+            transition: transform 0.8s, width 0.6s ease, height 0.6s ease; 
+            z-index: 10;
+        }
         .scene.flipped { transform: rotateY(180deg); }
         
         .face { 
@@ -220,11 +230,15 @@ def index():
                 url('https://www.transparenttextures.com/patterns/paper-fibers.png');
             display: flex; flex-direction: column; overflow: hidden; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
-            transition: all 0.5s ease-in-out;
+            transition: all 0.6s ease; /* Suaviza mudança de layout interno */
         }
 
         .face.back { transform: rotateY(180deg); padding: 15px; }
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: all 0.5s ease-in-out; position: relative; }
+        
+        .stub { 
+            height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; 
+            flex-direction: column; justify-content: center; transition: 0.6s ease; position: relative; 
+        }
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
         
@@ -232,24 +246,38 @@ def index():
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
         
-        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; transition: all 0.5s ease-in-out; }
+        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; transition: all 0.6s ease; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
         
-        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: all 0.5s ease-in-out; }
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: 0.6s ease; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #1a1a1a; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: rgba(0,0,0,0.05); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
         
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: width 0.5s ease-in-out; }
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: width 0.6s ease; }
         
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
         #compass-btn { font-size: 9px; background: #222; color: #fff; margin-top: 5px; padding: 5px; opacity: 0.6; }
 
-        @media (orientation: landscape) { .scene { width: 550px; height: 260px; } .face { flex-direction: row !important; } .stub { width: 30% !important; height: 100% !important; } .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; } .main { width: 70% !important; } .ticker { width: 550px; } }
+        /* Transições fluidas para modo Paisagem */
+        @media (orientation: landscape) { 
+            .scene { width: 550px; height: 260px; } 
+            .face { flex-direction: row !important; } 
+            .stub { width: 30% !important; height: 100% !important; } 
+            .perfor { 
+                width: 2px !important; height: 100% !important; 
+                border-left: 5px dotted rgba(0,0,0,0.1) !important; 
+                border-top: none !important; 
+            } 
+            .perfor::before { left: -15px; top: -25px; }
+            .perfor::after { left: -15px; bottom: -25px; top: auto; }
+            .main { width: 70% !important; } 
+            .ticker { width: 550px; } 
+        }
     </style>
 </head>
 <body onclick="handleFlip(event)">
