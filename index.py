@@ -207,7 +207,9 @@ def index():
         .ui-row { display: flex; gap: 6px; }
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
         button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; }
+        
+        /* TRANSICAO FLUIDA PARA O GIRO */
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease-in-out, height 0.5s ease-in-out; }
         .scene.flipped { transform: rotateY(180deg); }
         
         .face { 
@@ -218,10 +220,11 @@ def index():
                 url('https://www.transparenttextures.com/patterns/paper-fibers.png');
             display: flex; flex-direction: column; overflow: hidden; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
+            transition: all 0.5s ease-in-out;
         }
 
         .face.back { transform: rotateY(180deg); padding: 15px; }
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: all 0.5s ease-in-out; position: relative; }
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
         
@@ -229,17 +232,17 @@ def index():
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
         
-        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; }
+        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; transition: all 0.5s ease-in-out; }
         .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
         
-        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: all 0.5s ease-in-out; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #1a1a1a; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: rgba(0,0,0,0.05); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
         
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; }
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: width 0.5s ease-in-out; }
         
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
@@ -491,10 +494,8 @@ def index():
         function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
         
         function hideUI() { 
-            // Inicia o fade out suave via CSS
             const ui = document.getElementById('ui');
             ui.classList.add('hide'); 
-            // Aguarda a transição de 0.8s terminar para desativar funções e iniciar o radar
             setTimeout(() => {
                 update(); 
                 setInterval(update, 20000); 
