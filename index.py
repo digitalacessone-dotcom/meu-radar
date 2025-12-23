@@ -538,16 +538,13 @@ def index():
             }, 800);
         }
 
-        // AUTO GPS INTEGRATION
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat: p.coords.latitude, lon: p.coords.longitude};
-            hideUI();
-        }, e => console.log("GPS OFF"));
-
+        });
     </script>
 </body>
 </html>
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
