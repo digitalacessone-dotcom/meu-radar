@@ -373,9 +373,8 @@ def index():
         function updatePlaneVisual() {
             if(!act || !pos) return;
             const planeElement = document.getElementById('arr');
-            const aircraftHeading = act.hd;
-            const iconOffset = -45
-            const finalRotation = aircraftHeading + iconAdjustment;
+            const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
+            const finalRotation = (bearingToPlane - deviceHeading - 45);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
 
