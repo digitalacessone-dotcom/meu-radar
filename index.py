@@ -346,14 +346,14 @@ def index():
         }
 
         function handleOrientation(e) {
-            // Correção para Modo Paisagem (Landscape)
-            let heading = e.webkitCompassHeading || (360 - e.alpha);
+            // Obtém o heading bruto
+            let rawHeading = e.webkitCompassHeading || (360 - e.alpha);
             
-            // Detecta a orientação do dispositivo
-            let orientation = window.orientation || (screen.orientation && screen.orientation.angle) || 0;
+            // Detecta a orientação da tela (0=pé, 90=deitado esquerda, -90=deitado direita)
+            let screenAngle = window.orientation || (screen.orientation ? screen.orientation.angle : 0);
             
-            // Aplica compensação baseada na rotação da tela
-            deviceHeading = (heading + orientation + 360) % 360;
+            // Corrige o heading com base no ângulo da tela para manter precisão horizontal
+            deviceHeading = (rawHeading + screenAngle + 360) % 360;
             
             updatePlaneVisual();
         }
@@ -371,6 +371,7 @@ def index():
             if(!act || !pos) return;
             const planeElement = document.getElementById('arr');
             const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
+            // O -45 é o ajuste do ícone original da fonte ✈
             const finalRotation = (bearingToPlane - deviceHeading - 45);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
@@ -551,4 +552,4 @@ def index():
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, port=5000)
