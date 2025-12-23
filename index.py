@@ -203,8 +203,8 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
-        #ui.hide { opacity: 0; pointer-events: none; }
+        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 1; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(150px) scale(0.9); }
         .ui-row { display: flex; gap: 6px; }
         
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; transition: all 0.3s ease; }
@@ -213,7 +213,7 @@ def index():
         button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         button:active { transform: scale(0.95); }
         
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; }
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; z-index: 10; }
         .scene.flipped { transform: rotateY(180deg); }
         
         .face { 
@@ -245,7 +245,7 @@ def index():
         .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
         #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
         
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: width 0.5s ease; }
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: width 0.5s ease; z-index: 10; }
         
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
@@ -538,13 +538,16 @@ def index():
             }, 800);
         }
 
-        navigator.geolocation.getCurrentPosition(p => { 
-            pos = {lat:p.coords.latitude, lon:p.coords.longitude}; 
-        });
+        // AUTO GPS INTEGRATION
+        navigator.geolocation.getCurrentPosition(p => {
+            pos = {lat: p.coords.latitude, lon: p.coords.longitude};
+            hideUI();
+        }, e => console.log("GPS OFF"));
+
     </script>
 </body>
 </html>
 ''')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(debug=True, port=5000)
