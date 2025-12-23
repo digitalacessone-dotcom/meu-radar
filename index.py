@@ -346,7 +346,15 @@ def index():
         }
 
         function handleOrientation(e) {
-            deviceHeading = e.webkitCompassHeading || (360 - e.alpha);
+            // Correção para Modo Paisagem (Landscape)
+            let heading = e.webkitCompassHeading || (360 - e.alpha);
+            
+            // Detecta a orientação do dispositivo
+            let orientation = window.orientation || (screen.orientation && screen.orientation.angle) || 0;
+            
+            // Aplica compensação baseada na rotação da tela
+            deviceHeading = (heading + orientation + 360) % 360;
+            
             updatePlaneVisual();
         }
 
@@ -537,17 +545,10 @@ def index():
                 setInterval(update, 20000); 
             }, 800);
         }
-
-        // AUTO GPS INTEGRATION
-        navigator.geolocation.getCurrentPosition(p => {
-            pos = {lat: p.coords.latitude, lon: p.coords.longitude};
-            hideUI();
-        }, e => console.log("GPS OFF"));
-
     </script>
 </body>
 </html>
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
