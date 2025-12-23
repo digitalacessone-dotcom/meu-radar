@@ -34,7 +34,7 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}/longitude={lon}/current=temperature_2m,weather_code,visibility"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
@@ -203,8 +203,8 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 1; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); max-height: 200px; }
-        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(-20px) scale(0.9); max-height: 0; margin: 0; overflow: hidden; }
+        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 1; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(150px) scale(0.9); }
         .ui-row { display: flex; gap: 6px; }
         
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; transition: all 0.3s ease; }
@@ -311,7 +311,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.3</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -532,11 +532,12 @@ def index():
         function hideUI() { 
             const ui = document.getElementById('ui');
             ui.classList.add('hide'); 
+            // Faz o cartão subir suavemente ao remover o UI do fluxo do layout
             setTimeout(() => {
                 ui.style.display = 'none';
-                update(); 
-                setInterval(update, 20000); 
-            }, 1200); 
+                setInterval(update, 5000);
+                update();
+            }, 1200);
         }
     </script>
 </body>
@@ -544,4 +545,4 @@ def index():
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
