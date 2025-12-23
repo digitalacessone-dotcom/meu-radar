@@ -330,6 +330,8 @@ def index():
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
         let deviceHeading = 0;
+        let smoothedHeading = 0;
+        const alpha = 0.12; // FILTRO DE ESTABILIDADE: Menor = Mais estável/lento
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
         function initCompass() {
@@ -349,15 +351,17 @@ def index():
 
         function handleOrientation(e) {
             let heading = e.webkitCompassHeading || (360 - e.alpha);
+
+            // LÓGICA ANTI-OSCILAÇÃO (Smoothing)
+            let diff = rawHeading - smoothedHeading;
+            if (diff > 180) diff -= 360;
+            if (diff < -180) diff += 360;
+            smoothedHeading += alpha * diff;
             
             // CORREÇÃO PARA MODO DEITADO (LANDSCAPE)
             const isLandscape = window.innerWidth > window.innerHeight;
-            if (isLandscape) {
-                // Ajusta o heading em 90 graus para compensar a rotação do dispositivo
-                heading = (heading + 90) % 360;
-            }
+            deviceHeading = isLandscape ? (smoothedHeading + 90) % 360 : smoothedHeading;
             
-            deviceHeading = heading;
             updatePlaneVisual();
         }
 
@@ -373,8 +377,7 @@ def index():
         function updatePlaneVisual() {
             if(!act) return;
             const planeElement = document.getElementById('arr');
-            const aircraftHeading = act.hd;
-            const finalRotation = (bearingToPlane - deviceHeading - 45);
+            const finalRotation = (act.hd - deviceHeading - 45);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
 
