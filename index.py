@@ -203,8 +203,8 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 1; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(150px) scale(0.9); }
+        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 1; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); height: auto; }
+        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(-20px) scale(0.9); margin-top: -80px; margin-bottom: 0; }
         .ui-row { display: flex; gap: 6px; }
         
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; transition: all 0.3s ease; }
@@ -532,17 +532,22 @@ def index():
         function hideUI() { 
             const ui = document.getElementById('ui');
             ui.classList.add('hide'); 
-            // Faz o cartão subir suavemente ao remover o UI do fluxo do layout
-            setTimeout(() => {
-                ui.style.display = 'none';
-                setInterval(update, 5000);
-                update();
-            }, 1200);
+            update();
+            setInterval(update, 10000);
         }
+
+        window.onload = () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(p => {
+                    pos = {lat: p.coords.latitude, lon: p.coords.longitude};
+                    hideUI();
+                }, () => {});
+            }
+        };
     </script>
 </body>
 </html>
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
