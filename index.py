@@ -346,7 +346,16 @@ def index():
         }
 
         function handleOrientation(e) {
-            deviceHeading = e.webkitCompassHeading || (360 - e.alpha);
+            let heading = e.webkitCompassHeading || (360 - e.alpha);
+            
+            // CORREÇÃO PARA MODO DEITADO (LANDSCAPE)
+            const isLandscape = window.innerWidth > window.innerHeight;
+            if (isLandscape) {
+                // Ajusta o heading em 90 graus para compensar a rotação do dispositivo
+                heading = (heading + 90) % 360;
+            }
+            
+            deviceHeading = heading;
             updatePlaneVisual();
         }
 
