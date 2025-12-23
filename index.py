@@ -4,6 +4,7 @@ import requests
 import math
 import random
 from datetime import datetime, timedelta
+from functools import lru_cache
 
 app = Flask(__name__)
 
@@ -59,7 +60,8 @@ def fetch_aircrafts(lat, lon):
         except: continue
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
-
+    
+@lru_cache(maxsize=128)
 def fetch_route(callsign):
     if not callsign or callsign == "N/A":
         return "--- ---"
@@ -158,7 +160,7 @@ def radar():
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
-                        r_info = s.get('route') or fetch_route(call)
+                        r_info = s.get('route') or fetch_route(call.strip().upper())
 
                         proc.append({
                             "icao": s.get('hex', 'UNK').upper(), 
