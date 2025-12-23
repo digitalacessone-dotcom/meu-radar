@@ -7,18 +7,19 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Configurações V106.3 - ANAC 2025 INTEGRATED
+# Configurações V106.2 - ANAC 2025 INTEGRATED
 RADIUS_KM = 190 
 DEFAULT_LAT = 37.24804
 DEFAULT_LON = -115.800155
 
+# LISTA DE MILITARES SOLICITADA
 MIL_RARE = [
     'F14', 'F15', 'F16', 'F18', 'F22', 'F35', 'FA18', 'F4', 'F5', 'F117', 'A10', 'AV8B',
     'B1', 'B2', 'B52', 'C130', 'C17', 'C5', 'C160', 'A400', 'CN35', 'C295', 'C390', 'C212',
     'KC10', 'KC135', 'A332', 'K35R', 'KC76', 'P3', 'P8', 'E3', 'E8', 'E2', 'C2', 'RC135',
     'SU24', 'SU25', 'SU27', 'SU30', 'SU33', 'SU34', 'SU35', 'SU57', 'MIG21', 'MIG23', 'MIG25', 
     'MIG29', 'MIG31', 'MIG35', 'TU22', 'TU95', 'TU142', 'TU160', 'IL18', 'IL38', 'IL62', 'IL76', 
-    'IL78', 'IL82', 'IL96', 'AN12', 'AN22', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
+    'IL78', 'IL82', 'IL96', 'AN12', 'AN22', 'AN24', 'AN24', 'AN26', 'AN30', 'AN32', 'AN72', 'AN124', 'AN225',
     'J10', 'J11', 'J15', 'J16', 'J20', 'H6', 'KJ200', 'KJ500', 'KJ2000', 'Y8', 'Y9', 'Y20',
     'EUFI', 'RAFA', 'GRIP', 'TOR', 'HAWK', 'T38', 'M346', 'L39', 'K8', 'EMB3', 'AT27', 'C95', 
     'C97', 'C98', 'U27', 'R99', 'E99', 'P95', 'KC390', 'AMX', 'A1', 'A29'
@@ -212,22 +213,21 @@ def index():
         button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         button:active { transform: scale(0.95); }
         
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; z-index: 10; filter: drop-shadow(0 20px 30px rgba(0,0,0,0.4)); }
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; z-index: 10; }
         .scene.flipped { transform: rotateY(180deg); }
         
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; 
             background: #fdfaf0;
             background-image: 
-                linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(0,0,0,0.05) 100%),
+                linear-gradient(to right, rgba(0,0,0,0.03) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.03) 100%),
                 url('https://www.transparenttextures.com/patterns/paper-fibers.png');
             display: flex; flex-direction: column; overflow: hidden; 
-            box-shadow: inset 0 0 40px rgba(212, 186, 134, 0.15), inset 0 0 2px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
         }
 
-        .face.back { transform: rotateY(180deg); padding: 15px; background: #f7f3e8; }
-        
-        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; box-shadow: inset 0 -10px 20px rgba(0,0,0,0.1); }
+        .face.back { transform: rotateY(180deg); padding: 15px; }
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
         .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
         
@@ -235,19 +235,19 @@ def index():
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
         
-        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.15); position: relative; z-index: 2; margin: 0 5px; }
-        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; transition: none; }
+        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; transition: none; }
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
         
         .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
-        .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #1a1a1a; height: 24px; display: flex; gap: 1px; text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1); opacity: 0.92; }
-        .char { width: 14px; height: 22px; background: rgba(0,0,0,0.06); border-radius: 2px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; filter: saturate(0.8); }
-        #bc { width: 110px; height: 35px; opacity: 0.7; filter: contrast(1.2) grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
+        .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #1a1a1a; height: 24px; display: flex; gap: 1px; }
+        .char { width: 14px; height: 22px; background: rgba(0,0,0,0.05); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+        .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
+        #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
         
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: width 0.5s ease; z-index: 10; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #222; }
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: width 0.5s ease; z-index: 10; }
         
-        .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 15px rgba(0,0,0,0.3), inset 0 0 15px rgba(255,255,255,0.6); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
+        .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
         #compass-btn { font-size: 9px; background: #222; color: #fff; margin-top: 5px; padding: 5px; opacity: 0.6; }
@@ -255,8 +255,8 @@ def index():
         @media (orientation: landscape) { 
             .scene { width: 550px; height: 260px; } 
             .face { flex-direction: row !important; } 
-            .stub { width: 30% !important; height: 100% !important; box-shadow: inset -10px 0 20px rgba(0,0,0,0.1); } 
-            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.15) !important; border-top: none !important; margin: 5px 0; } 
+            .stub { width: 30% !important; height: 100% !important; } 
+            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; margin: 0; } 
             .perfor::before { left: -15px; top: -25px; }
             .perfor::after { left: -15px; bottom: -25px; top: auto; }
             .main { width: 70% !important; } 
@@ -284,7 +284,7 @@ def index():
             </div>
             <div class="perfor"></div>
             <div class="main">
-                <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start; letter-spacing: 1px;">BOARDING PASS</div>
+                <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
                     <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #888;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
                     <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #888;">DISTANCE</span><div id="f-dist" class="flap" style="color:#444"></div></div>
@@ -292,7 +292,7 @@ def index():
                     <div><span style="font-size: 7px; font-weight: 900; color: #888;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr" style="font-size:45px; transition: transform 0.2s cubic-bezier(0.17, 0.67, 0.83, 0.67); filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));">✈</div>
+                    <div id="arr" style="font-size:45px; transition: transform 0.2s cubic-bezier(0.17, 0.67, 0.83, 0.67); filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));">✈</div>
                     <div class="date-visual">
                         <div id="f-line1">-- --- ----</div>
                         <div id="f-line2">--.--</div>
@@ -302,16 +302,16 @@ def index():
             </div>
         </div>
         <div class="face back">
-            <div style="height:100%; border:1px dashed rgba(0,0,0,0.2); border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative; background: rgba(255,255,255,0.3);">
+            <div style="height:100%; border:1px dashed rgba(0,0,0,0.15); border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative;">
                 <div style="display:flex; justify-content:space-between;">
                     <div><span style="font-size: 7px; font-weight: 900; color: #888;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
                     <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #888;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 30px; text-align: center; font-weight: 900; opacity: 0.7; filter: contrast(1.1);">
+                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 30px; text-align: center; font-weight: 900; opacity: 0.8;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.3</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -538,13 +538,16 @@ def index():
             }, 800);
         }
 
+        // AUTO GPS INTEGRATION
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat: p.coords.latitude, lon: p.coords.longitude};
-        });
+            hideUI();
+        }, e => console.log("GPS OFF"));
+
     </script>
 </body>
 </html>
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, port=5000)
