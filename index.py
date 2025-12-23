@@ -311,7 +311,7 @@ def index():
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.3</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -346,16 +346,7 @@ def index():
         }
 
         function handleOrientation(e) {
-            let heading = e.webkitCompassHeading || (360 - e.alpha);
-            
-            // CORREÇÃO PARA MODO DEITADO (LANDSCAPE)
-            const isLandscape = window.innerWidth > window.innerHeight;
-            if (isLandscape) {
-                // Ajusta o heading em 90 graus para compensar a rotação do dispositivo
-                heading = (heading + 90) % 360;
-            }
-            
-            deviceHeading = heading;
+            deviceHeading = e.webkitCompassHeading || (360 - e.alpha);
             updatePlaneVisual();
         }
 
@@ -543,13 +534,20 @@ def index():
             ui.classList.add('hide'); 
             setTimeout(() => {
                 update(); 
-                setInterval(update, 5000);
-            }, 1200);
+                setInterval(update, 20000); 
+            }, 800);
         }
+
+        // AUTO GPS INTEGRATION
+        navigator.geolocation.getCurrentPosition(p => {
+            pos = {lat: p.coords.latitude, lon: p.coords.longitude};
+            hideUI();
+        }, e => console.log("GPS OFF"));
+
     </script>
 </body>
 </html>
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, port=5000)
