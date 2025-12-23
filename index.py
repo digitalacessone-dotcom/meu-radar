@@ -371,9 +371,9 @@ def index():
         }
 
         function updatePlaneVisual() {
-            if(!act || !pos) return;
+            if(!act) return;
             const planeElement = document.getElementById('arr');
-            const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
+            const aircraftHeading = act.hd;
             const finalRotation = (bearingToPlane - deviceHeading - 45);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
