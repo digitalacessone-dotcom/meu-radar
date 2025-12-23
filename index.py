@@ -201,10 +201,10 @@ def index():
     <style>
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
+        body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; padding: 20px; }
         
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 1; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); height: auto; }
-        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(-20px) scale(0.9); margin-top: -80px; margin-bottom: 0; }
+        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 100; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); height: auto; }
+        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(100px) scale(0.9); margin-bottom: -80px; }
         .ui-row { display: flex; gap: 6px; }
         
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; transition: all 0.3s ease; }
@@ -253,14 +253,15 @@ def index():
         #compass-btn { font-size: 9px; background: #222; color: #fff; margin-top: 5px; padding: 5px; opacity: 0.6; }
 
         @media (orientation: landscape) { 
-            .scene { width: 550px; height: 260px; } 
+            body { justify-content: center; padding: 10px; }
+            .scene { width: 550px; height: 260px; margin: 0 auto; } 
             .face { flex-direction: row !important; } 
             .stub { width: 30% !important; height: 100% !important; } 
             .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; margin: 0; } 
             .perfor::before { left: -15px; top: -25px; }
             .perfor::after { left: -15px; bottom: -25px; top: auto; }
             .main { width: 70% !important; } 
-            .ticker { width: 550px; } 
+            .ticker { width: 550px; margin-top: 10px; } 
         }
     </style>
 </head>
@@ -541,7 +542,7 @@ def index():
                 navigator.geolocation.getCurrentPosition(p => {
                     pos = {lat: p.coords.latitude, lon: p.coords.longitude};
                     hideUI();
-                }, () => {});
+                });
             }
         };
     </script>
@@ -550,4 +551,4 @@ def index():
 ''')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
