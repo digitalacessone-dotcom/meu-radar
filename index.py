@@ -34,7 +34,7 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}/longitude={lon}/current=temperature_2m,weather_code,visibility"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
@@ -201,10 +201,10 @@ def index():
     <style>
         :root { --gold: #FFD700; --bg: #0b0e11; --brand: #444; --blue-txt: #34a8c9; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; padding: 20px; }
+        body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 5; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); height: auto; }
-        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(100px) scale(0.9); margin-bottom: -80px; }
+        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 1; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        #ui.hide { opacity: 0; pointer-events: none; transform: translateY(150px) scale(0.9); }
         .ui-row { display: flex; gap: 6px; }
         
         input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; transition: all 0.3s ease; }
@@ -213,7 +213,7 @@ def index():
         button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         button:active { transform: scale(0.95); }
         
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; z-index: 20; }
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; z-index: 10; }
         .scene.flipped { transform: rotateY(180deg); }
         
         .face { 
@@ -253,15 +253,14 @@ def index():
         #compass-btn { font-size: 9px; background: #222; color: #fff; margin-top: 5px; padding: 5px; opacity: 0.6; }
 
         @media (orientation: landscape) { 
-            body { justify-content: center; padding: 10px; }
-            .scene { width: 550px; height: 260px; margin: 0 auto; } 
+            .scene { width: 550px; height: 260px; } 
             .face { flex-direction: row !important; } 
             .stub { width: 30% !important; height: 100% !important; } 
             .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; margin: 0; } 
             .perfor::before { left: -15px; top: -25px; }
             .perfor::after { left: -15px; bottom: -25px; top: auto; }
             .main { width: 70% !important; } 
-            .ticker { width: 550px; margin-top: 10px; } 
+            .ticker { width: 550px; } 
         }
     </style>
 </head>
@@ -533,13 +532,22 @@ def index():
         function hideUI() { 
             const ui = document.getElementById('ui');
             ui.classList.add('hide'); 
-            update();
-            setInterval(update, 10000);
+            setTimeout(() => {
+                update(); 
+                setInterval(update, 20000); 
+            }, 800);
         }
+
+        // AUTO GPS INTEGRATION
+        navigator.geolocation.getCurrentPosition(p => {
+            pos = {lat: p.coords.latitude, lon: p.coords.longitude};
+            hideUI();
+        }, e => console.log("GPS OFF"));
+
     </script>
 </body>
 </html>
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
