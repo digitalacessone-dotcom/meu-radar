@@ -34,7 +34,7 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}/longitude={lon}/current=temperature_2m,weather_code,visibility"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
@@ -203,7 +203,7 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; padding: 20px; }
         
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 100; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); height: auto; }
+        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 5; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); height: auto; }
         #ui.hide { opacity: 0; pointer-events: none; transform: translateY(100px) scale(0.9); margin-bottom: -80px; }
         .ui-row { display: flex; gap: 6px; }
         
@@ -213,7 +213,7 @@ def index():
         button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         button:active { transform: scale(0.95); }
         
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; z-index: 10; }
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; z-index: 20; }
         .scene.flipped { transform: rotateY(180deg); }
         
         .face { 
@@ -536,19 +536,10 @@ def index():
             update();
             setInterval(update, 10000);
         }
-
-        window.onload = () => {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(p => {
-                    pos = {lat: p.coords.latitude, lon: p.coords.longitude};
-                    hideUI();
-                });
-            }
-        };
     </script>
 </body>
 </html>
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
