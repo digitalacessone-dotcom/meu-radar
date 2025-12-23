@@ -34,7 +34,7 @@ def get_weather_desc(code):
 
 def get_weather(lat, lon):
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}/longitude={lon}&current=temperature_2m,weather_code,visibility"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,visibility"
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
@@ -202,14 +202,14 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 500; transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 30px; z-index: 500; transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
         #ui.hide { opacity: 0; pointer-events: none; }
-        .ui-row { display: flex; gap: 6px; }
+        .ui-row { display: flex; gap: 6px; width: 100%; }
         
-        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; transition: all 0.3s ease; }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; transition: all 0.3s ease; width: 100%; }
         input:focus { background: #252a30; box-shadow: 0 0 0 2px rgba(255,255,255,0.1); }
         
-        button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); white-space: nowrap; }
         button:active { transform: scale(0.95); }
         
         .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; }
@@ -249,7 +249,7 @@ def index():
         .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
         .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
         
-        #compass-btn { font-size: 9px; background: #222; color: #fff; margin-top: 5px; padding: 5px; opacity: 0.6; }
+        #compass-btn { font-size: 9px; background: #222; color: #fff; margin-top: 5px; padding: 5px; opacity: 0.6; width: 100%; }
 
         @media (orientation: landscape) { 
             .scene { width: 550px; height: 260px; } 
@@ -495,13 +495,8 @@ def index():
 
         function startSearch() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const btn = event.target;
             const v = document.getElementById('in').value.toUpperCase();
             
-            // Efeito visual de clique suave
-            btn.style.transform = "scale(0.9)";
-            setTimeout(() => btn.style.transform = "scale(1)", 150);
-
             tickerMsg = ["SEARCHING TRAFFIC..."];
             updateTicker();
             
@@ -548,4 +543,4 @@ def index():
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
