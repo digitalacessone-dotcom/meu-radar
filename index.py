@@ -545,7 +545,7 @@ def index():
             ui.classList.add('hide'); 
             setTimeout(() => {
                 update(); 
-                setInterval(update, 20000); 
+                setInterval(update, 15000); 
             }, 800);
         }
 
