@@ -330,6 +330,255 @@ def index():
     <div class="ticker" id="tk">WAITING...</div>
 
     <script>
+        // --- FUNCIONALIDADE: MANTER TELA ATIVA (iOS 26) ---
+        let wakeLock = null;
+
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {
+                console.log(`${err.name}, ${err.message}`);
+            }
+        };
+
+        // Reativa se mudar de aba e voltar
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+
+        // Tenta ativar ao carregar
+        requestWakeLock();
+        // --- FIM DA FUNCIONALIDADE ---
+
+        let pos = null, act = null, isTest = false;
+        let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
+        let lastDist = null;
+        let deviceHeading = 0;
+        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
+
+        function initCompass() {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(state => {
+                        if (state === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                            document.getElementById('compass-btn').style.display = 'none';
+                        }
+                    });
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+                document.getElementById('compass-btn').style.display = 'none';
+            }
+        }
+
+        function handleOrientation(e) {
+            let heading = e.webkitCompassHeading || (360 - e.alpha);
+            const isLandscape = window.innerWidth > window.innerHeight;
+            if (isLandscape) { heading = (heading + 90) % 360; }
+            deviceHeading = heading;
+            updatePlaneVisual();
+        }
+
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const l1 = lat1 * Math.PI / 180;
+            const l2 = lat2 * Math.PI / 180;
+            const dl = (lon2 - lon1) * Math.PI / 180;
+            const y = Math.sin(dl) * Math.cos(l2);
+            const x = Math.cos(l1) * Math.sin(l2) - Math.sin(l1) * Math.cos(l2) * Math.cos(dl);
+            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        }
+
+        function updatePlaneVisual() {
+            if(!act || !pos) return;
+            const planeElement = document.getElementById('arr');
+            const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
+            const finalRotation = (bearingToPlane - deviceHeading - 45);
+            planeElement.style.transform = `rotate(${finalRotation}deg)`;
+        }
+
+        function playPing() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            } catch(e) {}
+        }
+
+        function applyFlap(id, text, isTicker = false) {
+            const container = document.getElementById(id);
+            if(!container) return;
+            const targetText = text.toUpperCase();
+            if (container.getAttribute('data-last') === targetText) return;
+            container.setAttribute('data-last', targetText);
+            const limit = isTicker ? 32 : 8;
+            const target = text.toUpperCase().padEnd(limit, ' ');
+            container.innerHTML = '';
+            [...target].forEach((char) => {
+                const span = document.createElement('span');
+                if(!isTicker) span.className = 'char';
+                span.innerHTML = '&nbsp;';
+                container.appendChild(span);
+                let count = 0;
+                let max = 40 + Math.floor(Math.random() * 80); 
+                const interval = setInterval(() => {
+                    span.innerText = chars[Math.floor(Math.random() * chars.length)];
+                    if (count++ >= max) { 
+                        clearInterval(interval); 
+                        span.innerHTML = (char === ' ') ? '&nbsp;' : char; 
+                    }
+                }, 20);
+            });
+        }
+
+        function saveHistory(f) {
+            if(isTest) return;
+            if(!f.is_rare) return;
+            let history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
+            if(!history.find(x => x.icao === f.icao)) {
+                history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
+                localStorage.setItem('rare_flights', JSON.stringify(history));
+            }
+        }
+
+        setInterval(() => {
+            if(act) {
+                toggleState = !toggleState;
+                document.getElementById('icao-label').innerText = toggleState ? "AIRCRAFT ICAO" : "REGISTRATION";
+                applyFlap('f-icao', toggleState ? act.icao : act.reg);
+                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "ESTIMATED CONTACT";
+                applyFlap('f-dist', toggleState ? act.dist + " KM" : "ETA " + act.eta + "M");
+                document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
+                applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
+            }
+        }, 12000);
+
+        function updateTicker() { 
+            if (tickerMsg.length > 0) { 
+                applyFlap('tk', tickerMsg[tickerIdx], true); 
+                tickerIdx = (tickerIdx + 1) % tickerMsg.length; 
+            } 
+        }
+        setInterval(updateTicker, 15000);
+
+        async function update() {
+            if(!pos) return;
+            try {
+                const current_icao = act ? act.icao : '';
+                const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&current_icao=${current_icao}&test=${isTest}&_=${Date.now()}`);
+                const d = await r.json();
+                
+                if(d.flight) {
+                    const f = d.flight;
+                    const stub = document.getElementById('stb');
+                    const seal = document.getElementById('gold-seal');
+
+                    let trend = "MAINTAINING";
+                    if(lastDist !== null) {
+                        if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
+                        else if(f.dist > lastDist + 0.1) trend = "MOVING AWAY";
+                    }
+                    lastDist = f.dist;
+
+                    if(f.is_rare) {
+                        stub.className = 'stub rare-mode';
+                        seal.style.display = 'flex';
+                        saveHistory(f);
+                    } else {
+                        stub.className = 'stub';
+                        stub.style.background = f.color;
+                        seal.style.display = 'none';
+                    }
+
+                    if(!act || act.icao !== f.icao) {
+                        playPing();
+                        document.getElementById('airl').innerText = f.airline;
+                        applyFlap('f-call', f.call); applyFlap('f-route', f.route);
+                        document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
+                        
+                        document.getElementById('f-line1').innerText = f.date;
+                        document.getElementById('f-line2').innerText = f.time;
+                        document.getElementById('b-date-line1').innerText = f.date;
+                        document.getElementById('b-date-line2').innerText = f.time;
+                    }
+
+                    for(let i=1; i<=5; i++) {
+                        const threshold = 190 - ((i-1) * 40);
+                        document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
+                    }
+                    if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
+                    
+                    tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
+                    act = f;
+                    updatePlaneVisual();
+                } else if (act) {
+                    tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
+                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
+                    document.getElementById('stb').className = 'stub';
+                    document.getElementById('stb').style.background = 'var(--brand)';
+                } else {
+                    tickerMsg = ["SEARCHING TRAFFIC..."];
+                }
+            } catch(e) {}
+        }
+
+        function startSearch(e) {
+            requestWakeLock(); // Solicita bloqueio na interação do usuário (exigência do iOS)
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const btn = e.target;
+            const v = document.getElementById('in').value.toUpperCase();
+            
+            btn.style.transform = "scale(0.9)";
+            setTimeout(() => btn.style.transform = "scale(1)", 150);
+
+            tickerMsg = ["SEARCHING TRAFFIC..."];
+            updateTicker();
+            
+            if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
+            else { 
+                fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v)
+                .then(r=>r.json())
+                .then(d=>{ 
+                    if(d[0]) { 
+                        pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; 
+                        hideUI(); 
+                    } 
+                }); 
+            }
+        }
+        
+        function handleFlip(e) { 
+            if(!e.target.closest('#ui') && !e.target.closest('#bc')) {
+                document.getElementById('card').classList.toggle('flipped'); 
+            }
+        }
+        
+        function openMap(e) { 
+            e.stopPropagation(); 
+            if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); 
+        }
+        
+        function hideUI() { 
+            const ui = document.getElementById('ui');
+            ui.classList.add('hide'); 
+            setTimeout(() => {
+                update(); 
+                setInterval(update, 15000); 
+            }, 800);
+        }
+
+        navigator.geolocation.getCurrentPosition(p => {
+            pos = {lat: p.coords.latitude, lon: p.coords.longitude};
+            hideUI();
+        }, e => console.log("GPS OFF"));
         let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
