@@ -330,6 +330,22 @@ def index():
     <div class="ticker" id="tk">WAITING...</div>
 
     <script>
+        // --- INÍCIO WAKE LOCK (TELA SEMPRE ATIVA iOS 26) ---
+        let wakeLock = null;
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
+        };
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+        // --- FIM WAKE LOCK ---
+
         let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
@@ -514,6 +530,7 @@ def index():
         }
 
         function startSearch(e) {
+            requestWakeLock(); // <--- ACRESCENTE ESTA LINHA
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const btn = e.target;
             const v = document.getElementById('in').value.toUpperCase();
@@ -561,6 +578,7 @@ def index():
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat: p.coords.latitude, lon: p.coords.longitude};
             hideUI();
+            requestWakeLock(); // <--- ACRESCENTE ESTA LINHA
         }, e => console.log("GPS OFF"));
 
     </script>
