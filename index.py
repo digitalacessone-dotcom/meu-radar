@@ -63,14 +63,14 @@ def fetch_aircrafts(lat, lon):
     
 @lru_cache(maxsize=128)
 def fetch_route(callsign):
-    if not callsign or callsign == "N/A":
-        return "--- ---"
+    if not callsign or callsign == "N/A": return "--- ---"
     try:
-        url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
-        r = requests.get(url, timeout=3).json()
-        if r.get('aircraft'):
-            route = r['aircraft'][0].get('route', "EN ROUTE")
-            return route.replace('-', ' ').upper()
+        # Usando adsb.lol que entrega rotas de forma mais direta
+        url = f"https://api.adsb.lol/v2/callsign/{callsign.strip().upper()}"
+        r = requests.get(url, timeout=4).json()
+        if r.get('aircraft') and len(r['aircraft']) > 0:
+            rt = r['aircraft'][0].get('route')
+            if rt: return rt.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
         return "EN ROUTE"
@@ -394,6 +394,10 @@ def index():
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             if(!container) return;
+            const targetText = text.toUpperCase();
+            // INTELIGENTE: Se o texto for igual ao anterior, não faz nada (protege CPU)
+            if (container.getAttribute('data-last') === targetText) return;
+            container.setAttribute('data-last', targetText);
             const limit = isTicker ? 32 : 8;
             const target = text.toUpperCase().padEnd(limit, ' ');
             container.innerHTML = '';
