@@ -256,6 +256,27 @@ def radar():
                         elif call.startswith("GES"): airline, color, is_rare = "GESTAIR", "#222", True
                         elif call.startswith("LAV"): airline, color, is_rare = "ALBASTAR", "#E21E26"
                         elif call.startswith("SWT"): airline, color = "SWIFTAIR", "#004A99"
+                        elif call.startswith("PWP"): airline, color = "PARANAIR", "#003366"
+                        elif call.startswith("FBZ"): airline, color = "FLYBONDI", "#FFD700"
+                        elif call.startswith("LDR"): airline, color, is_rare = "LIDER AVIAÇÃO", "#000", True
+                        elif call.startswith("NCR"): airline, color = "NATIONAL AIR", "#003366"
+                        elif call.startswith("ICV"): airline, color = "CARGOLUX ITALIA", "#ED1C24"
+                        elif call.startswith("VIR"): airline, color = "VIRGIN ATLANTIC", "#C8102E"
+                        elif call.startswith("AFL"): airline, color = "AEROFLOT", "#003399"
+                        elif call.startswith("VUK"): airline, color = "VOLOTEA", "#FF4F00"
+                        elif call.startswith("EXS"): airline, color = "JET2", "#ED1C24"
+                        elif call.startswith("RZO"): airline, color = "SATA AZORES", "#004B91"
+                        elif call.startswith("TPA"): airline, color = "AVIANCA CARGO", "#E01F26"
+                        elif call.startswith("KRE"): airline, color, is_rare = "AEROSUCRE", "#FFD700", True
+                        elif call.startswith("OAE"): airline, color, is_rare = "OMNI AIR INTL", "#1D2951", True
+                        elif call.startswith("ICV"): airline, color = "CARGOLUX ITALIA", "#ED1C24"
+                        elif call.startswith("BOS"): airline, color = "OPEN SKIES", "#003366"
+                        elif call.startswith("RPB"): airline, color = "COPA COLOMBIA", "#003366"
+                        elif call.startswith("PUE"): airline, color = "PLUS ULTRA", "#D7192D"
+                        elif call.startswith("VCV"): airline, color, is_rare = "CONVIASA", "#003366", True
+                        elif call.startswith("WTI"): airline, color = "WORLD TICKET", "#555"
+                        elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
+                            airline, color, is_rare = "SANTA CLAUS", "#D42426", True
                         
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
