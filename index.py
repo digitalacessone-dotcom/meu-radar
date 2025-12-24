@@ -395,6 +395,18 @@ def index():
             } catch(e) {}
         }
 
+       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let audioUnlocked = false;
+
+        function resumeAudio() {
+            if (!audioUnlocked && audioCtx.state === 'suspended') {
+                audioCtx.resume().then(() => {
+                    audioUnlocked = true;
+                    console.log("Audio Unlocked for iOS");
+                });
+            }
+        }
+
         function applyFlap(id, text, isTicker = false) {
             const container = document.getElementById(id);
             if(!container) return;
