@@ -63,17 +63,17 @@ def fetch_aircrafts(lat, lon):
     
 @lru_cache(maxsize=128)
 def fetch_route(callsign):
-    if not callsign or callsign == "N/A":
-        return "--- ---"
+    if not callsign or callsign == "N/A": return "--- ---"
     try:
         url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
-        r = requests.get(url, timeout=3).json()
-        if r.get('aircraft'):
-            route = r['aircraft'][0].get('route', "EN ROUTE")
-            return route.replace('-', ' ').upper()
+        # Aumentamos para 5 segundos para dar tempo da API responder
+        r = requests.get(url, timeout=5).json() 
+        if r.get('aircraft') and len(r['aircraft']) > 0:
+            route = r['aircraft'][0].get('route')
+            return route.replace('-', ' ').upper() if route else "EN ROUTE"
         return "EN ROUTE"
     except:
-        return "EN ROUTE"
+        return "OFFLINE"
 
 @app.route('/api/radar')
 def radar():
