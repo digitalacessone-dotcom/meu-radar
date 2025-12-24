@@ -189,7 +189,6 @@ def radar():
                         elif call.startswith(("CCA", "CA")): airline, color = "AIR CHINA", "#E30613"
                         elif call.startswith(("VJC", "VJ")): airline, color = "VIETJET AIR", "#F9A825"
                         elif call.startswith(("ITY", "AZ")): airline, color = "ITA AIRWAYS", "#004B96"
-                        elif call.startswith(("SAS", "SK")): airline, color = "SCANDINAVIAN", "#003399"
                         elif call.startswith(("LOT", "LO")): airline, color = "LOT POLISH", "#003366"
                         elif call.startswith(("FIN", "AY")): airline, color = "FINNAIR", "#00005C"
                         elif call.startswith(("NAX", "DY")): airline, color = "NORWEGIAN AIR", "#D92121"
@@ -232,7 +231,6 @@ def radar():
                         elif call.startswith("VMP"): airline, color, is_rare = "VAMP AIR", "#333", True
                         elif call.startswith("AXY"): airline, color, is_rare = "AIRX CHARTER", "#000", True
                         elif call.startswith("FYG"): airline, color, is_rare = "FLYING SERVICE", "#555", True
-                        elif call.startswith(("SKU", "H2")): airline, color = "SKY AIRLINE", "#FF00FF"
                         elif call.startswith(("JAT", "JA")): airline, color = "JETSMART", "#003366"
                         elif call.startswith(("LPE", "LP")): airline, color = "LATAM PERU", "#E6004C"
                         elif call.startswith(("LNE", "XL")): airline, color = "LATAM ECUADOR", "#E6004C"
@@ -275,6 +273,11 @@ def radar():
                         elif call.startswith("PUE"): airline, color = "PLUS ULTRA", "#D7192D"
                         elif call.startswith("VCV"): airline, color, is_rare = "CONVIASA", "#003366", True
                         elif call.startswith("WTI"): airline, color = "WORLD TICKET", "#555"
+                        # 1º PRIORIDADE: SKY AIRLINE (Verifica 3 letras primeiro)
+                        if call.startswith("SKU"): airline, color = "SKY AIRLINE", "#FF00FF"
+                        elif call.startswith("H2"): airline, color = "SKY AIRLINE PERU", "#FF00FF"
+                        # 2º PRIORIDADE: SCANDINAVIAN (Apenas se não for SKU)
+                        elif call.startswith("SAS"): airline, color = "SCANDINAVIAN", "#003399"
                         elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
                             airline, color, is_rare = "SANTA CLAUS", "#D42426", True
                         
