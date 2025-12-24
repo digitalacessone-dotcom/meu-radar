@@ -65,11 +65,13 @@ def fetch_aircrafts(lat, lon):
 def fetch_route(callsign):
     if not callsign or callsign == "N/A": return "--- ---"
     try:
-        # Usando adsb.lol que entrega rotas de forma mais direta
+        # API mais robusta que integra dados do ADSB-Exchange
         url = f"https://api.adsb.lol/v2/callsign/{callsign.strip().upper()}"
         r = requests.get(url, timeout=4).json()
         if r.get('aircraft') and len(r['aircraft']) > 0:
-            rt = r['aircraft'][0].get('route')
+            ac = r['aircraft'][0]
+            # Tenta pegar a rota; se não tiver, pelo menos limpa o callsign
+            rt = ac.get('route')
             if rt: return rt.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
@@ -101,6 +103,8 @@ def radar():
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
+                        reg = (s.get('r') or 'N/A').upper()
+                        r_info = s.get('route') or fetch_route(call.strip().upper())
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
