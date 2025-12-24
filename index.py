@@ -390,7 +390,7 @@ def index():
         }
     </style>
 </head>
-<body onclick="handleFlip(event)">
+<body onclick="handleFlip(event); requestWakeLock()" style="background: #000000 !important; color: #fff; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
     <div id="ui">
         <div class="ui-row">
             <input type="text" id="in" placeholder="ENTER LOCATION">
