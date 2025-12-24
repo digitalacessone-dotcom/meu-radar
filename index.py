@@ -8,10 +8,10 @@ from functools import lru_cache
 
 app = Flask(__name__)
 
-# CONFIGURAÇÕES V106.5 - ULTRA PERFORMANCE
-RADIUS_KM, DEG_RANGE = 190, 1.7 
-http = requests.Session()
-executor = ThreadPoolExecutor(max_workers=10)
+# Configurações V106.2 - ANAC 2025 INTEGRATED
+RADIUS_KM = 190 
+DEFAULT_LAT = 37.24804
+DEFAULT_LON = -115.800155
 
 # LISTA DE MILITARES SOLICITADA
 MIL_RARE = [
@@ -44,18 +44,24 @@ def get_weather(lat, lon):
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
 def fetch_aircrafts(lat, lon):
-    endpoints = [f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200", f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"]
-    def get_d(u):
-        try: return http.get(u, timeout=2.0).json().get('aircraft', [])
-        except: return []
-    res = executor.map(get_d, endpoints)
-    all_ac, seen = [], set()
-    for l in res:
-        for a in l:
-            if a.get('hex') not in seen:
-                seen.add(a.get('hex')); all_ac.append(a)
-    return all_ac
+    endpoints = [
+        f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
+    ]
+    headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
+    all_aircraft = []
+    for url in endpoints:
+        try:
+            r = requests.get(url, headers=headers, timeout=4)
+            if r.status_code == 200:
+                data = r.json().get('aircraft', [])
+                if data: all_aircraft.extend(data)
+        except: continue
+    unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
+    return list(unique_data)
     
+@lru_cache(maxsize=128)
 def fetch_route(callsign):
     if not callsign or callsign == "N/A": return "--- ---"
     try:
@@ -97,10 +103,9 @@ def radar():
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
-                       # PERFORMANCE V106.5: Define variáveis antes das cores
-                        type_code = (s.get('t') or '').upper()
                         reg = (s.get('r') or 'N/A').upper()
-                        r_info = "EN ROUTE" # Não chama a API de rota aqui dentro (evita travar)
+                        r_info = s.get('route') or fetch_route(call.strip().upper())
+                        type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
                         if s.get('mil') or type_code in MIL_RARE:
@@ -178,14 +183,13 @@ def radar():
             
             if proc:
                 proc.sort(key=lambda x: x['dist'])
-                found = proc[0]
+                new_closest = proc[0]
                 if current_icao:
-                    curr_ac = next((x for x in proc if x['icao'] == current_icao), None)
-                    if curr_ac and curr_ac['dist'] < (found['dist'] + 5): found = curr_ac
-                
-                # SÓ AQUI buscamos a rota, e apenas para o avião que será exibido
-                if found:
-                    found['route'] = fetch_route(found['call'])
+                    current_on_radar = next((x for x in proc if x['icao'] == current_icao), None)
+                    if current_on_radar:
+                        found = new_closest if new_closest['dist'] < (current_on_radar['dist'] - 5) else current_on_radar
+                    else: found = new_closest
+                else: found = new_closest
 
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
@@ -565,4 +569,4 @@ def index():
 ''')
 
 if __name__ == '__main__':
-    app.run(debug=False, port=5000, threaded=True)
+    app.run(debug=True, port=5000)
