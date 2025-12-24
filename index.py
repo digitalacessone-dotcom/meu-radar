@@ -5,7 +5,6 @@ import math
 import random
 from datetime import datetime, timedelta
 from functools import lru_cache
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
@@ -44,32 +43,21 @@ def get_weather(lat, lon):
     except:
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
-def fetch_single_api(url):
-    """Função que consulta uma única API de forma isolada"""
-    headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
-    try:
-        # Timeout curto de 3s para não travar o script se uma API cair
-        r = requests.get(url, headers=headers, timeout=3)
-        if r.status_code == 200:
-            return r.json().get('aircraft', [])
-    except:
-        return []
-    return []
-
 def fetch_aircrafts(lat, lon):
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
     ]
+    headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     all_aircraft = []
-    
-    # O ThreadPoolExecutor dispara as 3 requisições SIMULTANEAMENTE
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = [executor.submit(fetch_single_api, url) for url in endpoints]
-        for future in as_completed(futures):
-            all_aircraft.extend(future.result())
-
+    for url in endpoints:
+        try:
+            r = requests.get(url, headers=headers, timeout=4)
+            if r.status_code == 200:
+                data = r.json().get('aircraft', [])
+                if data: all_aircraft.extend(data)
+        except: continue
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)
     
@@ -97,17 +85,13 @@ def radar():
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
-
-        # Busca Clima e Aviões SIMULTANEAMENTE para ganhar velocidade
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            future_weather = executor.submit(get_weather, lat, lon)
-            future_planes = executor.submit(fetch_aircrafts, lat, lon)
-            w = future_weather.result()
-            data = future_planes.result()
+        w = get_weather(lat, lon)
         
         if test:
             f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0, "lat": lat + 0.1, "lon": lon + 0.1}
             return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
+        
+        data = fetch_aircrafts(lat, lon)
         found = None
         if data:
             proc = []
