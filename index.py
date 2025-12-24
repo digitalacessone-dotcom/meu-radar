@@ -134,7 +134,7 @@ def radar():
                         elif call.startswith("GTI"): airline, color = "ATLAS AIR", "#003366"
                         elif call.startswith("CLX"): airline, color = "CARGOLUX", "#ED1C24"
                         elif call.startswith("ACA"): airline, color = "AIR CANADA", "#FF0000"
-                        elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#5A0225"
+                        elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#8A1538" # Grená Corrigido
                         elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
                         elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
                         elif call.startswith("UAE"): airline, color = "EMIRATES", "#FF0000"
@@ -231,7 +231,7 @@ def radar():
                         elif call.startswith("VMP"): airline, color, is_rare = "VAMP AIR", "#333", True
                         elif call.startswith("AXY"): airline, color, is_rare = "AIRX CHARTER", "#000", True
                         elif call.startswith("FYG"): airline, color, is_rare = "FLYING SERVICE", "#555", True
-                        elif call.startswith(("JAT", "JA")): airline, color = "JETSMART", "#003366"
+                        elif call.startswith(("JAT", "LBT", "JA")): airline, color = "JetSMART", "#D20019" # Fix JetSMART
                         elif call.startswith(("LPE", "LP")): airline, color = "LATAM PERU", "#E6004C"
                         elif call.startswith(("LNE", "XL")): airline, color = "LATAM ECUADOR", "#E6004C"
                         elif call.startswith(("LNC", "4C")): airline, color = "LATAM COLOMBIA", "#E6004C"
@@ -268,6 +268,7 @@ def radar():
                         elif call.startswith("KRE"): airline, color, is_rare = "AEROSUCRE", "#FFD700", True
                         elif call.startswith("OAE"): airline, color, is_rare = "OMNI AIR INTL", "#1D2951", True
                         elif call.startswith("ICV"): airline, color = "CARGOLUX ITALIA", "#ED1C24"
+                        elif call.startswith("SBI"): airline, color = "S7 AIRLINES", "#C4D600" # Verde Limão
                         elif call.startswith("BOS"): airline, color = "OPEN SKIES", "#003366"
                         elif call.startswith("RPB"): airline, color = "COPA COLOMBIA", "#003366"
                         elif call.startswith("PUE"): airline, color = "PLUS ULTRA", "#D7192D"
