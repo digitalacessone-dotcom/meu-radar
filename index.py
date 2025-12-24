@@ -5,8 +5,6 @@ import math
 import random
 from datetime import datetime, timedelta
 from functools import lru_cache
-from concurrent.futures import ThreadPoolExecutor # Para rodar APIs em paralelo
-import requests
 
 app = Flask(__name__)
 
@@ -53,16 +51,15 @@ def fetch_aircrafts(lat, lon):
     ]
     headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     all_aircraft = []
-    def get_data(url):
+    for url in endpoints:
         try:
-            r = http.get(url, headers=headers, timeout=3)
-            return r.json().get('aircraft', []) if r.status_code == 200 else []
-        except: return []
-
-    # Dispara as 3 requisições simultaneamente
-    results = executor.map(get_data, endpoints)
-    for aircs in results:
-        all_aircraft.extend(aircs)
+            r = requests.get(url, headers=headers, timeout=4)
+            if r.status_code == 200:
+                data = r.json().get('aircraft', [])
+                if data: all_aircraft.extend(data)
+        except: continue
+    unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
+    return list(unique_data)
     
 @lru_cache(maxsize=128)
 def fetch_route(callsign):
@@ -107,7 +104,7 @@ def radar():
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
                         reg = (s.get('r') or 'N/A').upper()
-                       r_info = s.get('route') or "EN ROUTE" # Valor padrão rápido
+                        r_info = s.get('route') or fetch_route(call.strip().upper())
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
@@ -193,10 +190,6 @@ def radar():
                         found = new_closest if new_closest['dist'] < (current_on_radar['dist'] - 5) else current_on_radar
                     else: found = new_closest
                 else: found = new_closest
-
-       if found and found['route'] == "EN ROUTE":
-            # Só busca a rota real para o avião que será exibido
-            found['route'] = fetch_route(found['call'])
 
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
