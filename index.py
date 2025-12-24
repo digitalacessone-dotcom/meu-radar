@@ -66,14 +66,17 @@ def fetch_route(callsign):
     if not callsign or callsign == "N/A": return "--- ---"
     try:
         url = f"https://api.adsb.one/v2/callsign/{callsign.strip()}"
-        # Aumentamos para 5 segundos para dar tempo da API responder
+        # Aumentamos o timeout para 5 segundos
         r = requests.get(url, timeout=5).json() 
+        
+        # Verificamos se 'aircraft' existe e se tem conteúdo
         if r.get('aircraft') and len(r['aircraft']) > 0:
-            route = r['aircraft'][0].get('route')
-            return route.replace('-', ' ').upper() if route else "EN ROUTE"
+            rt = r['aircraft'][0].get('route')
+            if rt:
+                return rt.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
-        return "OFFLINE"
+        return "EN ROUTE"
 
 @app.route('/api/radar')
 def radar():
