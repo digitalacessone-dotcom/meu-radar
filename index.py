@@ -691,26 +691,12 @@ def index():
             }, 800);
         }
 
-        let wakeLock = null;
-        async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    console.log("Wake Lock Ativo");
-                }
-            } catch (err) { console.log("Erro WakeLock:", err); }
-        }
-        // Reativar se você sair da aba e voltar
-        document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                await requestWakeLock();
-
         // AUTO GPS INTEGRATION
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat: p.coords.latitude, lon: p.coords.longitude};
             hideUI();
             requestWakeLock(); // <--- ACRESCENTE ESTA LINHA
-        }, e => console.log(e));
+        }, e => console.log("GPS OFF"));
 
     </script>
 </body>
