@@ -418,7 +418,7 @@ def index():
                     <div><span style="font-size: 7px; font-weight: 900; color: #888;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr" style="font-size:45px; transition: transform 0.2s cubic-bezier(0.17, 0.67, 0.83, 0.67); filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));">✈</div>
+                    <div id="arr" style="font-size:45px; color: #333; transition: transform 0.2s ...">✈</div>
                     <div class="date-visual">
                         <div id="f-line1">-- --- ----</div>
                         <div id="f-line2">--.--</div>
