@@ -515,7 +515,7 @@ def index():
             if(!act || !pos) return;
             const planeElement = document.getElementById('arr');
             const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
-            const finalRotation = (bearingToPlane - deviceHeading - 45);
+            const finalRotation = (bearingToPlane - deviceHeading - 135);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
 
