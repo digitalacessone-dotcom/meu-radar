@@ -419,7 +419,7 @@ def index():
                     <div><span style="font-size: 7px; font-weight: 900; color: #888;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                   <div id="arr" style="font-size:45px; color: #000000 !important; transition: transform 0.5s ease-out; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));">✈</div>
+                    <div id="arr" style="font-size:45px; color: #000000 !important; transition: transform 0.2s cubic-bezier(0.17, 0.67, 0.83, 0.67); filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));">✈</div>
                     <div class="date-visual">
                         <div id="f-line1">-- --- ----</div>
                         <div id="f-line2">--.--</div>
@@ -515,7 +515,7 @@ def index():
             if(!act || !pos) return;
             const planeElement = document.getElementById('arr');
             const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
-            const finalRotation = (bearingToPlane - deviceHeading - 90);
+            const finalRotation = (bearingToPlane - deviceHeading - 45);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
 
