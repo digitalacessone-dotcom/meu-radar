@@ -104,7 +104,7 @@ def radar():
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
                         reg = (s.get('r') or 'N/A').upper()
-                        r_info = s.get('route') or fetch_route(call.strip().upper())
+                        r_info = s.get('route') or "PENDING DATA..."
                         type_code = (s.get('t') or '').upper()
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
@@ -311,6 +311,11 @@ def radar():
                         found = new_closest if new_closest['dist'] < (current_on_radar['dist'] - 5) else current_on_radar
                     else: found = new_closest
                 else: found = new_closest
+                    if found:
+                # Busca a rota real apenas para o avião que vai para a tela
+                found['route'] = fetch_route(found['call'])
+                # Cálculo de ETA profissional
+                found['eta'] = round((found['dist'] / (found['spd'] or 1)) * 60)
 
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
     except: return jsonify({"flight": None})
@@ -453,17 +458,26 @@ def index():
     <script>
         // --- INÍCIO WAKE LOCK (TELA SEMPRE ATIVA iOS 26) ---
         let wakeLock = null;
-        const requestWakeLock = async () => {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
-            } catch (err) {}
-        };
+        
+        async function requestWakeLock() {
+          try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('WAKE LOCK ACTIVE');
+    
+            // Se o usuário alternar de aba e voltar, precisamos reativar
+            wakeLock.addEventListener('release', () => {
+              console.log('WAKE LOCK RELEASED');
+            });
+          } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
+          }
+        }
+
+        // Reativar quando a página voltar a ficar visível
         document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                await requestWakeLock();
-            }
+          if (wakeLock !== null && document.visibilityState === 'visible') {
+            await requestWakeLock();
+          }
         });
         // --- FIM WAKE LOCK ---
 
@@ -641,6 +655,8 @@ def index():
                     updatePlaneVisual();
                 } else if (act) {
                     tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
+                    act = null; // <--- ADICIONE ESTA LINHA para limpar o cache do avião antigo
+                    lastDist = null; // <--- ADICIONE ESTA LINHA para resetar a tendência
                     for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
                     document.getElementById('stb').className = 'stub';
                     document.getElementById('stb').style.background = 'var(--brand)';
