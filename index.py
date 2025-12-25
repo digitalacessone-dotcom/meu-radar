@@ -495,7 +495,7 @@ def index():
             const isLandscape = window.innerWidth > window.innerHeight;
             if (isLandscape) {
                 // Ajusta o heading em 90 graus para compensar a rotação do dispositivo
-                heading = heading;
+                heading = (heading + 90) % 360;
             }
             
             deviceHeading = heading;
