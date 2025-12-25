@@ -469,7 +469,6 @@ def index():
 
         let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
-        window.addEventListener('resize', () => { if(act) updatePlaneVisual(); });
         let lastDist = null;
         let deviceHeading = 0;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
@@ -496,11 +495,10 @@ def index():
             const isLandscape = window.innerWidth > window.innerHeight;
             if (isLandscape) {
                 // Ajusta o heading em 90 graus para compensar a rotação do dispositivo
-                deviceHeading = (heading + 90) % 360;
-            } else {
-            // Se em pé, mantém o valor original do sensor
-            deviceHeading = heading;
+                heading = (heading + 90) % 360;
             }
+            
+            deviceHeading = heading;
             updatePlaneVisual();
         }
 
