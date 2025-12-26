@@ -450,7 +450,7 @@ def index():
     </div>
     <div class="scene" id="card">
         <div class="face front">
-            <div id="audio-indicator"><span class="pulse">●</span> ATC MONITORING</div>
+            <div id="audio-indicator"><span class="pulse"></span> VHF-MONITOR</div>
             
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
