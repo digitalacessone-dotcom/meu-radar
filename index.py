@@ -407,38 +407,35 @@ def index():
         /* Indicador visual de rádio ativo */
         #audio-indicator { 
             position: absolute; 
-            top: 15px; 
-            right: 15px; 
-            font-size: 9px; 
-            color: #ff3b30; /* Vermelho vibrante iOS style */
+            top: 20px; 
+            right: 20px; 
             display: none; 
             align-items: center; 
-            gap: 6px; 
-            font-weight: 700; 
-            letter-spacing: 1.2px;
-            background: rgba(255, 59, 48, 0.08); /* Fundo sutil */
-            padding: 5px 10px; 
-            border-radius: 4px; 
-            border: 1px solid rgba(255, 59, 48, 0.3); /* Borda fina técnica */
-            backdrop-filter: blur(4px); /* Efeito de vidro */
-            font-family: 'Courier New', Courier, monospace;
-            z-index: 25;
-            box-shadow: 0 0 15px rgba(255, 59, 48, 0.1);
+            gap: 5px; 
+            padding: 4px 8px;
+            /* Estética de Carimbo Oficial */
+            border: 1.5px double rgba(0,0,0,0.2); 
+            background: rgba(0,0,0,0.03);
+            color: #444; 
+            font-family: 'Courier New', monospace;
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            pointer-events: none; /* Não interfere no clique */
+            z-index: 5;
         }
         
         .pulse {
-            width: 6px;
-            height: 6px;
-            background-color: #ff3b30;
+            width: 5px; height: 5px; 
+            background-color: #d00; 
             border-radius: 50%;
-            display: inline-block;
-            animation: breathe 2s ease-in-out infinite; 
-            box-shadow: 0 0 8px #ff3b30;
+            animation: breathe 2s ease-in-out infinite;
         }
         
         @keyframes breathe { 
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
+            0%, 100% { opacity: 1; box-shadow: 0 0 2px #d00; } 
+            50% { opacity: 0.3; box-shadow: none; }
         }
         
     </style>
