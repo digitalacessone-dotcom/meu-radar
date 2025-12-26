@@ -94,7 +94,16 @@ def radar():
         w = get_weather(lat, lon)
         
         if test:
-            f = {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "date": now_date, "time": now_time, "route": "BEALE-EDW", "eta": 2, "kts": 1800, "vrate": 0, "lat": lat + 0.1, "lon": lon + 0.1}
+            test_pool = [
+                {"icao": "ABC123", "reg": "61-7972", "call": "BLACKBIRD", "airline": "SR-71 RARE", "color": "#000", "is_rare": True, "dist": 15.2, "alt": 80000, "spd": 3200, "hd": 350, "route": "BEALE-EDW"},
+                {"icao": "E48C12", "reg": "PR-XTA", "call": "TAM3452", "airline": "LATAM BRASIL", "color": "#E6004C", "is_rare": False, "dist": 42.5, "alt": 35000, "spd": 840, "hd": 220, "route": "GRU GIG"},
+                {"icao": "A1B2C3", "reg": "PR-GXP", "call": "GLO1234", "airline": "GOL AIRLINES", "color": "#FF6700", "is_rare": False, "dist": 12.8, "alt": 28000, "spd": 790, "hd": 45, "route": "CGH BSB"},
+                {"icao": "D5F6G7", "reg": "PR-YRS", "call": "AZU4021", "airline": "AZUL LINHAS", "color": "#004590", "is_rare": False, "dist": 68.1, "alt": 32000, "spd": 810, "hd": 180, "route": "VCP CNF"},
+                {"icao": "896321", "reg": "A6-EEO", "call": "UAE262", "airline": "EMIRATES", "color": "#FF0000", "is_rare": False, "dist": 150.4, "alt": 38000, "spd": 910, "hd": 95, "route": "DXB GRU"},
+                {"icao": "3B4C5D", "reg": "F-GSQH", "call": "AFR454", "airline": "AIR FRANCE", "color": "#002395", "is_rare": False, "dist": 89.9, "alt": 36000, "spd": 880, "hd": 310, "route": "CDG GIG"}
+            ]
+            f = random.choice(test_pool) # Escolha aleatória a cada requisição
+            f.update({"date": now_date, "time": now_time, "lat": lat + random.uniform(-0.1, 0.1), "lon": lon + random.uniform(-0.1, 0.1)})
             return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
         
         data = fetch_aircrafts(lat, lon)
