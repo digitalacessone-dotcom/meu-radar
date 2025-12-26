@@ -289,6 +289,7 @@ def radar():
                         elif call.startswith("VCV"): airline, color, is_rare = "CONVIASA", "#003366", True
                         elif call.startswith("WTI"): airline, color = "WORLD TICKET", "#555"
                         elif call.startswith(("GDC", "G6")): airline, color = "GLOBALX AIR", "#7BB0D1"
+                        elif "UNITED EXPRESS" in call or call.startswith("ASQ"): airline, color = "UNITED EXPRESS", "#1B3E93"
                         # 1º PRIORIDADE: SKY AIRLINE (Verifica 3 letras primeiro)
                         if call.startswith("SKU"): airline, color = "SKY AIRLINE", "#FF00FF"
                         elif call.startswith("H2"): airline, color = "SKY AIRLINE PERU", "#FF00FF"
