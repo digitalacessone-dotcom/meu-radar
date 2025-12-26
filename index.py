@@ -53,7 +53,7 @@ def fetch_aircrafts(lat, lon):
     all_aircraft = []
     for url in endpoints:
         try:
-            r = requests.get(url, headers=headers, timeout=4)
+            r = requests.get(url, headers=headers, timeout=10)
             if r.status_code == 200:
                 data = r.json().get('aircraft', [])
                 if data: all_aircraft.extend(data)
@@ -528,7 +528,7 @@ def index():
             if(!act || !pos) return;
             const planeElement = document.getElementById('arr');
             const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
-            const finalRotation = (bearingToPlane - deviceHeading - 45);
+            const finalRotation = (bearingToPlane - deviceHeading - 15);
             planeElement.style.transform = `rotate(${finalRotation}deg)`;
         }
 
