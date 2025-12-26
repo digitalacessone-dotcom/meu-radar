@@ -709,6 +709,11 @@ def index():
         }
 
         // AUTO GPS INTEGRATION
+        const geoOptions = {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+        };
         navigator.geolocation.getCurrentPosition(p => {
             pos = {lat: p.coords.latitude, lon: p.coords.longitude};
             hideUI();
