@@ -50,7 +50,7 @@ def fetch_aircrafts(lat, lon):
         f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
         f"https://api.theairtraffic.com/v1/lat/{lat}/lon/{lon}/dist/200" # NOVA FONTE
     ]
-    headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json'}
     all_aircraft = []
     for url in endpoints:
         try:
