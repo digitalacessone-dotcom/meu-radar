@@ -58,8 +58,7 @@ def fetch_aircrafts(lat, lon):
                 data = r.json().get('aircraft', [])
                 if data: all_aircraft.extend(data)
         except: continue      
-    unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
-    return list(unique_data)unique_data = {}
+    unique_data = {}
     for a in all_aircraft:
         icao = a.get('hex')
         if icao and icao not in unique_data:
