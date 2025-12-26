@@ -330,122 +330,115 @@ def index():
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; margin: 0; perspective: 1500px; overflow: hidden; }
         
-        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 100; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        #ui { width: 280px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 1; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
         #ui.hide { opacity: 0; pointer-events: none; transform: translateY(150px) scale(0.9); }
         .ui-row { display: flex; gap: 6px; }
-        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; }
-        button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; }
         
-        /* SCENE & TEAR SYSTEM */
-        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s; z-index: 10; }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #1a1d21; color: #fff; font-size: 11px; outline: none; transition: all 0.3s ease; }
+        input:focus { background: #252a30; box-shadow: 0 0 0 2px rgba(255,255,255,0.1); }
+        
+        button { background: #fff; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 900; cursor: pointer; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        button:active { transform: scale(0.95); }
+        
+        .scene { width: 300px; height: 460px; position: relative; transform-style: preserve-3d; transition: transform 0.8s, width 0.5s ease, height 0.5s ease; z-index: 10; }
         .scene.flipped { transform: rotateY(180deg); }
         
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; 
             background: #fdfaf0;
-            background-image: url('https://www.transparenttextures.com/patterns/paper-fibers.png');
+            background-image: 
+                linear-gradient(to right, rgba(0,0,0,0.03) 0%, transparent 10%, transparent 90%, rgba(0,0,0,0.03) 100%),
+                url('https://www.transparenttextures.com/patterns/paper-fibers.png');
             display: flex; flex-direction: column; overflow: hidden; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(212, 186, 134, 0.1); 
         }
+
         .face.back { transform: rotateY(180deg); padding: 15px; }
-
-        /* TEAR PIECES */
-        .stub { 
-            height: 32%; background: var(--brand); color: #fff; padding: 20px; 
-            display: flex; flex-direction: column; justify-content: center;
-            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
-            position: relative; z-index: 5; transform-origin: bottom center;
-        }
+        .stub { height: 32%; background: var(--brand); color: #fff; padding: 20px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s; position: relative; }
+        .stub::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); opacity: 0.2; pointer-events: none; }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
-
-        .main { 
-            flex: 1; padding: 20px; display: flex; flex-direction: column; 
-            justify-content: space-between; 
-            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
-            position: relative; z-index: 4; transform-origin: top center;
-        }
-
-        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 10; }
-        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; }
-        .perfor::before { left:-25px; } .perfor::after { right:-25px; }
-
-        /* BOARDED ANIMATION (SIMULTANEOUS TEAR) */
-        .boarded .stub { transform: translateY(-50px) rotate(-12deg); }
-        .boarded .main { transform: translateY(60px) rotate(5deg); }
-        .boarded .perfor { opacity: 0; }
-        /* REPETITIVE STYLES RE-ESTABLISHED */
+        
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
         .sq.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
         
+        .perfor { height: 2px; border-top: 5px dotted rgba(0,0,0,0.1); position: relative; z-index: 2; transition: none; }
+        .perfor::before, .perfor::after { content:""; position:absolute; width:30px; height:30px; background:var(--bg); border-radius:50%; top:-15px; transition: none; }
+        .perfor::before { left:-25px; } .perfor::after { right:-25px; }
+        
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         .flap { font-family: monospace; font-size: 18px; font-weight: 900; color: #1a1a1a; height: 24px; display: flex; gap: 1px; }
         .char { width: 14px; height: 22px; background: rgba(0,0,0,0.05); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
-        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; z-index: 10; }
-        #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); mix-blend-mode: multiply; cursor: pointer; }
-
-        .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 4px double #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; }
-        .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-transform: uppercase; line-height: 1; }
+        .date-visual { color: var(--blue-txt); font-weight: 900; line-height: 0.95; text-align: right; }
+        #bc { width: 110px; height: 35px; opacity: 0.3; filter: grayscale(1); cursor: pointer; margin-top: 5px; mix-blend-mode: multiply; }
+        
+        .ticker { width: 310px; height: 32px; background: #000; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-family: monospace; font-size: 11px; letter-spacing: 2px; white-space: pre; transition: width 0.5s ease; z-index: 10; }
+        
+        .metal-seal { position: absolute; bottom: 30px; right: 20px; width: 85px; height: 85px; border-radius: 50%; background: radial-gradient(circle, #f9e17d 0%, #d4af37 40%, #b8860b 100%); border: 2px solid #8a6d3b; box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; transform: rotate(15deg); z-index: 10; border-style: double; border-width: 4px; }
+        .metal-seal span { color: #5c4412; font-size: 8px; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1; padding: 2px; }
+        
+        #compass-btn { font-size: 9px; background: #222; color: #fff; margin-top: 5px; padding: 5px; opacity: 0.6; }
 
         @media (orientation: landscape) { 
             .scene { width: 550px; height: 260px; } 
             .face { flex-direction: row !important; } 
-            .stub { width: 30% !important; height: 100% !important; transform-origin: center right; } 
-            .main { width: 70% !important; transform-origin: center left; }
-            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; }
-            .perfor::before { left: -15px; top: -25px; } .perfor::after { left: -15px; bottom: -25px; top: auto; }
-            .boarded .stub { transform: translateX(-70px) translateY(-25px) rotate(-8deg); }
-            .boarded .main { transform: translateX(50px) translateY(20px) rotate(4deg); }
+            .stub { width: 30% !important; height: 100% !important; } 
+            .perfor { width: 2px !important; height: 100% !important; border-left: 5px dotted rgba(0,0,0,0.1) !important; border-top: none !important; margin: 0; } 
+            .perfor::before { left: -15px; top: -25px; }
+            .perfor::after { left: -15px; bottom: -25px; top: auto; }
+            .main { width: 70% !important; } 
+            .ticker { width: 550px; } 
         }
-        
-        /* LINHAS ADICIONAIS PARA INTEGRIDADE DE FORMATACAO */
-        .info-block { display: flex; flex-direction: column; }
-        .label-small { font-size: 7px; font-weight: 900; color: #888; text-transform: uppercase; }
-        .blue-info { font-weight: 900; color: var(--blue-txt); }
     </style>
 </head>
-<body onclick="handleFlip(event); requestWakeLock()">
+<body onclick="handleFlip(event); requestWakeLock()" style="background: #000000 !important; color: #fff; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
     <div id="ui">
         <div class="ui-row">
             <input type="text" id="in" placeholder="ENTER LOCATION">
             <button onclick="startSearch(event)">CHECK-IN</button>
         </div>
-        <button id="compass-btn" style="font-size:9px; background:#222; color:#fff; margin-top:5px;" onclick="initCompass()">ENABLE LIVE TRACKING SENSORS</button>
+        <button id="compass-btn" onclick="initCompass()">ENABLE LIVE TRACKING SENSORS</button>
     </div>
-
     <div class="scene" id="card">
         <div class="face front">
-            <<div class="stub" id="stb">
-            <div class="label-small" style="color:#fff">RADAR STATUS</div>
-            <div id="airl" style="font-weight:900">BUSCANDO...</div>
-            <div style="font-size:60px; font-weight:900;">19A</div>
-        </div>
-        
-        <div class="perfor"></div>
-        
-        <div class="main">
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div class="info-block"><span>ICAO</span><div id="f-icao" class="flap"></div></div>
-                <div class="info-block"><span>DIST</span><div id="f-dist" class="flap"></div></div>
+            <div class="stub" id="stb">
+                <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
+                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
+                <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
+                <div class="dots-container" id="dots">
+                    <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
+                </div>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                <div id="arr" style="font-size:40px;">✈</div>
-                <div id="f-time" style="font-size:20px; font-weight:900;">00.00</div>
+            <div class="perfor"></div>
+            <div class="main">
+                <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+                    <div><span id="icao-label" style="font-size: 7px; font-weight: 900; color: #888;">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
+                    <div><span id="dist-label" style="font-size: 7px; font-weight: 900; color: #888;">DISTANCE</span><div id="f-dist" class="flap" style="color:#444"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #888;">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #888;">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div id="arr" style="font-size:45px; color: #000000 !important; transition: transform 0.2s cubic-bezier(0.17, 0.67, 0.83, 0.67); filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));">✈</div>
+                    <div class="date-visual">
+                        <div id="f-line1">-- --- ----</div>
+                        <div id="f-line2">--.--</div>
+                        <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=WAITING" onclick="openMap(event)">
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-
         </div>
         <div class="face back">
             <div style="height:100%; border:1px dashed rgba(0,0,0,0.15); border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative;">
                 <div style="display:flex; justify-content:space-between;">
-                    <div class="info-block"><span class="label-small">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
-                    <div class="info-block"><span id="spd-label" class="label-small">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
+                    <div><span style="font-size: 7px; font-weight: 900; color: #888;">ALTITUDE</span><div id="b-alt" class="flap"></div></div>
+                    <div><span id="spd-label" style="font-size: 7px; font-weight: 900; color: #888;">GROUND SPEED</span><div id="b-spd" class="flap"></div></div>
                 </div>
-                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 30px; text-align: center; font-weight: 900; opacity:0.8;">
+                <div style="border: 3px double var(--blue-txt); color: var(--blue-txt); padding: 15px; border-radius: 10px; transform: rotate(-10deg); align-self: center; margin-top: 30px; text-align: center; font-weight: 900; opacity: 0.8;">
                     <div style="font-size:8px;">SECURITY CHECKED</div>
                     <div id="b-date-line1">-- --- ----</div>
                     <div id="b-date-line2" style="font-size:22px;">--.--</div>
-                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.3</div>
+                    <div style="font-size:8px; margin-top:5px;">RADAR CONTACT V106.2</div>
                 </div>
                 <div id="gold-seal" class="metal-seal">
                     <span>Rare</span>
@@ -458,112 +451,121 @@ def index():
     <div class="ticker" id="tk">WAITING...</div>
 
     <script>
+        // --- INÍCIO WAKE LOCK (TELA SEMPRE ATIVA iOS 26) ---
         let wakeLock = null;
         const requestWakeLock = async () => {
-            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
         };
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+        // --- FIM WAKE LOCK ---
 
         let pos = null, act = null, isTest = false;
-        let deviceHeading = 0, lastDist = null, toggleState = true;
-        let tickerMsg = [], tickerIdx = 0;
+        let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
+        let lastDist = null;
+        let deviceHeading = 0;
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
         function initCompass() {
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission().then(s => { if(s==='granted') window.addEventListener('deviceorientation', hOrient); });
-            } else window.addEventListener('deviceorientation', hOrient);
-            document.getElementById('compass-btn').style.display = 'none';
+                DeviceOrientationEvent.requestPermission()
+                    .then(state => {
+                        if (state === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                            document.getElementById('compass-btn').style.display = 'none';
+                        }
+                    });
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+                document.getElementById('compass-btn').style.display = 'none';
+            }
         }
 
-        function hOrient(e) {
-            let h = e.webkitCompassHeading || (360 - e.alpha);
-            if (window.innerWidth > window.innerHeight) h = (h + 90) % 360;
-            deviceHeading = h;
+        function handleOrientation(e) {
+            let heading = e.webkitCompassHeading || (360 - e.alpha);
+            
+            // CORREÇÃO PARA MODO DEITADO (LANDSCAPE)
+            const isLandscape = window.innerWidth > window.innerHeight;
+            if (isLandscape) {
+                // Ajusta o heading em 90 graus para compensar a rotação do dispositivo
+                heading = (heading + 90) % 360;
+            }
+            
+            deviceHeading = heading;
             updatePlaneVisual();
+        }
+
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const l1 = lat1 * Math.PI / 180;
+            const l2 = lat2 * Math.PI / 180;
+            const dl = (lon2 - lon1) * Math.PI / 180;
+            const y = Math.sin(dl) * Math.cos(l2);
+            const x = Math.cos(l1) * Math.sin(l2) - Math.sin(l1) * Math.cos(l2) * Math.cos(dl);
+            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
         }
 
         function updatePlaneVisual() {
             if(!act || !pos) return;
-            const b = ((Math.atan2(Math.sin((act.lon-pos.lon)*Math.PI/180)*Math.cos(act.lat*Math.PI/180), Math.cos(pos.lat*Math.PI/180)*Math.sin(act.lat*Math.PI/180)-Math.sin(pos.lat*Math.PI/180)*Math.cos(act.lat*Math.PI/180)*Math.cos((act.lon-pos.lon)*Math.PI/180)))*180/Math.PI+360)%360;
-            document.getElementById('arr').style.transform = `rotate(${b - deviceHeading - 90}deg)`;
+            const planeElement = document.getElementById('arr');
+            const bearingToPlane = calculateBearing(pos.lat, pos.lon, act.lat, act.lon);
+            const finalRotation = (bearingToPlane - deviceHeading - 45);
+            planeElement.style.transform = `rotate(${finalRotation}deg)`;
+        }
+
+        function playPing() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            } catch(e) {}
         }
 
         function applyFlap(id, text, isTicker = false) {
-            const el = document.getElementById(id);
-            if(!el || el.getAttribute('data-last') === text) return;
-            el.setAttribute('data-last', text);
+            const container = document.getElementById(id);
+            if(!container) return;
+            const targetText = text.toUpperCase();
+            // INTELIGENTE: Se o texto for igual ao anterior, não faz nada (protege CPU)
+            if (container.getAttribute('data-last') === targetText) return;
+            container.setAttribute('data-last', targetText);
             const limit = isTicker ? 32 : 8;
             const target = text.toUpperCase().padEnd(limit, ' ');
-            el.innerHTML = '';
-            [...target].forEach(c => {
-                const s = document.createElement('span'); if(!isTicker) s.className='char'; s.innerHTML='&nbsp;'; el.appendChild(s);
-                let cnt=0, max=40+Math.random()*80;
-                const i = setInterval(() => {
-                    s.innerText = chars[Math.floor(Math.random()*chars.length)];
-                    if(cnt++ >= max) { clearInterval(i); s.innerHTML = (c===' ')?'&nbsp;':c; }
+            container.innerHTML = '';
+            [...target].forEach((char) => {
+                const span = document.createElement('span');
+                if(!isTicker) span.className = 'char';
+                span.innerHTML = '&nbsp;';
+                container.appendChild(span);
+                let count = 0;
+                let max = 40 + Math.floor(Math.random() * 80); 
+                const interval = setInterval(() => {
+                    span.innerText = chars[Math.floor(Math.random() * chars.length)];
+                    if (count++ >= max) { 
+                        clearInterval(interval); 
+                        span.innerHTML = (char === ' ') ? '&nbsp;' : char; 
+                    }
                 }, 20);
             });
         }
 
-        async function update() {
-            if(!pos) return;
-            try {
-                const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&current_icao=${act?act.icao:''}&test=${isTest}&_=${Date.now()}`);
-                const d = await r.json();
-                
-                if(d.flight) {
-                    const f = d.flight;
-                    // SE A DISTÂNCIA FOR MENOR QUE 10KM, ATIVA A CLASSE BOARDED (RASGA O TICKET)
-                    if(f.dist < 10.0) {
-                        document.getElementById('card').classList.add('boarded');
-                    } else {
-                        document.getElementById('card').classList.remove('boarded');
-                    }
-                    const card = document.getElementById('card');
-                    const stub = document.getElementById('stb');
-                    const seal = document.getElementById('gold-seal');
-
-                    // LÓGICA DE RASGAR (TRIGGER < 10KM) - MOVIMENTO SIMULTÂNEO
-                    if(f.dist < 10.0) {
-                        card.classList.add('boarded');
-                    } else {
-                        card.classList.remove('boarded');
-                    }
-
-                    if(f.is_rare) { stub.className = 'stub rare-mode'; seal.style.display = 'flex'; }
-                    else { stub.className = 'stub'; stub.style.background = f.color; seal.style.display = 'none'; }
-
-                    if(!act || act.icao !== f.icao) {
-                        document.getElementById('airl').innerText = f.airline;
-                        applyFlap('f-call', f.call); applyFlap('f-route', f.route);
-                        document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
-                        document.getElementById('f-line1').innerText = f.date;
-                        document.getElementById('f-line2').innerText = f.time;
-                        document.getElementById('b-date-line1').innerText = f.date;
-                        document.getElementById('b-date-line2').innerText = f.time;
-                    }
-
-                    for(let i=1; i<=5; i++) {
-                        const th = 190 - ((i-1)*40);
-                        document.getElementById('d'+i).className = f.dist <= th ? 'sq on' : 'sq';
-                    }
-
-                    if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
-                    if(!act || act.spd !== f.spd) applyFlap('b-spd', f.spd + " KMH");
-                    
-                    tickerMsg = ["CONTACT ESTABLISHED", f.dist < (lastDist||0) ? "CLOSING IN" : "MAINTAINING", d.weather.temp + " " + d.weather.sky];
-                    lastDist = f.dist; act = f; updatePlaneVisual();
-                }
-            } catch(e) {}
-        }
-
-        function startSearch(e) {
-            requestWakeLock();
-            const v = document.getElementById('in').value.toUpperCase();
-            if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
-            else { 
-                fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v)
-                .then(r=>r.json()).then(d=>{ if(d[0]) { pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; hideUI(); } });
+        function saveHistory(f) {
+            if(isTest) return;
+            if(!f.is_rare) return;
+            let history = JSON.parse(localStorage.getItem('rare_flights') || '[]');
+            if(!history.find(x => x.icao === f.icao)) {
+                history.push({icao: f.icao, call: f.call, date: f.date, time: f.time});
+                localStorage.setItem('rare_flights', JSON.stringify(history));
             }
         }
 
@@ -572,23 +574,134 @@ def index():
                 toggleState = !toggleState;
                 document.getElementById('icao-label').innerText = toggleState ? "AIRCRAFT ICAO" : "REGISTRATION";
                 applyFlap('f-icao', toggleState ? act.icao : act.reg);
-                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "CONTACT ETA";
-                applyFlap('f-dist', toggleState ? act.dist + " KM" : act.eta + " MIN");
+                document.getElementById('dist-label').innerText = toggleState ? "DISTANCE" : "ESTIMATED CONTACT";
+                applyFlap('f-dist', toggleState ? act.dist + " KM" : "ETA " + act.eta + "M");
+                document.getElementById('spd-label').innerText = toggleState ? "GROUND SPEED" : "AIRSPEED INDICATOR";
+                applyFlap('b-spd', toggleState ? act.spd + " KMH" : act.kts + " KTS");
             }
         }, 12000);
 
-        setInterval(() => {
-            if(tickerMsg.length > 0) {
-                applyFlap('tk', tickerMsg[tickerIdx], true);
-                tickerIdx = (tickerIdx + 1) % tickerMsg.length;
+        function updateTicker() { 
+            if (tickerMsg.length > 0) { 
+                applyFlap('tk', tickerMsg[tickerIdx], true); 
+                tickerIdx = (tickerIdx + 1) % tickerMsg.length; 
+            } 
+        }
+        setInterval(updateTicker, 15000);
+
+        async function update() {
+            if(!pos) return;
+            try {
+                const current_icao = act ? act.icao : '';
+                const r = await fetch(`/api/radar?lat=${pos.lat}&lon=${pos.lon}&current_icao=${current_icao}&test=${isTest}&_=${Date.now()}`);
+                const d = await r.json();
+                
+                if(d.flight) {
+                    const f = d.flight;
+                    const stub = document.getElementById('stb');
+                    const seal = document.getElementById('gold-seal');
+
+                    let trend = "MAINTAINING";
+                    if(lastDist !== null) {
+                        if(f.dist < lastDist - 0.1) trend = "CLOSING IN";
+                        else if(f.dist > lastDist + 0.1) trend = "MOVING AWAY";
+                    }
+                    lastDist = f.dist;
+
+                    if(f.is_rare) {
+                        stub.className = 'stub rare-mode';
+                        seal.style.display = 'flex';
+                        saveHistory(f);
+                    } else {
+                        stub.className = 'stub';
+                        stub.style.background = f.color;
+                        seal.style.display = 'none';
+                    }
+
+                    if(!act || act.icao !== f.icao) {
+                        playPing();
+                        document.getElementById('airl').innerText = f.airline;
+                        applyFlap('f-call', f.call); applyFlap('f-route', f.route);
+                        document.getElementById('bc').src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${f.icao}&scale=2`;
+                        
+                        document.getElementById('f-line1').innerText = f.date;
+                        document.getElementById('f-line2').innerText = f.time;
+                        document.getElementById('b-date-line1').innerText = f.date;
+                        document.getElementById('b-date-line2').innerText = f.time;
+                    }
+
+                    for(let i=1; i<=5; i++) {
+                        const threshold = 190 - ((i-1) * 40);
+                        document.getElementById('d'+i).className = f.dist <= threshold ? 'sq on' : 'sq';
+                    }
+                    if(!act || act.alt !== f.alt) applyFlap('b-alt', f.alt + " FT");
+                    
+                    tickerMsg = ["CONTACT ESTABLISHED", trend, d.weather.temp + " " + d.weather.sky];
+                    act = f;
+                    updatePlaneVisual();
+                } else if (act) {
+                    tickerMsg = ["SIGNAL LOST / GHOST MODE ACTIVE", "SEARCHING TRAFFIC..."];
+                    for(let i=1; i<=5; i++) document.getElementById('d'+i).className = 'sq';
+                    document.getElementById('stb').className = 'stub';
+                    document.getElementById('stb').style.background = 'var(--brand)';
+                } else {
+                    tickerMsg = ["SEARCHING TRAFFIC..."];
+                }
+            } catch(e) {}
+        }
+
+        function startSearch(e) {
+            requestWakeLock(); // <--- ACRESCENTE ESTA LINHA
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const btn = e.target;
+            const v = document.getElementById('in').value.toUpperCase();
+            
+            btn.style.transform = "scale(0.9)";
+            setTimeout(() => btn.style.transform = "scale(1)", 150);
+
+            tickerMsg = ["SEARCHING TRAFFIC..."];
+            updateTicker();
+            
+            if(v === "TEST") { isTest = true; pos = {lat:-22.9, lon:-43.1}; hideUI(); }
+            else { 
+                fetch("https://nominatim.openstreetmap.org/search?format=json&q="+v)
+                .then(r=>r.json())
+                .then(d=>{ 
+                    if(d[0]) { 
+                        pos = {lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon)}; 
+                        hideUI(); 
+                    } 
+                }); 
             }
-        }, 6000);
+        }
+        
+        function handleFlip(e) { 
+            if(!e.target.closest('#ui') && !e.target.closest('#bc')) {
+                document.getElementById('card').classList.toggle('flipped'); 
+            }
+        }
+        
+        function openMap(e) { 
+            e.stopPropagation(); 
+            if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); 
+        }
+        
+        function hideUI() { 
+            const ui = document.getElementById('ui');
+            ui.classList.add('hide'); 
+            setTimeout(() => {
+                update(); 
+                setInterval(update, 15000); 
+            }, 800);
+        }
 
-        function handleFlip(e) { if(!e.target.closest('#ui') && !e.target.closest('#bc')) document.getElementById('card').classList.toggle('flipped'); }
-        function openMap(e) { e.stopPropagation(); if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); }
-        function hideUI() { document.getElementById('ui').classList.add('hide'); setTimeout(() => { update(); setInterval(update, 15000); }, 800); }
+        // AUTO GPS INTEGRATION
+        navigator.geolocation.getCurrentPosition(p => {
+            pos = {lat: p.coords.latitude, lon: p.coords.longitude};
+            hideUI();
+            requestWakeLock(); // <--- ACRESCENTE ESTA LINHA
+        }, e => console.log("GPS OFF"));
 
-        navigator.geolocation.getCurrentPosition(p => { pos = {lat: p.coords.latitude, lon: p.coords.longitude}; hideUI(); requestWakeLock(); });
     </script>
 </body>
 </html>
