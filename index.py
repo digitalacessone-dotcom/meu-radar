@@ -409,24 +409,36 @@ def index():
             position: absolute; 
             top: 15px; 
             right: 15px; 
-            font-size: 8px; 
-            color: #ff0000; 
-            display: none; /* O JS mudará para 'flex' quando ligado */
+            font-size: 9px; 
+            color: #ff3b30; /* Vermelho vibrante iOS style */
+            display: none; 
             align-items: center; 
-            gap: 4px; 
-            font-weight: 900; 
-            background: rgba(0,0,0,0.1); 
-            padding: 4px 8px; 
-            border-radius: 10px; 
-            z-index: 20;
+            gap: 6px; 
+            font-weight: 700; 
+            letter-spacing: 1.2px;
+            background: rgba(255, 59, 48, 0.08); /* Fundo sutil */
+            padding: 5px 10px; 
+            border-radius: 4px; 
+            border: 1px solid rgba(255, 59, 48, 0.3); /* Borda fina técnica */
+            backdrop-filter: blur(4px); /* Efeito de vidro */
+            font-family: 'Courier New', Courier, monospace;
+            z-index: 25;
+            box-shadow: 0 0 15px rgba(255, 59, 48, 0.1);
         }
         
-        .pulse { animation: blink 0.8s infinite; }
+        .pulse {
+            width: 6px;
+            height: 6px;
+            background-color: #ff3b30;
+            border-radius: 50%;
+            display: inline-block;
+            animation: breathe 2s ease-in-out infinite; 
+            box-shadow: 0 0 8px #ff3b30;
+        }
         
-        @keyframes blink { 
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
+        @keyframes breathe { 
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
         }
         
     </style>
