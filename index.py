@@ -58,8 +58,14 @@ def fetch_aircrafts(lat, lon):
                 data = r.json().get('aircraft', [])
                 if data: all_aircraft.extend(data)
         except: continue
+    # Filtro de redundância agressivo para limpar duplicatas de múltiplas APIs        
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
-    return list(unique_data)
+    return list(unique_data)unique_data = {}
+    for a in all_aircraft:
+        icao = a.get('hex')
+        if icao and icao not in unique_data:
+            unique_data[icao] = a
+    return list(unique_data.values())
     
 @lru_cache(maxsize=128)
 def fetch_route(callsign):
@@ -67,7 +73,7 @@ def fetch_route(callsign):
     try:
         # API mais robusta que integra dados do ADSB-Exchange
         url = f"https://api.adsb.lol/v2/callsign/{callsign.strip().upper()}"
-        r = requests.get(url, timeout=4).json()
+        r = requests.get(url, timeout=10).json()
         if r.get('aircraft') and len(r['aircraft']) > 0:
             ac = r['aircraft'][0]
             # Tenta pegar a rota; se não tiver, pelo menos limpa o callsign
@@ -587,7 +593,7 @@ def index():
                 tickerIdx = (tickerIdx + 1) % tickerMsg.length; 
             } 
         }
-        setInterval(updateTicker, 15000);
+        setInterval(updateTicker, 10000);
 
         async function update() {
             if(!pos) return;
