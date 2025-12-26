@@ -353,14 +353,15 @@ def index():
         .stub { 
             height: 32%; background: var(--brand); color: #fff; padding: 20px; 
             display: flex; flex-direction: column; justify-content: center;
-            transition: transform 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), background 0.5s; 
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
             position: relative; z-index: 5; transform-origin: bottom center;
         }
         .stub.rare-mode { background: #000 !important; color: var(--gold) !important; }
 
         .main { 
-            flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; 
-            transition: transform 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
+            flex: 1; padding: 20px; display: flex; flex-direction: column; 
+            justify-content: space-between; 
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
             position: relative; z-index: 4; transform-origin: top center;
         }
 
@@ -369,10 +370,9 @@ def index():
         .perfor::before { left:-25px; } .perfor::after { right:-25px; }
 
         /* BOARDED ANIMATION (SIMULTANEOUS TEAR) */
-        .boarded .stub { transform: translateY(-40px) translateX(-25px) rotate(-12deg); opacity: 0.85; }
-        .boarded .main { transform: translateY(60px) translateX(20px) rotate(5deg); }
-        .boarded .perfor { border-top: 5px dotted transparent; }
-
+        .boarded .stub { transform: translateY(-50px) rotate(-12deg); }
+        .boarded .main { transform: translateY(60px) rotate(5deg); }
+        .boarded .perfor { opacity: 0; }
         /* REPETITIVE STYLES RE-ESTABLISHED */
         .dots-container { display: flex; gap: 4px; margin-top: 8px; }
         .sq { width: 10px; height: 10px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); border-radius: 2px; transition: 0.3s; }
@@ -414,32 +414,26 @@ def index():
 
     <div class="scene" id="card">
         <div class="face front">
-            <div class="stub" id="stb">
-                <div class="label-small" style="color: #fff; opacity:0.7;">RADAR SCANNING</div>
-                <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
-                <div style="font-size:65px; font-weight:900; letter-spacing:-4px; margin:2px 0;">19A</div>
-                <div class="dots-container" id="dots">
-                    <div id="d1" class="sq"></div><div id="d2" class="sq"></div><div id="d3" class="sq"></div><div id="d4" class="sq"></div><div id="d5" class="sq"></div>
-                </div>
+            <<div class="stub" id="stb">
+            <div class="label-small" style="color:#fff">RADAR STATUS</div>
+            <div id="airl" style="font-weight:900">BUSCANDO...</div>
+            <div style="font-size:60px; font-weight:900;">19A</div>
+        </div>
+        
+        <div class="perfor"></div>
+        
+        <div class="main">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div class="info-block"><span>ICAO</span><div id="f-icao" class="flap"></div></div>
+                <div class="info-block"><span>DIST</span><div id="f-dist" class="flap"></div></div>
             </div>
-            <div class="perfor"></div>
-            <div class="main">
-                <div style="color: #333; font-weight: 900; font-size: 13px; border: 1.5px solid #333; padding: 3px 10px; border-radius: 4px; align-self: flex-start;">BOARDING PASS</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-                    <div class="info-block"><span id="icao-label" class="label-small">AIRCRAFT ICAO</span><div id="f-icao" class="flap"></div></div>
-                    <div class="info-block"><span id="dist-label" class="label-small">DISTANCE</span><div id="f-dist" class="flap"></div></div>
-                    <div class="info-block"><span class="label-small">FLIGHT IDENTIFICATION</span><div id="f-call" class="flap"></div></div>
-                    <div class="info-block"><span class="label-small">ROUTE (AT-TO)</span><div id="f-route" class="flap"></div></div>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div id="arr" style="font-size:45px; color:#000; transition: transform 0.2s;">✈</div>
-                    <div style="text-align:right;">
-                        <div id="f-line1" class="blue-info" style="font-size:10px;">-- --- ----</div>
-                        <div id="f-line2" class="blue-info" style="font-size:18px;">--.--</div>
-                        <img id="bc" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=READY" onclick="openMap(event)">
-                    </div>
-                </div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                <div id="arr" style="font-size:40px;">✈</div>
+                <div id="f-time" style="font-size:20px; font-weight:900;">00.00</div>
             </div>
+        </div>
+    </div>
+
         </div>
         <div class="face back">
             <div style="height:100%; border:1px dashed rgba(0,0,0,0.15); border-radius:15px; padding:20px; display:flex; flex-direction:column; position:relative;">
@@ -519,6 +513,12 @@ def index():
                 
                 if(d.flight) {
                     const f = d.flight;
+                    // SE A DISTÂNCIA FOR MENOR QUE 10KM, ATIVA A CLASSE BOARDED (RASGA O TICKET)
+                    if(f.dist < 10.0) {
+                        document.getElementById('card').classList.add('boarded');
+                    } else {
+                        document.getElementById('card').classList.remove('boarded');
+                    }
                     const card = document.getElementById('card');
                     const stub = document.getElementById('stb');
                     const seal = document.getElementById('gold-seal');
