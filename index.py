@@ -48,6 +48,7 @@ def fetch_aircrafts(lat, lon):
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
+        f"https://api.theairtraffic.com/v1/lat/{lat}/lon/{lon}/dist/200" # NOVA FONTE
     ]
     headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
     all_aircraft = []
