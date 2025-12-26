@@ -403,6 +403,32 @@ def index():
             .main { width: 70% !important; } 
             .ticker { width: 550px; } 
         }
+
+        /* Indicador visual de rádio ativo */
+        #audio-indicator { 
+            position: absolute; 
+            top: 15px; 
+            right: 15px; 
+            font-size: 8px; 
+            color: #ff0000; 
+            display: none; /* O JS mudará para 'flex' quando ligado */
+            align-items: center; 
+            gap: 4px; 
+            font-weight: 900; 
+            background: rgba(0,0,0,0.1); 
+            padding: 4px 8px; 
+            border-radius: 10px; 
+            z-index: 20;
+        }
+        
+        .pulse { animation: blink 0.8s infinite; }
+        
+        @keyframes blink { 
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
     </style>
 </head>
 <body onclick="handleFlip(event); requestWakeLock()" style="background: #000000 !important; color: #fff; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
@@ -415,6 +441,8 @@ def index():
     </div>
     <div class="scene" id="card">
         <div class="face front">
+            <div id="audio-indicator"><span class="pulse">●</span> ATC MONITORING</div>
+            
             <div class="stub" id="stb">
                 <div style="font-size:7px; font-weight:900; opacity:0.7;">RADAR SCANNING</div>
                 <div style="font-size:10px; font-weight:900; margin-top:5px;" id="airl">SEARCHING...</div>
@@ -485,6 +513,12 @@ def index():
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
         let deviceHeading = 0;
+
+        // --- ADICIONE ESTAS DUAS LINHAS ABAIXO ---
+        let radioOn = false;
+        let noiseNode, gainNode; 
+        // -----------------------------------------
+        
         const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.- ";
 
         function initCompass() {
@@ -697,7 +731,45 @@ def index():
         
         function openMap(e) { 
             e.stopPropagation(); 
-            if(act) window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank'); 
+            
+            // 1. Inicializa o motor de áudio no primeiro clique
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 2. Cria o gerador de ruído se ele não existir
+            if (!noiseNode) {
+                const bufferSize = 2 * audioCtx.sampleRate;
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
+                noiseNode = audioCtx.createBufferSource();
+                noiseNode.buffer = noiseBuffer;
+                noiseNode.loop = true;
+                gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                noiseNode.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                noiseNode.start();
+            }
+
+            const ind = document.getElementById('audio-indicator');
+
+            // 3. Lógica de Alternância (Toggle)
+            if (!radioOn) {
+                // LIGA: Som de estática baixo (0.015) e mostra o LED
+                gainNode.gain.setTargetAtTime(0.015, audioCtx.currentTime, 0.1);
+                if (ind) ind.style.display = 'flex';
+                radioOn = true;
+                
+                // Abre o mapa detalhado se houver um voo
+                if(act && act.icao !== "UNK") {
+                    window.open(`https://globe.adsbexchange.com/?icao=${act.icao}`, '_blank');
+                }
+            } else {
+                // DESLIGA: Silencia o áudio e esconde o LED
+                gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+                if (ind) ind.style.display = 'none';
+                radioOn = false;
+            }
         }
         
         function hideUI() { 
