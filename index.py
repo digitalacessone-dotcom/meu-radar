@@ -57,8 +57,7 @@ def fetch_aircrafts(lat, lon):
             if r.status_code == 200:
                 data = r.json().get('aircraft', [])
                 if data: all_aircraft.extend(data)
-        except: continue
-    # Filtro de redundância agressivo para limpar duplicatas de múltiplas APIs        
+        except: continue      
     unique_data = {a['hex']: a for a in all_aircraft if 'hex' in a}.values()
     return list(unique_data)unique_data = {}
     for a in all_aircraft:
