@@ -550,7 +550,7 @@ def index():
         });
         // --- FIM WAKE LOCK ---
 
-        let pos = null, act = null, isTest = false;
+        let pos = null, act = null, isTest = false, audioCtx = null;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
         let deviceHeading = 0;
@@ -734,6 +734,9 @@ def index():
         }
 
         function startSearch(e) {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
             requestWakeLock(); // <--- ACRESCENTE ESTA LINHA
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const btn = e.target;
