@@ -87,7 +87,6 @@ def radar():
         lon = float(request.args.get('lon', DEFAULT_LON))
         current_icao = request.args.get('current_icao', None)
         test = request.args.get('test', 'false').lower() == 'true'
-        
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
