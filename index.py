@@ -318,6 +318,15 @@ def radar():
                         elif call.startswith("LAE"): airline, color = "LATAM CARGO", "#E6004C"
                         elif call.startswith("MPH"): airline, color = "MARTINAIR CARGO", "#FF4F00"
                         elif call.startswith("ACN"): airline, color = "AZUL CONECTA", "#004590"
+                        elif call.startswith(("JAL", "JL")): airline, color = "JAPAN AIRLINES", "#D90011"
+                        elif call.startswith(("VIV", "VA")): airline, color = "VIVA AEROBUS", "#00A650"
+                        elif call.startswith(("LID", "LD")): airline, color = "LINEA TURISTICA", "#003366"
+                        elif call.startswith("THK"): airline, color = "TURKISH CARGO", "#C8102E"
+                        elif call.startswith("ETD"): airline, color = "ETIHAD AIRWAYS", "#AD944D"
+                        elif call.startswith("FJI"): airline, color = "FIJI AIRWAYS", "#000000"
+                        elif call.startswith("MAU"): airline, color = "AIR MAURITIUS", "#EA1C2D"
+                        elif call.startswith("RBA"): airline, color = "ROYAL BRUNEI", "#F9DD16"
+                        elif call.startswith("OMA"): airline, color = "OMAN AIR", "#004B8D"
                         elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
                             airline, color, is_rare = "SANTA CLAUS", "#D42426", True
                         
