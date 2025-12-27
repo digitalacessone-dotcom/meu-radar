@@ -333,6 +333,8 @@ def radar():
             "date": now_date, 
             "time": now_time
         })
+    except Exception as e:
+        return jsonify({"flight": None, "error": str(e)})
 
 @app.route('/')
 def index():
