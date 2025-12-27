@@ -316,7 +316,7 @@ def radar():
                             "time": now_time,
                             "route": r_info, 
                             "eta": eta,
-                            "vrate": int(s.get('baro_rate', 0))
+                            "vrate": int(s.get('baro_rate', 0)),
                         })
             
             if proc:
@@ -328,11 +328,7 @@ def radar():
                 else:
                     found = new_closest
 
-        return jsonify({
-            "flight": found, 
-            "date": now_date, 
-            "time": now_time
-        })
+        return jsonify({"flight": found, "date": now_date, "time": now_time})
     except Exception as e:
         return jsonify({"flight": None, "error": str(e)})
 
