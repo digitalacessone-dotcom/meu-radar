@@ -736,7 +736,6 @@ def index():
         function startSearch(e) {
             requestWakeLock();
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const btn = e.target;
             const v = document.getElementById('in').value.toUpperCase();
             
