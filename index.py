@@ -301,18 +301,17 @@ def radar():
                         r_info = s.get('route') or fetch_route(call.strip().upper())
 
                         proc.append({
-                            "icao": s.get('hex', 'UNK').upper(), 
-                            "reg": s.get('r', 'N/A').upper(), 
-                            "call": call, "airline": airline, 
-                            "color": color, "is_rare": is_rare, 
-                            "dist": round(d, 1), 
-                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), 
-                            "spd": spd_kmh, "kts": spd_kts, 
-                            "hd": int(s.get('track', 0)), 
-                            "lat": slat, "lon": slon,
-                            "date": now_date, "time": now_time, 
-                            "route": r_info, "eta": eta, 
-                            "vrate": int(s.get('baro_rate', 0))
+                            "icao": s.get('hex', 'UNK').upper(),
+                            "reg": reg,
+                            "call": call if call else "N/A",
+                            "airline": airline,
+                            "color": color,
+                            "is_rare": is_rare,
+                            "dist": round(d, 1),
+                            "route": s.get('route') or fetch_route(call),
+                            "spd": int(s.get('gs', 0) * 1.852),
+                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
+                            "lat": slat, "lon": slon
                         })
             
             if proc:
