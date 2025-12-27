@@ -47,8 +47,13 @@ def fetch_aircrafts(lat, lon):
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
-        f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
-        f"https://api.theairtraffic.com/v1/lat/{lat}/lon/{lon}/dist/200" # NOVA FONTE
+        f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://api.theairtraffic.com/v1/lat/{lat}/lon/{lon}/dist/200",
+        f"https://api.airplanes.live/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://api.skycircle.org/v1/lat/{lat}/lon/{lon}/dist/200",
+        f"https://adsbexchange.com/api/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://api.radarvirtuel.com/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://api.radarbox.com/v2/lat/{lat}/lon/{lon}/dist/200"
     ]
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json'}
     all_aircraft = []
@@ -56,7 +61,8 @@ def fetch_aircrafts(lat, lon):
         try:
             r = requests.get(url, headers=headers, timeout=10)
             if r.status_code == 200:
-                data = r.json().get('aircraft', [])
+                data_json = r.json()
+                data = data_json.get('ac') or data_json.get('aircraft') or []
                 if data: all_aircraft.extend(data)
         except: continue      
     unique_data = {}
@@ -73,8 +79,9 @@ def fetch_route(callsign):
         # API mais robusta que integra dados do ADSB-Exchange
         url = f"https://api.adsb.lol/v2/callsign/{callsign.strip().upper()}"
         r = requests.get(url, timeout=10).json()
-        if r.get('aircraft') and len(r['aircraft']) > 0:
-            ac = r['aircraft'][0]
+        ac_list = r.get('aircraft') or r.get('ac')
+        if ac_list and len(ac_list) > 0:
+            ac = ac_list[0]
             # Tenta pegar a rota; se não tiver, pelo menos limpa o callsign
             rt = ac.get('route')
             if rt: return rt.replace('-', ' ').upper()
@@ -291,7 +298,8 @@ def radar():
                         elif call.startswith("SAS"): airline, color = "SCANDINAVIAN", "#003399"
                         elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
                             airline, color, is_rare = "SANTA CLAUS", "#D42426", True
-                        
+
+                        # Cálculos de performance
                         spd_kts = int(s.get('gs', 0))
                         spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
