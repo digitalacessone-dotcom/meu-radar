@@ -103,8 +103,11 @@ def radar():
             ]
             f = random.choice(test_pool) # Escolha aleatória a cada requisição
             f.update({"date": now_date, "time": now_time, "lat": lat + random.uniform(-0.1, 0.1), "lon": lon + random.uniform(-0.1, 0.1)})
-            return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
-        
+            return jsonify({
+                "flight": found, 
+                "date": now_date, # Use o mesmo nome que definiu no topo
+                "time": now_time,
+             })
         data = fetch_aircrafts(lat, lon)
         found = None
         if data:
