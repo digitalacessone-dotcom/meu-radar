@@ -9,7 +9,7 @@ from functools import lru_cache
 app = Flask(__name__)
 
 # Configurações V106.2 - ANAC 2025 INTEGRATED
-RADIUS_KM = 190 
+RADIUS_KM = 190
 DEFAULT_LAT = 37.24804
 DEFAULT_LON = -115.800155
 
@@ -290,16 +290,12 @@ def radar():
                         elif call.startswith("PUE"): airline, color = "PLUS ULTRA", "#D7192D"
                         elif call.startswith("VCV"): airline, color, is_rare = "CONVIASA", "#003366", True
                         elif call.startswith("WTI"): airline, color = "WORLD TICKET", "#555"
-                        # 1º PRIORIDADE: SKY AIRLINE (Verifica 3 letras primeiro)
-                        if call.startswith("SKU"): airline, color = "SKY AIRLINE", "#FF00FF"
+                        elif call.startswith("SKU"): airline, color = "SKY AIRLINE", "#FF00FF"
                         elif call.startswith("H2"): airline, color = "SKY AIRLINE PERU", "#FF00FF"
-                        # 2º PRIORIDADE: SCANDINAVIAN (Apenas se não for SKU)
                         elif call.startswith("SAS"): airline, color = "SCANDINAVIAN", "#003399"
                         elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
                             airline, color, is_rare = "SANTA CLAUS", "#D42426", True
                         
-                        spd_kts = int(s.get('gs', 0))
-                        spd_kmh = int(spd_kts * 1.852)
                         eta = round((d / (spd_kmh or 1)) * 60)
                         r_info = s.get('route') or fetch_route(call.strip().upper())
 
