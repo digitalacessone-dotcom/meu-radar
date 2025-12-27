@@ -312,8 +312,8 @@ def radar():
                             "spd": int(s.get('gs', 0) * 1.852),
                             "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
                             "lat": slat, "lon": slon
-                            "date": date_str,  # <--- ADICIONE ESTA LINHA
-                            "time": time_str   # <--- ADICIONE ESTA LINHA
+                            "date": date_str,  # Correção aplicada
+                            "time": time_str   # Correção aplicada
                         })
             
             if proc:
