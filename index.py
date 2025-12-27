@@ -357,8 +357,7 @@ def radar():
                         elif call.startswith("FSA"): airline, color = "FLYSA AIR", "#00AEEF"
                         elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
                             airline, color, is_rare = "SANTA CLAUS", "#D42426", True
-                        elif call.startswith(("PT", "PR", "PP", "PS")): 
-                        airline, color = f"PRIVATE ({call[:2]})", "#71797E"
+                        elif call.startswith(("PT", "PR", "PP", "PS")): airline, color = f"PRIVATE ({call[:2]})", "#71797E"
                         
                         eta = round((d / (spd_kmh or 1)) * 60)
                         r_info = s.get('route') or fetch_route(call.strip().upper())
