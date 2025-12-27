@@ -56,15 +56,11 @@ def fetch_aircrafts(lat, lon):
         try:
             r = requests.get(url, headers=headers, timeout=10)
             if r.status_code == 200:
-                data = r.json().get('aircraft', [])
-                if data: all_aircraft.extend(data)
+                data = r.json().get('aircraft') or r.json().get('ac') or []
+                all_aircraft.extend(data)
         except: continue      
-    unique_data = {}
-    for a in all_aircraft:
-        icao = a.get('hex')
-        if icao and icao not in unique_data:
-            unique_data[icao] = a
-    return list(unique_data.values())
+    unique = {a.get('hex'): a for a in all_aircraft if a.get('hex')}
+    return list(unique.values())
     
 @lru_cache(maxsize=128)
 def fetch_route(callsign):
@@ -73,10 +69,9 @@ def fetch_route(callsign):
         # API mais robusta que integra dados do ADSB-Exchange
         url = f"https://api.adsb.lol/v2/callsign/{callsign.strip().upper()}"
         r = requests.get(url, timeout=10).json()
-        if r.get('aircraft') and len(r['aircraft']) > 0:
-            ac = r['aircraft'][0]
-            # Tenta pegar a rota; se não tiver, pelo menos limpa o callsign
-            rt = ac.get('route')
+        ac_list = r.get('aircraft') or r.get('ac')
+        if ac_list and len(ac_list) > 0:
+            rt = ac_list[0].get('route')
             if rt: return rt.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
@@ -93,6 +88,8 @@ def radar():
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
         w = get_weather(lat, lon)
+        data = fetch_aircrafts(lat, lon)
+        found = None
         
         if test:
             test_pool = [
@@ -118,8 +115,8 @@ def radar():
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
                         reg = (s.get('r') or 'N/A').upper()
-                        r_info = s.get('route') or fetch_route(call.strip().upper())
                         type_code = (s.get('t') or '').upper()
+                        
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
                         if s.get('mil') or type_code in MIL_RARE:
@@ -302,35 +299,40 @@ def radar():
                         r_info = s.get('route') or fetch_route(call.strip().upper())
 
                         proc.append({
-                            "icao": s.get('hex', 'UNK').upper(), 
-                            "reg": s.get('r', 'N/A').upper(), 
-                            "call": call, "airline": airline, 
-                            "color": color, "is_rare": is_rare, 
-                            "dist": round(d, 1), 
-                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), 
-                            "spd": spd_kmh, "kts": spd_kts, 
-                            "hd": int(s.get('track', 0)), 
-                            "lat": slat, "lon": slon,
-                            "date": now_date, "time": now_time, 
-                            "route": r_info, "eta": eta, 
-                            "vrate": int(s.get('baro_rate', 0)),
-                            "airline": airline,  # <--- ADICIONADO
-                            "color": color,      # <--- ADICIONADO
-                            "is_rare": is_rare   # <--- ADICIONADO
+                            "icao": s.get('hex', 'UNK').upper(),
+                            "reg": s.get('r', 'N/A').upper(),
+                            "call": call if call else "N/A",
+                            "airline": airline,
+                            "color": color,
+                            "is_rare": is_rare,
+                            "dist": round(d, 1),
+                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
+                            "spd": spd_kmh,
+                            "kts": spd_kts,
+                            "hd": int(s.get('track', 0)),
+                            "lat": slat, 
+                            "lon": slon,
+                            "date": now_date, 
+                            "time": now_time,
+                            "route": r_info, 
+                            "eta": eta,
+                            "vrate": int(s.get('baro_rate', 0))
                         })
             
             if proc:
                 proc.sort(key=lambda x: x['dist'])
                 new_closest = proc[0]
                 if current_icao:
-                    current_on_radar = next((x for x in proc if x['icao'] == current_icao), None)
-                    if current_on_radar:
-                        found = new_closest if new_closest['dist'] < (current_on_radar['dist'] - 5) else current_on_radar
-                    else: found = new_closest
-                else: found = new_closest
+                    curr = next((x for x in proc if x['icao'] == current_icao), None)
+                    found = new_closest if not curr or new_closest['dist'] < (curr['dist'] - 5) else curr
+                else:
+                    found = new_closest
 
-        return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
-    except: return jsonify({"flight": None})
+        return jsonify({
+            "flight": found, 
+            "date": now_date, 
+            "time": now_time
+        })
 
 @app.route('/')
 def index():
