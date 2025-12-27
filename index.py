@@ -71,7 +71,7 @@ def fetch_aircrafts(lat, lon):
         if icao and icao not in unique_data:
             unique_data[icao] = a
     return list(unique_data.values())
-    
+
 @lru_cache(maxsize=128)
 def fetch_route(callsign):
     if not callsign or callsign == "N/A": return "--- ---"
@@ -85,7 +85,7 @@ def fetch_route(callsign):
             # Tenta pegar a rota; se não tiver, pelo menos limpa o callsign
             rt = ac.get('route')
             if rt and len(rt) > 3: 
-                return rt.replace('-', ' ').upper())
+                return rt.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
         return "EN ROUTE"
