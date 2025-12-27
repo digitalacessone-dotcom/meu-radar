@@ -39,7 +39,7 @@ def get_weather(lat, lon):
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
-        return {"temp": f"{int(curr.get('temperature_2m', 0))}C", "sky": get_weather_desc(curr.get('weather_code', 0)), "vis": f"{vis_km}KM"}
+        return {"temp": f"{int(curr['temperature_2m'])}C", "sky": get_weather_desc(curr['weather_code']), "vis": f"{vis_km}KM"}
     except:
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
@@ -47,7 +47,7 @@ def fetch_aircrafts(lat, lon):
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
-        f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200",
+        f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
         f"https://api.theairtraffic.com/v1/lat/{lat}/lon/{lon}/dist/200" # NOVA FONTE
     ]
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json'}
@@ -56,8 +56,8 @@ def fetch_aircrafts(lat, lon):
         try:
             r = requests.get(url, headers=headers, timeout=10)
             if r.status_code == 200:
-                data = r.json().get('aircraft') or r.json().get('ac') or []
-                all_aircraft.extend(data)
+                data = r.json().get('aircraft', [])
+                if data: all_aircraft.extend(data)
         except: continue      
     unique_data = {}
     for a in all_aircraft:
@@ -70,11 +70,13 @@ def fetch_aircrafts(lat, lon):
 def fetch_route(callsign):
     if not callsign or callsign == "N/A": return "--- ---"
     try:
+        # API mais robusta que integra dados do ADSB-Exchange
         url = f"https://api.adsb.lol/v2/callsign/{callsign.strip().upper()}"
-        r = requests.get(url, timeout=5).json()
-        ac_list = r.get('aircraft') or r.get('ac')
-        if ac_list and len(ac_list) > 0:
-            rt = ac_list[0].get('route')
+        r = requests.get(url, timeout=10).json()
+        if r.get('aircraft') and len(r['aircraft']) > 0:
+            ac = r['aircraft'][0]
+            # Tenta pegar a rota; se não tiver, pelo menos limpa o callsign
+            rt = ac.get('route')
             if rt: return rt.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
@@ -103,11 +105,8 @@ def radar():
             ]
             f = random.choice(test_pool) # Escolha aleatória a cada requisição
             f.update({"date": now_date, "time": now_time, "lat": lat + random.uniform(-0.1, 0.1), "lon": lon + random.uniform(-0.1, 0.1)})
-            return jsonify({
-                "flight": found, 
-                "date": now_date, # Use o mesmo nome que definiu no topo
-                "time": now_time,
-             })
+            return jsonify({"flight": f, "weather": w, "date": now_date, "time": now_time})
+        
         data = fetch_aircrafts(lat, lon)
         found = None
         if data:
@@ -303,19 +302,18 @@ def radar():
                         r_info = s.get('route') or fetch_route(call.strip().upper())
 
                         proc.append({
-                            "icao": s.get('hex', 'UNK').upper(),
-                            "reg": reg,
-                            "call": call if call else "N/A",
-                            "airline": airline,
-                            "color": color,
-                            "is_rare": is_rare,
-                            "dist": round(d, 1),
-                            "route": s.get('route') or fetch_route(call),
-                            "spd": int(s.get('gs', 0) * 1.852),
-                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
-                            "lat": slat, "lon": slon
-                            "date": date_str,  # Correção aplicada
-                            "time": time_str   # Correção aplicada
+                            "icao": s.get('hex', 'UNK').upper(), 
+                            "reg": s.get('r', 'N/A').upper(), 
+                            "call": call, "airline": airline, 
+                            "color": color, "is_rare": is_rare, 
+                            "dist": round(d, 1), 
+                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), 
+                            "spd": spd_kmh, "kts": spd_kts, 
+                            "hd": int(s.get('track', 0)), 
+                            "lat": slat, "lon": slon,
+                            "date": now_date, "time": now_time, 
+                            "route": r_info, "eta": eta, 
+                            "vrate": int(s.get('baro_rate', 0))
                         })
             
             if proc:
