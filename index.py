@@ -270,7 +270,6 @@ def radar():
                         elif call.startswith("FBZ"): airline, color = "FLYBONDI", "#FFD700"
                         elif call.startswith("LDR"): airline, color, is_rare = "LIDER AVIAÇÃO", "#000", True
                         elif call.startswith("NCR"): airline, color = "NATIONAL AIR", "#003366"
-                        elif call.startswith("ICV"): airline, color = "CARGOLUX ITALIA", "#ED1C24"
                         elif call.startswith("VIR"): airline, color = "VIRGIN ATLANTIC", "#C8102E"
                         elif call.startswith("AFL"): airline, color = "AEROFLOT", "#003399"
                         elif call.startswith("VUK"): airline, color = "VOLOTEA", "#FF4F00"
@@ -324,7 +323,6 @@ def radar():
                         elif call.startswith("TIE"): airline, color, is_rare = "TIME TO FLY", "#000", True
                         elif call.startswith("FYL"): airline, color, is_rare = "FLYING GROUP", "#8B0000", True
                         elif call.startswith("AXY"): airline, color, is_rare = "AIRX CHARTER", "#000", True
-                        elif call.startswith("TAY"): airline, color = "ASL BELGIUM", "#FF6600"
                         elif call.startswith("AZG"): airline, color = "SILK WAY WEST", "#001D41"
                         elif call.startswith("VDA"): airline, color, is_rare = "VOLGA-DNEPR", "#003399", True
                         elif call.startswith("IBB"): airline, color = "IBERIA REGIONAL", "#D7192D"
@@ -360,6 +358,11 @@ def radar():
                         elif call.startswith("GUY"): airline, color = "GUYANA AIRWAYS", "#007A33"
                         elif call.startswith("AHU"): airline, color, is_rare = "HULK JET (EXTRA)", "#000", True
                         elif call.startswith("SRR"): airline, color = "STAR AIR (UPS)", "#351C15"
+                        elif call.startswith("LVU"): airline, color = "LEVU AIR CARGO", "#003366"
+                        elif call.startswith("TEXP"): airline, color = "TOTAL EXPRESS", "#005544"
+                        elif call.startswith("QQE"): airline, color, is_rare = "QATAR EXECUTIVE", "#8A1538", True
+                        elif call.startswith("EAV"): airline, color = "MAERSK AIR CARGO", "#00205B"
+                        elif call.startswith("FSA"): airline, color = "FLYSA AIR", "#00AEEF"
                         elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
                             airline, color, is_rare = "SANTA CLAUS", "#D42426", True
                         
