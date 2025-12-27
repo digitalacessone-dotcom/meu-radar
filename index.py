@@ -313,7 +313,7 @@ def radar():
                             "lat": slat, "lon": slon,
                             "date": now_date, "time": now_time, 
                             "route": r_info, "eta": eta, 
-                            "vrate": int(s.get('baro_rate', 0))
+                            "vrate": int(s.get('baro_rate', 0)),
                             "airline": airline,  # <--- ADICIONADO
                             "color": color,      # <--- ADICIONADO
                             "is_rare": is_rare   # <--- ADICIONADO
