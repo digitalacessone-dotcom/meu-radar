@@ -76,15 +76,16 @@ def fetch_aircrafts(lat, lon):
 def fetch_route(callsign):
     if not callsign or callsign == "N/A": return "--- ---"
     try:
-        # API mais robusta que integra dados do ADSB-Exchange
-        url = f"https://api.adsb.lol/v2/callsign/{callsign.strip().upper()}"
+       clean_call = callsign.strip().upper()
+        url = f"https://api.adsb.lol/v2/callsign/{clean_call}"
         r = requests.get(url, timeout=10).json()
         ac_list = r.get('aircraft') or r.get('ac')
         if ac_list and len(ac_list) > 0:
             ac = ac_list[0]
             # Tenta pegar a rota; se não tiver, pelo menos limpa o callsign
             rt = ac.get('route')
-            if rt: return rt.replace('-', ' ').upper()
+            if rt and len(rt) > 3: 
+                return rt.replace('-', ' ').upper())
         return "EN ROUTE"
     except:
         return "EN ROUTE"
