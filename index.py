@@ -296,6 +296,7 @@ def radar():
                         elif call.startswith("TNO"): airline, color = "AEROUNION", "#003366"
                         elif call.startswith("LAE"): airline, color = "LATAM CARGO", "#E6004C"
                         elif call.startswith("MPH"): airline, color = "MARTINAIR CARGO", "#FF4F00"
+                        elif call.startswith("CKS"): airline, color = "KALITTA AIR", "#ED1C24"
                         elif call.startswith("LCO"): airline, color = "LAN CARGO", "#E6004C"
                         elif call.startswith("CAO"): airline, color = "AIR CHINA CARGO", "#E30613"
                         elif call.startswith("MSX"): airline, color = "EGYPTAIR CARGO", "#002855"
@@ -346,6 +347,7 @@ def radar():
                         elif call.startswith("PWF"): airline, color = "FLY ALLWAYS", "#003366"
                         elif call.startswith("LQD"): airline, color = "LIQUID AIR", "#202020"
                         elif call.startswith("VCP"): airline, color = "COPA CARGO", "#003366"
+                        elif call.startswith("TPA"): airline, color = "AVIANCA CARGO", "#E01F26"
                         elif call.startswith("GUY"): airline, color = "GUYANA AIRWAYS", "#007A33"
                         elif call.startswith("AHU"): airline, color, is_rare = "HULK JET (EXTRA)", "#000", True
                         elif call.startswith("SRR"): airline, color = "STAR AIR (UPS)", "#351C15"
@@ -355,9 +357,6 @@ def radar():
                         elif call.startswith("FSA"): airline, color = "FLYSA AIR", "#00AEEF"
                         elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
                             airline, color, is_rare = "SANTA CLAUS", "#D42426", True
-                        # 5. REGRA DE JATINHOS PARTICULARES BRASILEIROS (Última prioridade antes do Genérico)
-                        elif call.startswith(("PT", "PR", "PP", "PS")): 
-                            airline, color = f"PRIVATE ({call[:2]})", "#71797E"
                         
                         eta = round((d / (spd_kmh or 1)) * 60)
                         r_info = s.get('route') or fetch_route(call.strip().upper())
@@ -550,7 +549,7 @@ def index():
         });
         // --- FIM WAKE LOCK ---
 
-        let pos = null, act = null, isTest = false, audioCtx = null;
+        let pos = null, act = null, isTest = false;
         let toggleState = true, tickerMsg = [], tickerIdx = 0, audioCtx = null;
         let lastDist = null;
         let deviceHeading = 0;
@@ -734,7 +733,7 @@ def index():
         }
 
         function startSearch(e) {
-            requestWakeLock();
+            requestWakeLock(); // <--- ACRESCENTE ESTA LINHA
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const btn = e.target;
             const v = document.getElementById('in').value.toUpperCase();
