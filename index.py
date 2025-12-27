@@ -39,7 +39,7 @@ def get_weather(lat, lon):
         resp = requests.get(url, timeout=5).json()
         curr = resp['current']
         vis_km = int(curr.get('visibility', 10000) / 1000)
-        return {"temp": f"{int(curr['temperature_2m'])}C", "sky": get_weather_desc(curr['weather_code']), "vis": f"{vis_km}KM"}
+        return {"temp": f"{int(curr.get('temperature_2m', 0))}C", "sky": get_weather_desc(curr.get('weather_code', 0)), "vis": f"{vis_km}KM"}
     except:
         return {"temp": "--C", "sky": "METAR ON", "vis": "--KM"}
 
@@ -47,7 +47,7 @@ def fetch_aircrafts(lat, lon):
     endpoints = [
         f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://opendata.adsb.fi/api/v2/lat/{lat}/lon/{lon}/dist/200",
-        f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200"
+        f"https://api.adsb.one/v2/lat/{lat}/lon/{lon}/dist/200",
         f"https://api.theairtraffic.com/v1/lat/{lat}/lon/{lon}/dist/200" # NOVA FONTE
     ]
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'application/json'}
@@ -56,8 +56,8 @@ def fetch_aircrafts(lat, lon):
         try:
             r = requests.get(url, headers=headers, timeout=10)
             if r.status_code == 200:
-                data = r.json().get('aircraft', [])
-                if data: all_aircraft.extend(data)
+                data = r.json().get('aircraft') or r.json().get('ac') or []
+                all_aircraft.extend(data)
         except: continue      
     unique_data = {}
     for a in all_aircraft:
@@ -70,13 +70,11 @@ def fetch_aircrafts(lat, lon):
 def fetch_route(callsign):
     if not callsign or callsign == "N/A": return "--- ---"
     try:
-        # API mais robusta que integra dados do ADSB-Exchange
         url = f"https://api.adsb.lol/v2/callsign/{callsign.strip().upper()}"
-        r = requests.get(url, timeout=10).json()
-        if r.get('aircraft') and len(r['aircraft']) > 0:
-            ac = r['aircraft'][0]
-            # Tenta pegar a rota; se não tiver, pelo menos limpa o callsign
-            rt = ac.get('route')
+        r = requests.get(url, timeout=5).json()
+        ac_list = r.get('aircraft') or r.get('ac')
+        if ac_list and len(ac_list) > 0:
+            rt = ac_list[0].get('route')
             if rt: return rt.replace('-', ' ').upper()
         return "EN ROUTE"
     except:
@@ -89,6 +87,7 @@ def radar():
         lon = float(request.args.get('lon', DEFAULT_LON))
         current_icao = request.args.get('current_icao', None)
         test = request.args.get('test', 'false').lower() == 'true'
+        
         local_now = get_time_local()
         now_date = local_now.strftime("%d %b %Y").upper()
         now_time = local_now.strftime("%H.%M")
