@@ -759,6 +759,7 @@ def index():
         }
         
         function handleFlip(e) { 
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); else if (audioCtx.state === 'suspended') audioCtx.resume();
             if(!e.target.closest('#ui') && !e.target.closest('#bc')) {
                 document.getElementById('card').classList.toggle('flipped'); 
             }
