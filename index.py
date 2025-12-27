@@ -311,6 +311,13 @@ def radar():
                         elif call.startswith("GTI"): airline, color = "ATLAS AIR", "#003366"
                         elif call.startswith("CKS"): airline, color = "KALITTA AIR", "#ED1C24"
                         elif call.startswith("LCO"): airline, color = "LAN CARGO", "#E6004C"
+                        elif call.startswith("CAO"): airline, color = "AIR CHINA CARGO", "#E30613"
+                        elif call.startswith("MSX"): airline, color = "EGYPTAIR CARGO", "#002855"
+                        elif call.startswith("KWC"): airline, color = "KOREAN AIR CARGO", "#003399"
+                        elif call.startswith("TNO"): airline, color = "AEROUNION", "#003366"
+                        elif call.startswith("LAE"): airline, color = "LATAM CARGO", "#E6004C"
+                        elif call.startswith("MPH"): airline, color = "MARTINAIR CARGO", "#FF4F00"
+                        elif call.startswith("ACN"): airline, color = "AZUL CONECTA", "#004590"
                         elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
                             airline, color, is_rare = "SANTA CLAUS", "#D42426", True
                         
