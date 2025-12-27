@@ -68,7 +68,7 @@ def fetch_aircrafts(lat, lon):
     
 @lru_cache(maxsize=128)
 def fetch_route(callsign):
-    if not callsign or callsign == "N/A": return "--- ---"
+    if not callsign or callsign in ["N/A", "UNKNOWN"]: return "--- ---"
     try:
         # API mais robusta que integra dados do ADSB-Exchange
         url = f"https://api.adsb.lol/v2/callsign/{callsign.strip().upper()}"
