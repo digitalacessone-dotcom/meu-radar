@@ -117,9 +117,11 @@ def radar():
                     d = 6371 * 2 * math.asin(math.sqrt(math.sin(math.radians(slat-lat)/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(slat)) * math.sin(math.radians(slon-lon)/2)**2))
                     if d <= RADIUS_KM:
                         call = (s.get('flight') or s.get('call') or 'N/A').strip().upper()
-                        reg = (s.get('r') or 'N/A').upper()
-                        r_info = s.get('route') or fetch_route(call.strip().upper())
                         type_code = (s.get('t') or '').upper()
+                        spd_kts = int(s.get('gs', 0))
+                        spd_kmh = int(spd_kts * 1.852)
+                        r_info = s.get('route') or fetch_route(call)
+                        eta = "--:--"
                         airline, color, is_rare = "PRIVATE", "#444", False
                         
                         if s.get('mil') or type_code in MIL_RARE:
@@ -302,17 +304,23 @@ def radar():
                         r_info = s.get('route') or fetch_route(call.strip().upper())
 
                         proc.append({
-                            "icao": s.get('hex', 'UNK').upper(), 
-                            "reg": s.get('r', 'N/A').upper(), 
-                            "call": call, "airline": airline, 
-                            "color": color, "is_rare": is_rare, 
-                            "dist": round(d, 1), 
-                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0), 
-                            "spd": spd_kmh, "kts": spd_kts, 
-                            "hd": int(s.get('track', 0)), 
-                            "lat": slat, "lon": slon,
-                            "date": now_date, "time": now_time, 
-                            "route": r_info, "eta": eta, 
+                            "icao": s.get('hex', 'UNK').upper(),
+                            "reg": s.get('r', 'N/A').upper(),
+                            "call": call if call else "N/A",
+                            "airline": airline,
+                            "color": color,
+                            "is_rare": is_rare,
+                            "dist": round(d, 1),
+                            "alt": int(s.get('alt_baro', 0) if s.get('alt_baro') != "ground" else 0),
+                            "spd": spd_kmh,
+                            "kts": spd_kts,
+                            "hd": int(s.get('track', 0)),
+                            "lat": slat, 
+                            "lon": slon,
+                            "date": now_date, 
+                            "time": now_time,
+                            "route": r_info, 
+                            "eta": eta,
                             "vrate": int(s.get('baro_rate', 0))
                         })
             
@@ -327,7 +335,9 @@ def radar():
                 else: found = new_closest
 
         return jsonify({"flight": found, "weather": w, "date": now_date, "time": now_time})
-    except: return jsonify({"flight": None})
+    except Exception as e:
+        # Retorna o erro exato para diagnóstico se algo falhar
+        return jsonify({"flight": None, "error": str(e)})
 
 @app.route('/')
 def index():
