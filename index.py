@@ -76,7 +76,7 @@ def fetch_aircrafts(lat, lon):
 def fetch_route(callsign):
     if not callsign or callsign == "N/A": return "--- ---"
     try:
-       clean_call = callsign.strip().upper()
+        clean_call = callsign.strip().upper()
         url = f"https://api.adsb.lol/v2/callsign/{clean_call}"
         r = requests.get(url, timeout=10).json()
         ac_list = r.get('aircraft') or r.get('ac')
