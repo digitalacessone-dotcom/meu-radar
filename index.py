@@ -356,6 +356,7 @@ def radar():
                         elif call.startswith("EAV"): airline, color = "MAERSK AIR CARGO", "#00205B"
                         elif call.startswith("FSA"): airline, color = "FLYSA AIR", "#00AEEF"
                         elif call.startswith(("RXA", "ZL")): airline, color = "REX AIRLINES", "#F15A24" # Laranja Rex
+                        elif call.startswith("VPC"): airline, color = "CONTOUR AIRL", "#004B91"
                         elif "SANTA" in call or "HOHOHO" in call or type_code == "SLEI": 
                             airline, color, is_rare = "SANTA CLAUS", "#D42426", True
                         elif call.startswith(("PT", "PR", "PP", "PS")): airline, color = f"PRIVATE ({call[:2]})", "#71797E"
