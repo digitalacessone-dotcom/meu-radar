@@ -289,7 +289,7 @@ def radar():
                         elif call.startswith("BOX"): airline, color = "AEROLOGIC", "#FFD700"
                         elif call.startswith("PDT"): airline, color = "PIEDMONT AIR", "#C41230"
                         elif call.startswith("SVW"): airline, color, is_rare = "GLOBAL JET", "#000", True
-                        elif call.startswith("NJE"): airline, color, is_rare = "NETJETS EUROPE", "#333", True
+                        elif call.startswith("NJE"): airline, color, is_rare = "NETJETS EUROPE", "#333"
                         elif call.startswith("SHH"): airline, color = "SKY HIGH", "#E21737"
                         elif call.startswith("EDW"): airline, color = "EDELWEISS AIR", "#ED1C24"
                         elif call.startswith("ACN"): airline, color = "AZUL CONECTA", "#004590"
