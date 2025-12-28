@@ -242,7 +242,7 @@ def radar():
                         elif call.startswith("VMP"): airline, color, is_rare = "VAMP AIR", "#333", True
                         elif call.startswith("AXY"): airline, color, is_rare = "AIRX CHARTER", "#000", True
                         elif call.startswith("FYG"): airline, color, is_rare = "FLYING SERVICE", "#555", True
-                        elif call.startswith(("JAT", "LBT", "JA" "JSS", "JWC")): airline, color = "JetSMART", "#D20019" # Fix JetSMART
+                        elif call.startswith(("JAT", "LBT", "JA" "JSS", "JWC", "JES")): airline, color = "JetSMART", "#D20019" # Fix JetSMART
                         elif call.startswith(("LPE", "LP")): airline, color = "LATAM PERU", "#E6004C"
                         elif call.startswith(("LNE", "XL")): airline, color = "LATAM ECUADOR", "#E6004C"
                         elif call.startswith(("LNC", "4C")): airline, color = "LATAM COLOMBIA", "#E6004C"
