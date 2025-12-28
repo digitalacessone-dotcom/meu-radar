@@ -151,7 +151,7 @@ def radar():
                         elif call.startswith("CLX"): airline, color = "CARGOLUX", "#ED1C24"
                         elif call.startswith("ACA"): airline, color = "AIR CANADA", "#FF0000"
                         elif call.startswith("QTR"): airline, color = "QATAR AIRWAYS", "#8A1538" # Grená Corrigido
-                        elif call.startswith("SIA"): airline, color = "SINGAPORE AIR", "#11264B"
+                        elif call.startswith(("SIA", "SQ")): airline, color = "SINGAPORE AIR", "#11264B"
                         elif call.startswith("CPA"): airline, color = "CATHAY PACIFIC", "#00656B"
                         elif call.startswith("UAE"): airline, color = "EMIRATES", "#FF0000"
                         elif call.startswith("ANA"): airline, color = "ANA NIPPON", "#003192"
